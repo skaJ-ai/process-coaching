@@ -5,6 +5,7 @@ import { useStore } from '../store';
 export default function L7ReportCard({ item }: { item: L7ReportItem }) {
   const applyL7Rewrite = useStore(s => s.applyL7Rewrite);
   const updateNodeLabel = useStore(s => s.updateNodeLabel);
+  const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const [applied, setApplied] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -14,11 +15,11 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
     ? (item.issues.some(i => i.severity === 'warning')
       ? { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: '💡', label: '개선 가능' }
       : { color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)', icon: '✓', label: '표준 준수' })
-    : { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: '✏', label: 'AI 추천 있음' };
+    : { color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.25)', icon: '✏', label: 'AI 추천 있음' };
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ background: sc.bg, border: `1px solid ${sc.border}` }}>
-      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer" onClick={() => setShowDetail(!showDetail)}>
+    <div className="rounded-lg overflow-hidden" style={{ background: sc.bg, border: `1px solid ${sc.border}`, cursor: 'pointer' }} onClick={() => setFocusNodeId(item.nodeId)}>
+      <div className="flex items-center gap-2 px-3 py-2" onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}>
         <span style={{ color: sc.color, fontSize: 14 }}>{sc.icon}</span>
         <span className="text-xs font-medium text-slate-300 flex-1 truncate">{item.nodeLabel}</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ color: sc.color, border: `1px solid ${sc.border}` }}>{sc.label}</span>

@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="HR Process Mining v5")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
-# LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
-LLM_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"  # Gemini OpenAI compatible endpoint
-LLM_MODEL = "gemini-1.5-flash"
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
+# LLM_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"  # Gemini OpenAI compatible endpoint
+# LLM_MODEL = "gemini-1.5-flash"
 GEMINI_API_KEY = "AIzaSyBDxyMb9qgsiiCTQfmlm7CZFpCn6h4JOZc"
 USE_MOCK = os.getenv("USE_MOCK", "auto")
 
@@ -40,7 +40,8 @@ L7_GUIDE = """[L7 작성 원칙]
 - 하나의 화면 내 연속 동작 = 1개 L7
 - 판단 시 명확한 기준값 포함
 [표준 동사] 조회한다, 입력한다, 수정한다, 저장한다, 추출한다, 비교한다, 집계한다, 기록한다, 첨부한다, 판정한다, 승인한다, 반려한다, 결정한다, 예외로 처리한다, 요청한다, 재요청한다, 안내한다, 공지한다, 에스컬레이션한다
-[금지 동사] 처리한다, 진행한다, 관리한다, 대응한다, 지원한다, 개선한다, 최적화한다, 검토한다, 확인한다, 정리한다, 공유한다, 조율한다, 협의한다, 반영한다"""
+[금지 동사] 처리한다, 진행한다, 관리한다, 대응한다, 지원한다, 개선한다, 최적화한다, 검토한다, 확인한다, 정리한다, 공유한다, 조율한다, 협의한다, 반영한다
+주의: 라벨에 (시스템명), [시스템명] 등 괄호로 시스템을 포함하지 말 것. 시스템은 노드 메타데이터로 별도 관리됨."""
 
 def describe_flow(nodes, edges):
     if not nodes: return "플로우 비어있음."
@@ -86,10 +87,10 @@ async def call_llm(system_prompt, user_message):
     except Exception as e: logger.error(f"LLM error: {e}"); return None
 
 REVIEW_SYSTEM = f"당신은 HR 프로세스 분석 전문가입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 사용자가 추가로 궁금할 수 있는 후속 질문 2~3개"
-COACH_TEMPLATE = f"당신은 HR 프로세스 설계 코치입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 현재 플로우에서 다음으로 확인할 질문 2~3개"
+COACH_TEMPLATE = f"당신은 HR 프로세스 설계 코치입니다.\n{L7_GUIDE}\n규칙: suggestion의 summary/label, guidance 텍스트에 (시스템명)을 괄호로 포함하지 말 것.\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 현재 플로우에서 다음으로 확인할 질문 2~3개"
 L7_VALIDATE = f"당신은 L7 품질 검증 에이전트입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"pass\":bool,\"score\":0-100,\"issues\":[...],\"rewriteSuggestion\":\"...\"}}"
 
-CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 HR 프로세스 설계 코치입니다. 현재 플로우를 보고 빠진 단계나 예외를 짧게 짚어주세요.\n응답(JSON만): {{"guidance":"한줄요약","quickQueries":["질문1","질문2"]}}"""
+CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 HR 프로세스 설계 코치입니다. 현재 플로우를 보고 빠진 단계나 예외를 짧게 짚어주세요.\n규칙: suggestion의 summary/label, guidance 텍스트에 (시스템명)을 괄호로 포함하지 말 것.\n응답(JSON만): {{"guidance":"한줄요약","quickQueries":["질문1","질문2"]}}"""
 PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
 
 
@@ -109,11 +110,31 @@ def mock_quick_queries(nodes, edges):
     if len(pn)>=2: qs.append("예외적으로 처리해야 하는 케이스가 있나요?")
     return qs[:3]
 
+def mock_review(nodes, edges):
+    suggestions = []
+    end_nodes = [n for n in nodes if n.type == 'end']
+    if not end_nodes:
+        suggestions.append({"action": "ADD", "type": "END", "summary": "종료 노드 추가", "reason": "플로우가 종료되지 않았습니다.", "newLabel": "종료"})
+    
+    orphans = [n for n in nodes if n.type not in ('start','end') and not any(e.source == n.id or e.target == n.id for e in edges)]
+    if orphans:
+        suggestions.append({"action": "MODIFY", "summary": f"고립된 노드 {len(orphans)}개 연결 필요", "reason": "연결되지 않은 노드가 있습니다."})
+    
+    decisions = [n for n in nodes if n.type == 'decision']
+    if not decisions and len(nodes) > 5:
+        suggestions.append({"action": "ADD", "type": "DECISION", "summary": "분기 추가 고려", "reason": "플로우가 단조롭습니다."})
+
+    return {
+        "speech": f"총 {len(nodes)}개 단계로 구성된 플로우입니다. 구조적 문제를 점검했습니다. ({len(suggestions)}개 제안)",
+        "suggestions": suggestions,
+        "quickQueries": mock_quick_queries(nodes, edges)
+    }
+
 @app.post("/api/review")
 async def review_flow(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    return r or {"speech":"AI 모델 연결 상태가 원활하지 않아 분석을 완료할 수 없습니다. 잠시 후 다시 시도해주세요.","suggestions":[],"quickQueries":[]}
+    return r or mock_review(req.currentNodes, req.currentEdges)
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
@@ -158,5 +179,5 @@ if __name__ == "__main__":
     try:
         uvicorn.run(app, host="0.0.0.0", port=8000)
     except SystemExit:
-        logger.warning("Port 8000 is busy. Trying port 8001...")
-        uvicorn.run(app, host="0.0.0.0", port=8001)
+        logger.warning("Port 8000 is busy. Trying port 8002...")
+        uvicorn.run(app, host="0.0.0.0", port=8002)

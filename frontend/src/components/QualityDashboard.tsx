@@ -6,7 +6,7 @@ export default function QualityDashboard() {
   const validateAll = useStore(s => s.validateAllNodes);
   const ls = useStore(s => s.loadingState);
 
-  const processNodes = nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType));
+  const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
   const total = processNodes.length;
   if (total === 0) return null;
 
@@ -17,7 +17,7 @@ export default function QualityDashboard() {
   const checking = processNodes.filter(n => n.data.l7Status === 'checking').length;
 
   const pct = total > 0 ? Math.round(((pass + warn) / total) * 100) : 0;
-  const barColor = reject > 0 ? '#f59e0b' : unchecked > 0 ? '#64748b' : '#22c55e';
+  const barColor = reject > 0 ? '#f97316' : unchecked > 0 ? '#64748b' : '#22c55e';
 
   return (
     <div className="px-4 py-3" style={{ background: 'rgba(15,23,41,0.5)', borderBottom: '1px solid var(--border-primary)' }}>
@@ -34,7 +34,7 @@ export default function QualityDashboard() {
       <div className="flex gap-3 text-[10px]">
         {pass > 0 && <span className="text-green-400">✓ {pass} 준수</span>}
         {warn > 0 && <span className="text-amber-400">💡 {warn} 개선</span>}
-        {reject > 0 && <span className="text-orange-400">✏ {reject} 추천</span>}
+        {reject > 0 && <span className="text-[#f97316]">✏ {reject} 추천</span>}
         {unchecked > 0 && <span className="text-slate-500">○ {unchecked} 미검증</span>}
         {checking > 0 && <span className="text-purple-400 animate-pulse">⟳ {checking}</span>}
       </div>

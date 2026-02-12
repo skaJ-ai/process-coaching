@@ -122,8 +122,18 @@ function FlowCanvas() {
   const wrapper = useRef<HTMLDivElement>(null);
   const rfInstance = useReactFlow();
 
+  const focusNodeId = useStore(s => s.focusNodeId);
+  const setFocusNodeId = useStore(s => s.setFocusNodeId);
   useEffect(() => { const t = setTimeout(() => rfInstance.fitView({ padding: 0.3, duration: 200 }), 100); return () => clearTimeout(t); }, [nodes.length]);
   useEffect(() => { const t = setTimeout(() => autoValidate(), 3000); return () => clearTimeout(t); }, [nodes, autoValidate]);
+
+  useEffect(() => {
+    if (focusNodeId) {
+      rfInstance.fitView({ nodes: [{ id: focusNodeId as string }], duration: 300, padding: 0.5 });
+      setSel(focusNodeId);
+      setFocusNodeId(null);
+    }
+  }, [focusNodeId, rfInstance, setSel, setFocusNodeId]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

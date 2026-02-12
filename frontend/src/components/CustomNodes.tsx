@@ -6,7 +6,7 @@ import { useStore } from '../store';
 
 const statusMap: Record<L7Status, { color: string; badge: string }> = {
   none: { color: '', badge: '' }, checking: { color: '#a855f7', badge: '⟳' },
-  pass: { color: '#22c55e', badge: '✓' }, warning: { color: '#f59e0b', badge: '💡' }, reject: { color: '#f59e0b', badge: '✏' },
+  pass: { color: '#22c55e', badge: '✓' }, warning: { color: '#f59e0b', badge: '💡' }, reject: { color: '#f97316', badge: '✏' },
 };
 
 const AllHandles = ({ color = '#60a5fa' }: { color?: string }) => (<>
@@ -50,7 +50,7 @@ export const StartNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   return (<div className="relative flex items-center justify-center w-[60px] h-[60px] rounded-full" style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }} onDoubleClick={ie.startEdit}>
     {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
-    {[Position.Bottom, Position.Right, Position.Left, Position.Top].map(p => <CircleHandle key={p} pos={p} id={p.toLowerCase()} color="#4ade80" isConnectableStart={true} isConnectableEnd={true} />)}
+    {[Position.Bottom, Position.Right, Position.Left, Position.Top].map(p => <Handle key={p} type="source" position={p} id={p.toLowerCase() + '-source'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#4ade80', border: '2px solid #0f1729', borderRadius: '50%', opacity: 0.5 }} />)}
   </div>);
 });
 StartNode.displayName = 'StartNode';
@@ -60,7 +60,7 @@ export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   return (<div className="relative flex items-center justify-center w-[60px] h-[60px] rounded-full" style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }} onDoubleClick={ie.startEdit}>
     {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
-    {[Position.Top, Position.Bottom, Position.Left, Position.Right].map(p => <Handle key={p} type="target" position={p} id={p.toLowerCase()} isConnectableStart={true} isConnectableEnd={true} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#f87171', border: '2px solid #0f1729', borderRadius: '50%' }} />)}
+    {[Position.Top, Position.Bottom, Position.Left, Position.Right].map(p => <Handle key={p} type="target" position={p} id={p.toLowerCase() + '-target'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#f87171', border: '2px solid #0f1729', borderRadius: '50%' }} />)}
   </div>);
 });
 EndNode.displayName = 'EndNode';
@@ -103,7 +103,7 @@ DecisionNode.displayName = 'DecisionNode';
 
 export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
   const cat = CATEGORY_COLORS[data.category || 'as_is'];
-  const defaultBg = 'linear-gradient(135deg, #115e59, #134e4a)';
+  const defaultBg = 'linear-gradient(135deg, #115e59, #0f2a2a)';
   const bg = (data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
   const borderColor = (data.category && data.category !== 'as_is') ? cat.border : '#14b8a6';
   const shadow = selected ? '0 0 0 3px rgba(45,212,191,0.4),0 0 20px rgba(45,212,191,0.2)' : '0 4px 16px rgba(0,0,0,0.3)';
@@ -121,25 +121,50 @@ export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeDa
 });
 SubprocessNode.displayName = 'SubprocessNode';
 
-export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, style, markerEnd, label }: EdgeProps) {
-  // Better self loop: curve out from top/right and come back to top/left
-  // Assuming source is right/bottom and target is top/left for a loop
-  const radiusX = 60;
-  const radiusY = 60;
-  const isRight = sourceX > targetX;
-  // If source is to the right of target, loop goes up and over
-  // simplified path: M source -> C (control points) -> target
-  const c1x = sourceX + radiusX * (isRight ? 1 : -1);
-  const c1y = sourceY - radiusY;
-  const c2x = targetX + radiusX * (isRight ? 1 : -1);
-  const c2y = targetY - radiusY;
+export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHandleId, targetHandleId, style, markerEnd, label }: EdgeProps) {
+  // Orthogonal Polyline Self Loop: Start -> P2 -> P3 -> P4 -> End
+  const M = 40; // Margin
 
-  const path = `M ${sourceX} ${sourceY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${targetX} ${targetY}`;
-  const labelX = (c1x + c2x) / 2;
-  const labelY = Math.min(c1y, c2y) + 10;
+  const getDir = (hid: string | undefined | null) => {
+    if (!hid) return { x: 1, y: 0, isVert: false };
+    if (hid.includes('top')) return { x: 0, y: -1, isVert: true };
+    if (hid.includes('bottom')) return { x: 0, y: 1, isVert: true };
+    if (hid.includes('left')) return { x: -1, y: 0, isVert: false };
+    if (hid.includes('right')) return { x: 1, y: 0, isVert: false };
+    return { x: 1, y: 0, isVert: false };
+  };
+
+  const sDir = getDir(sourceHandleId);
+  const tDir = getDir(targetHandleId);
+
+  // P2: Start + Normal * Margin
+  const p2x = sourceX + sDir.x * M;
+  const p2y = sourceY + sDir.y * M;
+
+  // P_pre_end: End + Normal * Margin
+  const pPreEndx = targetX + tDir.x * M;
+  const pPreEndy = targetY + tDir.y * M;
+
+  // P3: Corner Point logic
+  // If Source is Vertical, we go Vert first, so Corner X matches Target's X extension
+  // If Source is Horizontal, we go Horiz first, so Corner Y matches Target's Y extension
+  let p3x, p3y;
+  if (sDir.isVert) {
+    p3x = pPreEndx;
+    p3y = p2y;
+  } else {
+    p3x = p2x;
+    p3y = pPreEndy;
+  }
+
+  const path = `M ${sourceX} ${sourceY} L ${p2x} ${p2y} L ${p3x} ${p3y} L ${pPreEndx} ${pPreEndy} L ${targetX} ${targetY}`;
+
+  // Label on the middle segment (P2->P3) or P3->PreEnd
+  const labelX = (p2x + p3x + pPreEndx) / 3;
+  const labelY = (p2y + p3y + pPreEndy) / 3;
 
   return (<><path id={id} d={path} style={{ ...style, fill: 'none' }} className="react-flow__edge-path" markerEnd={markerEnd as string} />
-    {label && <foreignObject x={labelX - 40} y={labelY} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}</>);
+    {label && <foreignObject x={p3x - 40} y={p3y - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}</>);
 }
 
 export const nodeTypes = { start: StartNode, end: EndNode, process: ProcessNode, decision: DecisionNode, subprocess: SubprocessNode };

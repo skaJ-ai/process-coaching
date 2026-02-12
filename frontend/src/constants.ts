@@ -1,6 +1,6 @@
 import { NodeCategory } from './types';
 
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = 'http://localhost:8002/api';
 
 export const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {
   process: { width: 280, height: 60 },
@@ -18,6 +18,7 @@ export const LAYOUT_CONFIG = {
   marginy: 40,
 };
 
+export const L7_CONCURRENCY = 4;
 export const SWIMLANE_HEADER_WIDTH = 48;
 export const SWIMLANE_MIN_HEIGHT = 200;
 

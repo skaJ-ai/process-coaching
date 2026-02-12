@@ -71,6 +71,11 @@ interface AppStore {
   validateNode: (id: string) => Promise<any>; validateAllNodes: () => Promise<void>; applyL7Rewrite: (id: string) => void;
   lastAutoValidateTime: number; autoValidateDebounced: () => void;
 
+  // v5.1: Focus Node
+  focusNodeId: string | null; setFocusNodeId: (id: string | null) => void;
+  // v5.1: Force Complete
+  forceComplete: () => void;
+
   history: HistoryEntry[]; historyIndex: number; pushHistory: () => void; undo: () => void; redo: () => void;
   messages: ChatMessage[]; loadingState: LoadingState; addMessage: (m: ChatMessage) => void; setLoadingMessage: (m: string) => void;
   sendChat: (msg: string) => Promise<void>; requestReview: () => Promise<void>;
@@ -118,6 +123,15 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   nodes: [], edges: [], selectedNodeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+  focusNodeId: null, setFocusNodeId: (id) => set({ focusNodeId: id }),
+  forceComplete: () => {
+    const { nodes, edges, processContext } = get();
+    set({ saveStatus: 'complete' });
+    const json = get().exportFlow();
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `process-${processContext?.processName || 'flow'}-완료-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  },
   setNodes: (n) => set({ nodes: n }), setEdges: (e) => set({ edges: e }),
   onNodesChange: (c) => {
     const nn = applyNodeChanges(c, get().nodes) as Node<FlowNodeData>[];
@@ -198,7 +212,7 @@ export const useStore = create<AppStore>((set, get) => ({
   validateNode: async (id) => {
     const { nodes, edges, processContext } = get();
     const node = nodes.find(n => n.id === id);
-    if (!node || ['start', 'end'].includes(node.data.nodeType)) return null;
+    if (!node || ['start', 'end', 'subprocess'].includes(node.data.nodeType)) return null;
     // Skip validation for self-loops (rework/looping tasks)
     if (edges.some(e => e.source === id && e.target === id)) return null;
     set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'checking' as L7Status } } : n) });
@@ -212,14 +226,26 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   validateAllNodes: async () => {
     const { nodes, addMessage, setLoadingMessage } = get();
-    const targets = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
+    const targets = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
     if (!targets.length) { addMessage({ id: generateId('msg'), role: 'bot', text: '검증할 노드가 없습니다.', timestamp: Date.now() }); return; }
     set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0 } });
+
+    // Parallel Execution (Batch 4)
+    const BATCH_SIZE = 4;
     const items: L7ReportItem[] = [];
-    for (let i = 0; i < targets.length; i++) {
-      setLoadingMessage(`L7 검증 (${i + 1}/${targets.length}): "${targets[i].data.label}"`);
-      const r: any = await get().validateNode(targets[i].id);
-      if (r) items.push({ nodeId: targets[i].id, nodeLabel: targets[i].data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion });
+
+    for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+      const batch = targets.slice(i, i + BATCH_SIZE);
+      setLoadingMessage(`L7 검증 (${Math.min(i + BATCH_SIZE, targets.length)}/${targets.length})...`);
+      const results = await Promise.allSettled(batch.map(t => get().validateNode(t.id)));
+
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value) {
+          const t = batch[idx];
+          const r = res.value;
+          items.push({ nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion });
+        }
+      });
     }
     set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } });
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
@@ -232,7 +258,7 @@ export const useStore = create<AppStore>((set, get) => ({
   autoValidateDebounced: () => {
     const now = Date.now(); const { nodes, lastAutoValidateTime, loadingState } = get();
     if (now - lastAutoValidateTime < 3000 || loadingState.active) return;
-    const t = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
+    const t = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
     if (!t.length) return; set({ lastAutoValidateTime: now }); get().validateNode(t[0].id);
   },
 
@@ -356,7 +382,7 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!nodes.some(n => n.data.nodeType === 'end')) issues.push('종료 노드가 없습니다. 우클릭으로 추가해주세요.');
     const orphans = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType) && !edges.some(e => e.source === n.id || e.target === n.id));
     if (orphans.length) issues.push(`연결되지 않은 노드 ${orphans.length}개`);
-    const unc = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType) && (!n.data.l7Status || n.data.l7Status === 'none'));
+    const unc = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType) && (!n.data.l7Status || n.data.l7Status === 'none'));
     if (unc.length) issues.push(`L7 검증 미실행 노드 ${unc.length}개`);
     if (force || !issues.length) {
       set({ saveStatus: 'complete' });
@@ -438,7 +464,7 @@ export const useStore = create<AppStore>((set, get) => ({
           addMessage({
             id: generateId('msg'), role: 'bot', timestamp: Date.now(),
             text: d.guidance || d.hint || '💡 플로우가 업데이트되었습니다.',
-            quickQueries: d.quickQueries,
+            quickQueries: d.quickQueries || [],
           });
         }
       } catch { /* silent */ }
