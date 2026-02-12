@@ -1,0 +1,603 @@
+══════════════════════════════════════════════════════════════
+HR Process Mining v5.0 — 최종 업데이트 작업 지시서
+══════════════════════════════════════════════════════════════
+작성일: 2026-02-12
+대상: IDE (Cursor/Windsurf) 작업자
+기준 코드: pm-v5.zip (frontend + backend + README)
+
+이 문서는 아키텍처 리뷰 결과를 반영한 최종 수정사항을 정리한 것입니다.
+각 항목별로 수정 파일, 변경 내용, 주의사항을 명시합니다.
+번호 순서대로 작업하되, 의존 관계가 있는 항목은 표시해두었습니다.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#1. 다크/라이트 테마 전환 삭제
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts
+- frontend/src/components/Toolbar.tsx
+- frontend/src/App.tsx
+- frontend/src/index.css
+- frontend/src/types.ts
+
+[작업 내용]
+1) types.ts: ThemeMode 타입 삭제
+2) store.ts: theme, toggleTheme 상태/액션 삭제 (localStorage 'pm-v5-theme' 관련 코드 포함)
+3) Toolbar.tsx: 테마 전환 버튼 (☀️/🌙) 및 관련 import 삭제
+4) App.tsx: useEffect에서 data-theme 설정하는 부분 삭제
+5) index.css: [data-theme="light"] 블록은 삭제해도 되고 남겨도 됨 (향후 복원 용이)
+   → :root 다크 테마 CSS 변수는 유지
+
+[주의]
+- CSS 변수 자체(:root)는 건드리지 말 것. 다크 테마가 기본으로 유지되어야 함.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#2. 툴바 💾 저장 버튼 삭제
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/components/Toolbar.tsx
+
+[작업 내용]
+1) 💾 버튼과 그 앞의 구분선(w-px h-5 bg-slate-700) 삭제
+2) saveDraft import는 유지 (30초 자동저장에서 사용됨)
+
+[주의]
+- Ctrl+S 단축키 → saveDraft 호출은 FlowChart.tsx에 있으므로 유지할 것
+- 30초 자동저장(FlowChart.tsx의 useEffect)도 유지할 것
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#3. Self-loop 직각 연결 개선
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/components/CustomNodes.tsx (SelfLoopEdge 함수)
+
+[현재 문제]
+- 고정 오프셋(80px, 60px)으로 우측→상단 경로만 지원
+- Visio처럼 핸들 위치 기반 동적 경로가 아님
+
+[작업 내용]
+SelfLoopEdge 컴포넌트를 수정:
+1) sourceHandle/targetHandle 정보를 EdgeProps에서 참조
+2) source 핸들 위치에 따라 경로 방향 결정:
+   - right→top (기본): 우측으로 나가서 위로 꺾어 들어옴
+   - right→right: 우측으로 나가서 위로 올라갔다 다시 우측으로
+   - bottom→bottom: 아래로 나가서 우측으로 갔다 다시 아래로
+   - 기타 조합도 직각으로 연결
+3) 오프셋은 노드 크기 기반으로 동적 계산 (기본 80px 유지하되 겹침 방지)
+
+[구현 참고]
+```typescript
+// EdgeProps에서 사용 가능한 값: sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition
+// sourcePosition/targetPosition으로 어느 핸들에서 나왔는지 판별 가능
+// 경로는 모두 L(직선) 조합으로 직각만 사용 (곡선 없음)
+```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#4. 핸들 연결 사용성 개선 (중요도 높음)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/components/CustomNodes.tsx (AllHandles 컴포넌트)
+- frontend/src/index.css
+
+[현재 문제]
+- 각 방향에 source(투명) + target(보이는) 핸들이 겹쳐있어 히트 영역 충돌
+- 사용자가 핸들을 잡으려 해도 엉뚱한 곳에서 반응하거나 안 됨
+
+[작업 내용]
+AllHandles 컴포넌트를 **source+target 겸용 단일 핸들** 방식으로 교체:
+
+변경 전 (방향당 2개, 총 8개):
+```tsx
+<Handle type="target" position={Position.Top} id="top-target" ... />
+<Handle type="source" position={Position.Top} id="top-source" ... />
+```
+
+변경 후 (방향당 1개, 총 4개):
+```tsx
+<Handle type="source" position={Position.Top} id="top"
+  style={{ top: -7, width: 14, height: 14, background: color,
+           border: '2px solid #0f1729', borderRadius: '50%' }}
+  isConnectableStart={true}
+  isConnectableEnd={true} />
+```
+
+→ ReactFlow 11에서 source 핸들에 isConnectableEnd={true}를 주면 target으로도 작동함.
+→ 4방향 × 1개 = 총 4개 핸들로 단순화
+→ 히트 영역 충돌 완전 해결
+
+[추가]
+- connectionRadius는 30 유지 (FlowChart.tsx)
+- CSS에서 .react-flow__handle 크기 14px, hover 18px 유지
+- Start/End 노드의 핸들도 동일하게 isConnectableStart/End 적용
+
+[주의]
+- 핸들 id가 "top-source"/"top-target" → "top"으로 바뀌므로,
+  기존 저장된 JSON에서 sourceHandle/targetHandle 참조가 깨질 수 있음
+  → store.ts의 importFlow에서 "-source"/"-target" 접미사를 strip하는 호환 로직 추가:
+    e.sourceHandle?.replace(/-source$|-target$/, '') || undefined
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#5. LLM 타임아웃 Mock 대체 로직 수정
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- backend/app.py
+
+[작업 내용]
+1) call_llm 함수의 httpx timeout 제거 (무제한 대기):
+   변경 전: httpx.AsyncClient(timeout=60.0)
+   변경 후: httpx.AsyncClient(timeout=None)
+
+2) check_llm은 유지 (초기 연결 확인용, timeout=5.0)
+
+3) 각 엔드포인트에서 call_llm 실패 시 분기 변경:
+
+   변경 전 (모든 엔드포인트):
+   ```python
+   r = await call_llm(...) 
+   return r or mock_response(...)  # 실패하면 자동 mock
+   ```
+   
+   변경 후:
+   ```python
+   r = await call_llm(...)
+   if r is not None:
+       return r
+   # LLM 자체가 연결 불가인 경우만 mock
+   if not await check_llm():
+       return mock_response(...)
+   # LLM 연결은 됐는데 응답 파싱 실패 등
+   return {"speech": "LLM 응답 처리 중 오류가 발생했습니다. 다시 시도해주세요.", "suggestions": [], "quickQueries": []}
+   ```
+
+4) call_llm 내부에서 에러 종류 구분:
+   - 연결 실패 (ConnectionError): _llm_available = False 설정
+   - 파싱 실패 (JSONDecodeError): 연결은 OK, 응답 형식 문제 → None 반환하되 _llm_available은 유지
+   
+5) validate-l7 엔드포인트도 동일:
+   변경 전: return r or mock_validate(req.label)
+   변경 후: LLM 연결 불가 시만 mock_validate, 그 외 에러 메시지 반환
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#6. L7 검증 결과 클릭 → 해당 셰이프로 이동
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/components/L7ReportCard.tsx
+- frontend/src/store.ts (필요 시)
+
+[작업 내용]
+1) L7ReportCard의 최상위 div에 onClick 핸들러 추가:
+   클릭 시 → setSelectedNodeId(item.nodeId) + reactFlowInstance로 해당 노드 포커스
+
+2) 문제: L7ReportCard는 ChatPanel 안에 있어서 reactFlowInstance에 직접 접근 불가.
+   
+   해결 방법 A (권장):
+   store에 focusNode 액션 추가:
+   ```typescript
+   focusNodeId: string | null;
+   setFocusNodeId: (id: string | null) => void;
+   ```
+   L7ReportCard에서 setFocusNodeId(item.nodeId) 호출
+   FlowChart.tsx에서 focusNodeId 변경 감지 → fitView 실행:
+   ```typescript
+   const focusId = useStore(s => s.focusNodeId);
+   useEffect(() => {
+     if (focusId) {
+       rfInstance.fitView({ nodes: [{ id: focusId }], duration: 300, padding: 0.5 });
+       useStore.getState().setSelectedNodeId(focusId);
+       useStore.getState().setFocusNodeId(null);
+     }
+   }, [focusId]);
+   ```
+
+3) L7ReportCard 스타일에 cursor: pointer 추가 (클릭 가능 표시)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#7. L7 검증 추천/개선 색상 구분
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/components/CustomNodes.tsx (statusMap)
+- frontend/src/components/L7ReportCard.tsx (sc 색상 분기)
+- frontend/src/components/NodeDetailPanel.tsx (sc 색상 분기)
+- frontend/src/components/QualityDashboard.tsx (reject 카운트 색상)
+
+[작업 내용]
+reject 상태의 색상을 amber에서 orange로 변경:
+
+변경 전:
+  reject: { color: '#f59e0b', badge: '✏' }   // amber — warning과 동일
+  
+변경 후:
+  reject: { color: '#f97316', badge: '✏' }   // orange-500 — 확실히 구분
+
+적용 위치:
+1) CustomNodes.tsx statusMap의 reject.color
+2) L7ReportCard.tsx에서 !item.pass일 때 색상
+3) NodeDetailPanel.tsx에서 l7Status === 'reject'일 때 색상
+4) QualityDashboard.tsx에서 reject 카운트 텍스트 색상
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#8. L7 검증 병렬 전송 (순차 → 동시 3~5개)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts (validateAllNodes 함수)
+
+[현재]
+```typescript
+for (let i = 0; i < targets.length; i++) {
+  await get().validateNode(targets[i].id);  // 하나 끝나야 다음
+}
+```
+
+[변경]
+```typescript
+const CONCURRENCY = 4;
+const items: L7ReportItem[] = [];
+for (let i = 0; i < targets.length; i += CONCURRENCY) {
+  const batch = targets.slice(i, i + CONCURRENCY);
+  setLoadingMessage(`L7 검증 (${Math.min(i + CONCURRENCY, targets.length)}/${targets.length})`);
+  const results = await Promise.allSettled(
+    batch.map(t => get().validateNode(t.id))
+  );
+  for (let j = 0; j < batch.length; j++) {
+    const r = results[j];
+    if (r.status === 'fulfilled' && r.value) {
+      items.push({
+        nodeId: batch[j].id,
+        nodeLabel: batch[j].data.label,
+        pass: r.value.pass,
+        score: r.value.score ?? 0,
+        issues: (r.value.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })),
+        rewriteSuggestion: r.value.rewriteSuggestion,
+      });
+    }
+  }
+}
+```
+
+[주의]
+- CONCURRENCY는 상수로 빼서 나중에 조절 가능하게
+- validateNode 내부의 set({ nodes: ... }) 호출이 동시에 일어나도
+  Zustand은 동기적 set이라 race condition 없음
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#9. 플로우 분석 Mock 응답 보강
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- backend/app.py (review_flow 엔드포인트의 mock 응답)
+
+[현재]
+```python
+return {"speech":"플로우를 살펴보았습니다.","suggestions":[],"followUpQuestions":[]}
+```
+
+[변경] mock_review 함수를 새로 만들어 구조 분석:
+```python
+def mock_review(nodes, edges):
+    findings = []
+    process_nodes = [n for n in nodes if n.type in ('process','decision','subprocess')]
+    
+    # 종료 노드 없음
+    if not any(n.type == 'end' for n in nodes):
+        findings.append("⚠ 종료 노드가 없습니다. 프로세스의 완료 상태를 정의해주세요.")
+    
+    # 고립 노드
+    connected = set()
+    for e in edges:
+        connected.add(e.source); connected.add(e.target)
+    orphans = [n for n in process_nodes if n.id not in connected]
+    if orphans:
+        names = ', '.join(f'"{n.label}"' for n in orphans[:3])
+        findings.append(f"⚠ 연결되지 않은 노드 {len(orphans)}개: {names}")
+    
+    # 분기 없음
+    if not any(n.type == 'decision' for n in nodes) and len(process_nodes) >= 3:
+        findings.append("💡 판단/분기 노드가 없습니다. 예외 처리나 승인/반려 분기가 필요하지 않은지 확인해보세요.")
+    
+    # 단방향 체인 (분기 없는 직선)
+    sources = set(e.source for e in edges)
+    multi_out = [s for s in sources if sum(1 for e in edges if e.source == s) > 1]
+    if not multi_out and len(process_nodes) >= 4:
+        findings.append("💡 모든 단계가 일직선입니다. 실제 업무에서 분기나 반복이 없는지 확인해보세요.")
+    
+    # 단계 수 피드백
+    if len(process_nodes) > 0:
+        findings.append(f"ℹ 현재 {len(process_nodes)}개 단계로 구성되어 있습니다.")
+    
+    speech = "플로우를 분석했습니다.\n\n" + "\n".join(findings) if findings else "플로우 구조가 양호합니다."
+    return {"speech": speech, "suggestions": [], "quickQueries": mock_followup_queries(nodes, edges)}
+```
+
+[주의]
+- suggestions는 LLM 응답에서만 생성, mock에서는 빈 배열
+- quickQueries(구 followUpQuestions)는 기존 mock_followup을 mock_followup_queries로 rename
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#10. 인터뷰 모드 삭제
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts
+- frontend/src/components/ChatPanel.tsx
+- backend/app.py
+
+[작업 내용]
+1) store.ts에서 삭제:
+   - interviewMode, interviewStep 상태
+   - toggleInterviewMode, sendInterviewAnswer 액션
+   - AppStore 인터페이스에서 해당 타입 제거
+
+2) ChatPanel.tsx에서 삭제:
+   - 🎙️ 인터뷰 버튼
+   - interviewMode 관련 조건 분기 (handleSend 내 분기, placeholder 분기)
+   - quickSend 내 interviewMode 분기 → 항상 sendChat으로 통일
+
+3) backend/app.py에서 삭제:
+   - InterviewRequest 모델
+   - INTERVIEW_SYSTEM 프롬프트
+   - INTERVIEW_QUESTIONS 리스트
+   - /api/interview 엔드포인트
+
+[주의]
+- ChatPanel의 handleSend에서 interviewMode 분기 제거 후:
+  단순히 sendChat(input.trim())만 호출하면 됨
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#11. 스윔레인 단순화 (수평 분리선 방식)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts
+- frontend/src/components/FlowChart.tsx (SwimLaneOverlay 전면 교체)
+- frontend/src/components/Toolbar.tsx (레인 토글 로직)
+- frontend/src/types.ts
+- frontend/src/constants.ts
+
+[개념]
+Visio '부서간 흐름 순서도'의 분리기(세로선이 아닌 가로선) 방식:
+- 캔버스 전체를 가로지르는 수평 점선
+- 위 = A주체, 아래 = B주체
+- 분리선 마우스 드래그로 상하 이동 가능
+- 분리선 좌측 끝에 주체 라벨 표시 (인라인 편집)
+
+[작업 내용]
+1) types.ts:
+   - SwimLane 인터페이스 단순화 (기존 유지해도 됨)
+   
+2) store.ts:
+   - 기존 다중 레인 구조(swimLanes[], laneBoundaries[])를 유지하되
+   - 기본 사용은 2레인(분리선 1개)으로 제한
+   - addSwimLane 호출 시 분리선 추가 가능 (확장성)
+   - Toolbar에서 레인 활성화 시: 분리선 Y=400, 라벨 "A 주체"/"B 주체"로 초기화
+   
+3) FlowChart.tsx SwimLaneOverlay 전면 교체:
+   
+   변경 전: 좌측 헤더 컬럼 + contentEditable + 다중 레인 배경
+   
+   변경 후:
+   ```
+   ┌──────────────────────────────────────────┐
+   │  [A 주체]  (인라인 편집 가능)             │  ← 위 영역 반투명 배경
+   │                                          │
+   ├─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┤  ← 분리선 (드래그 가능)
+   │                                          │
+   │  [B 주체]  (인라인 편집 가능)             │  ← 아래 영역 반투명 배경
+   └──────────────────────────────────────────┘
+   ```
+   
+   - 분리선: 가로 전체, dashed, 드래그로 Y 위치 조절
+   - 라벨: 분리선 위/아래 좌측에 작은 텍스트로 표시
+   - 라벨 클릭 시 인라인 편집 (input 요소, contentEditable 아님 → #13 에러 방지)
+   - 배경: 위 영역 rgba(59,130,246,0.03), 아래 영역 rgba(168,85,247,0.03)
+
+4) Toolbar.tsx:
+   - 레인 토글 시 addSwimLane('A 주체') + addSwimLane('B 주체')
+   - + 버튼(레인 추가)은 유지하되, 추가 시 새 분리선이 하나 더 생김
+   - 비활성화 시 모든 레인 제거
+
+5) constants.ts:
+   - SWIMLANE_HEADER_WIDTH 삭제 (좌측 헤더 컬럼 없어짐)
+
+[미니맵 레인 색상 유지]
+- FlowChart.tsx의 minimapNodeColor에서 swimLaneId 기반 색상 분기는 유지
+- 노드가 분리선 기준 위/아래 어디에 있는지로 swimLaneId 자동 할당 (기존 assignSwimLanes 로직 유지)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#12. 하위공정(subprocess) L7 검증 제외
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts
+
+[작업 내용]
+3곳 수정:
+
+1) validateNode 함수 시작 부분:
+   변경 전: if (!node || ['start', 'end'].includes(node.data.nodeType)) return null;
+   변경 후: if (!node || ['start', 'end', 'subprocess'].includes(node.data.nodeType)) return null;
+
+2) validateAllNodes 함수의 대상 필터:
+   변경 전: nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType))
+   변경 후: nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType))
+
+3) autoValidateDebounced 함수의 대상 필터:
+   변경 전: nodes.filter(n => ['process','decision','subprocess'].includes(...))
+   변경 후: nodes.filter(n => ['process','decision'].includes(...))
+
+[주의]
+- QualityDashboard.tsx의 processNodes 필터도 동일하게 subprocess 제외할 것:
+  변경 전: nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType))
+  변경 후: nodes.filter(n => ['process','decision'].includes(n.data.nodeType))
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#13. React Error #31 방어 코드
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/store.ts
+- frontend/src/components/FlowChart.tsx
+- frontend/src/App.tsx
+
+[원인 추정]
+- contentEditable(스윔레인 헤더)에서 React와 DOM 직접 조작 충돌 → #11에서 해결
+- store 초기값 undefined 참조
+
+[작업 내용]
+1) store.ts 초기값 방어:
+   - swimLanes: [] (이미 OK)
+   - messages: [] (이미 OK)
+   - 모든 배열 상태가 undefined가 아닌 []로 초기화되어 있는지 확인
+
+2) FlowChart.tsx:
+   - SwimLaneOverlay에서 contentEditable 제거 (#11에서 해결)
+   - useViewport() 호출이 ReactFlowProvider 안에 있는지 확인
+     → SwimLaneOverlay는 FlowCanvas 안에서만 렌더링되므로 OK
+
+3) App.tsx에 ErrorBoundary 추가:
+   ```tsx
+   class ErrorBoundary extends React.Component<
+     { children: React.ReactNode },
+     { hasError: boolean; error: string }
+   > {
+     state = { hasError: false, error: '' };
+     static getDerivedStateFromError(error: Error) {
+       return { hasError: true, error: error.message };
+     }
+     render() {
+       if (this.state.hasError) {
+         return (
+           <div style={{ padding: 40, color: '#ef4444', background: '#0f1729', height: '100vh' }}>
+             <h2>오류가 발생했습니다</h2>
+             <p>{this.state.error}</p>
+             <button onClick={() => window.location.reload()}>새로고침</button>
+           </div>
+         );
+       }
+       return this.props.children;
+     }
+   }
+   ```
+   App 컴포넌트를 ErrorBoundary로 감싸기
+
+[주의]
+- ErrorBoundary는 에러를 잡아서 흰 화면 대신 메시지를 보여주는 것.
+  근본 원인은 #11(contentEditable 제거)로 해결되어야 함.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#14. 챗봇 응답 구조 변경 (가이던스/퀵쿼리 분리)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- frontend/src/types.ts
+- frontend/src/store.ts
+- frontend/src/components/ChatPanel.tsx
+- backend/app.py
+
+[개념]
+기존 followUpQuestions(전부 클릭 버튼)를 두 가지로 분리:
+- guidance: 텍스트로 흘리는 가이던스 (클릭 불가, 챗봇 text에 포함)
+- quickQueries: 챗봇에게 물어볼 수 있는 질문 (클릭 즉시 전송)
+
+[작업 내용]
+1) types.ts — ChatMessage:
+   변경 전: followUpQuestions?: string[];
+   변경 후: quickQueries?: string[];
+
+2) store.ts — sendChat, requestReview, triggerContextualSuggest:
+   모든 addMessage 호출에서:
+   - followUpQuestions → quickQueries
+   - suggestions 필터: 빈 summary 제거
+     (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim())
+   - contextual-suggest 응답에서:
+     text에 d.guidance를, quickQueries에 d.quickQueries를 매핑
+
+3) ChatPanel.tsx:
+   - msg.followUpQuestions → msg.quickQueries
+
+4) backend/app.py — 모든 프롬프트/응답:
+   a) followUpQuestions → quickQueries (스키마 통일)
+   b) contextual-suggest 프롬프트 변경:
+      응답: {"guidance":"가이던스 2~3줄", "quickQueries":["챗봇에게 물어볼 질문"]}
+   c) chat/review 프롬프트에 규칙 추가:
+      "quickQueries는 챗봇이 답할 수 있는 것만 포함. 현장 암묵지 질문은 speech에 자연어로 녹일 것"
+   d) mock 응답들도 followUpQuestions → quickQueries
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#15. LLM 프롬프트에서 괄호 시스템 표기 금지
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[수정 파일]
+- backend/app.py
+
+[작업 내용]
+1) L7_GUIDE 마지막 예시 줄 변경:
+   변경 전: (없거나 "라벨=면접일정을 조회한다, 시스템=채용관리시스템" 등)
+   변경 후:
+   ```
+   예시: 라벨="면접일정을 조회한다" (시스템·소요시간은 메타데이터 필드에 별도 입력)
+   주의: 라벨에 (시스템명), [시스템명] 등 괄호로 시스템을 포함하지 말 것. 시스템은 노드 메타데이터로 별도 관리됨.
+   ```
+
+2) REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM 각각에 규칙 추가:
+   ```
+   규칙: suggestion의 summary/label, guidance 텍스트에 (시스템명)을 괄호로 포함하지 말 것.
+   ```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+작업 순서 권장
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phase 1 — 삭제/단순화 (의존성 없음, 먼저 처리)
+  #1  테마 삭제
+  #2  💾 버튼 삭제
+  #10 인터뷰 모드 삭제
+  #12 하위공정 L7 제외
+
+Phase 2 — 구조 변경
+  #11 스윔레인 단순화 (→ #13 해결에 기여)
+  #14 가이던스/퀵쿼리 분리 (types + store + ChatPanel + backend)
+  #15 프롬프트 괄호 금지
+
+Phase 3 — 기능 개선
+  #4  핸들 구조 변경 (가장 체감 큰 UX 개선)
+  #3  Self-loop 직각
+  #8  L7 병렬 전송
+  #5  LLM 타임아웃 수정
+
+Phase 4 — UI 개선 + 방어
+  #6  L7 검증 → 셰이프 포커스
+  #7  추천/개선 색상 구분
+  #9  플로우 분석 mock 보강
+  #13 ErrorBoundary + 방어 코드
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+최종 확인 체크리스트
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ 테마 전환 버튼 없음
+□ 툴바 💾 버튼 없음
+□ 인터뷰 버튼 없음
+□ 셰이프 핸들 방향당 1개 (source+target 겸용)
+□ 핸들 연결 시 노드 근처 아무 데나 놓아도 연결됨
+□ Self-loop 직각 경로
+□ L7 검증에서 subprocess 제외
+□ L7 검증 병렬 (4개 동시)
+□ L7 reject 색상이 warning과 구분됨
+□ L7 검증 결과 클릭 → 해당 노드로 포커스 이동
+□ 플로우 분석 mock 응답이 실질적 피드백 제공
+□ LLM 연결 OK 상태에서 타임아웃 무제한
+□ LLM 연결 불가 시만 mock 대체
+□ 스윔레인: 가로 분리선 + 라벨 인라인 편집
+□ 챗봇: guidance는 텍스트, quickQueries만 버튼
+□ 프롬프트에서 괄호 시스템 표기 없음
+□ 빈 suggestion 카드 렌더링 안 됨
+□ ErrorBoundary로 흰 화면 방지
+□ v4.3 JSON import 시 호환성 유지
