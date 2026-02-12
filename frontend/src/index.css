@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root, [data-theme="dark"] {
+  --bg-primary: #0f1729;
+  --bg-secondary: #162032;
+  --bg-tertiary: #1e293b;
+  --border-primary: #2a3a52;
+  --border-active: #3b82f6;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-green: #22c55e;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --border-primary: #e2e8f0;
+  --border-active: #3b82f6;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-primary); overflow: hidden; height: 100vh; }
+#root { height: 100vh; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 3px; }
+
+.react-flow__background { background: var(--bg-primary) !important; }
+.react-flow__minimap { background: var(--bg-secondary) !important; border: 1px solid var(--border-primary) !important; border-radius: 8px !important; }
+.react-flow__controls { border: 1px solid var(--border-primary) !important; border-radius: 8px !important; overflow: hidden; }
+.react-flow__controls-button { background: var(--bg-secondary) !important; border-color: var(--border-primary) !important; fill: var(--text-secondary) !important; }
+.react-flow__controls-button:hover { background: var(--bg-tertiary) !important; fill: var(--text-primary) !important; }
+.react-flow__edge-path { stroke-width: 2 !important; }
+
+/* v5: larger handles */
+.react-flow__handle { width: 14px !important; height: 14px !important; background: var(--accent-blue) !important; border: 2px solid var(--bg-primary) !important; border-radius: 50% !important; opacity: 0.5; transition: all 0.15s ease; }
+.react-flow__handle:hover { width: 18px !important; height: 18px !important; background: var(--accent-green) !important; opacity: 1; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+.react-flow__handle.connectingto, .react-flow__handle.valid { background: var(--accent-green) !important; opacity: 1; box-shadow: 0 0 12px rgba(34,197,94,0.6); width: 18px !important; height: 18px !important; }
+/* v5: show handles on node hover */
+.react-flow__node:hover .react-flow__handle { opacity: 0.8; }
+.react-flow__node.selected .react-flow__handle { opacity: 1; }
+
+.react-flow__selection { background: rgba(59,130,246,0.08) !important; border: 1.5px solid rgba(59,130,246,0.4) !important; border-radius: 4px; }
+.react-flow__node.selected { filter: drop-shadow(0 0 10px rgba(59,130,246,0.5)); }
+
+.context-menu { position: fixed; z-index: 1000; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 4px; min-width: 180px; max-height: calc(100vh - 20px); overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: fadeIn 0.15s ease-out; }
+.context-menu-header { padding: 4px 12px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.context-menu-sep { height: 1px; background: var(--border-primary); margin: 4px 8px; }
+.context-menu-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.15s; }
+.context-menu-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.context-menu-item.danger:hover { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.context-menu-item.active { background: rgba(59,130,246,0.08); }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.25s ease-out; }
+.animate-slide-up { animation: slideUp 0.3s ease-out; }
