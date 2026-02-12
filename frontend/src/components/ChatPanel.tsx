@@ -16,6 +16,7 @@ export default function ChatPanel() {
   const ctx = useStore(s => s.processContext);
   const exportFlow = useStore(s => s.exportFlow);
   const submitComplete = useStore(s => s.submitComplete);
+  const forceComplete = useStore(s => s.forceComplete);
   const saveStatus = useStore(s => s.saveStatus);
 
   const adminMode = useStore(s => s.adminMode);
@@ -102,7 +103,7 @@ export default function ChatPanel() {
           </button>
         </div>
       </div>
-      {submitIssues && <SubmitModal issues={submitIssues} onClose={() => setSubmitIssues(null)} onForceSubmit={() => { submitComplete(true); setSubmitIssues(null); }} />}
+      {submitIssues && <SubmitModal issues={submitIssues} onClose={() => setSubmitIssues(null)} onForceSubmit={() => { setSubmitIssues(null); forceComplete(); }} />}
       {showPDD && <PDDGenerator onClose={() => setShowPDD(false)} />}
     </div>
   );

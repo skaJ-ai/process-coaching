@@ -19,7 +19,6 @@ export const LAYOUT_CONFIG = {
 };
 
 export const L7_CONCURRENCY = 4;
-export const SWIMLANE_HEADER_WIDTH = 48;
 export const SWIMLANE_MIN_HEIGHT = 200;
 
 export const SWIMLANE_COLORS = [

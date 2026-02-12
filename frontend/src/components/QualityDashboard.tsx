@@ -6,7 +6,7 @@ export default function QualityDashboard() {
   const validateAll = useStore(s => s.validateAllNodes);
   const ls = useStore(s => s.loadingState);
 
-  const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
+  const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
   const total = processNodes.length;
   if (total === 0) return null;
 

@@ -19,8 +19,6 @@ export function applyDagreLayout(
     marginy: LAYOUT_CONFIG.marginy,
   });
 
-  const lockedIds = new Set(nodes.filter(n => n.data.positionLocked).map(n => n.id));
-
   nodes.forEach((node) => {
     const dims = NODE_DIMENSIONS[node.data.nodeType] || NODE_DIMENSIONS.process;
     g.setNode(node.id, { width: dims.width, height: dims.height });
@@ -33,7 +31,6 @@ export function applyDagreLayout(
   dagre.layout(g);
 
   let layoutedNodes = nodes.map((node) => {
-    if (lockedIds.has(node.id)) return node;
     const pos = g.node(node.id);
     const dims = NODE_DIMENSIONS[node.data.nodeType] || NODE_DIMENSIONS.process;
     return {
@@ -42,15 +39,12 @@ export function applyDagreLayout(
     };
   });
 
-  const unlocked = layoutedNodes.filter(n => !lockedIds.has(n.id));
-  if (unlocked.length > 0) {
-    const minX = Math.min(...unlocked.map(n => n.position.x));
+  if (layoutedNodes.length > 0) {
+    const minX = Math.min(...layoutedNodes.map(n => n.position.x));
     const leftPad = 100;
     const shift = leftPad - minX;
     if (Math.abs(shift) > 1) {
-      layoutedNodes = layoutedNodes.map(n =>
-        lockedIds.has(n.id) ? n : { ...n, position: { ...n.position, x: n.position.x + shift } }
-      );
+      layoutedNodes = layoutedNodes.map(n => ({ ...n, position: { ...n.position, x: n.position.x + shift } }));
     }
   }
 

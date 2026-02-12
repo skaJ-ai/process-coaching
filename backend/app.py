@@ -86,7 +86,7 @@ async def call_llm(system_prompt, user_message):
             return json.loads(content.strip())
     except Exception as e: logger.error(f"LLM error: {e}"); return None
 
-REVIEW_SYSTEM = f"당신은 HR 프로세스 분석 전문가입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 사용자가 추가로 궁금할 수 있는 후속 질문 2~3개"
+REVIEW_SYSTEM = f"당신은 HR 프로세스 분석 전문가입니다.\n{L7_GUIDE}\n규칙: suggestion의 summary/label, guidance 텍스트에 (시스템명)을 괄호로 포함하지 말 것.\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 사용자가 추가로 궁금할 수 있는 후속 질문 2~3개"
 COACH_TEMPLATE = f"당신은 HR 프로세스 설계 코치입니다.\n{L7_GUIDE}\n규칙: suggestion의 summary/label, guidance 텍스트에 (시스템명)을 괄호로 포함하지 말 것.\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 현재 플로우에서 다음으로 확인할 질문 2~3개"
 L7_VALIDATE = f"당신은 L7 품질 검증 에이전트입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"pass\":bool,\"score\":0-100,\"issues\":[...],\"rewriteSuggestion\":\"...\"}}"
 

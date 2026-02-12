@@ -8,7 +8,7 @@ import ContextMenu from './ContextMenu';
 import NodeDetailPanel from './NodeDetailPanel';
 import MetaEditModal from './MetaEditModal';
 import HelpGuide from './HelpGuide';
-import { SWIMLANE_COLORS, SWIMLANE_HEADER_WIDTH } from '../constants';
+import { SWIMLANE_COLORS } from '../constants';
 
 function SwimLaneOverlay() {
   const lanes = useStore(s => s.swimLanes);
@@ -34,20 +34,36 @@ function SwimLaneOverlay() {
         return (
           <div key={r.lane.id}>
             <div style={{ position: 'absolute', left: 0, right: 0, top: clampTop, height, background: r.color.bg }} />
-            <div style={{ position: 'absolute', left: 0, top: clampTop, width: SWIMLANE_HEADER_WIDTH, height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,41,0.9)', borderRight: `2px solid ${r.color.border}`, pointerEvents: 'auto', zIndex: 1 }}>
-              <div contentEditable suppressContentEditableWarning
-                onBlur={(e) => updateLaneLabel(r.lane.id, e.currentTarget.textContent || r.lane.label)}
-                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', color: r.color.label, fontSize: Math.max(11, 13 * zoom), fontWeight: 600, outline: 'none', cursor: 'text', padding: '4px 2px', maxHeight: height - 16, overflow: 'hidden' }}>
-                {r.lane.label}
-              </div>
-            </div>
+            <input
+              type="text"
+              value={r.lane.label}
+              onChange={(e) => updateLaneLabel(r.lane.id, e.target.value)}
+              style={{
+                position: 'absolute',
+                left: 16,
+                top: clampTop + 12,
+                pointerEvents: 'auto',
+                zIndex: 1,
+                background: 'rgba(15,23,41,0.85)',
+                border: `1px solid ${r.color.border}`,
+                borderRadius: '6px',
+                padding: '4px 10px',
+                color: r.color.label,
+                fontSize: Math.max(11, 12 * zoom),
+                fontWeight: 600,
+                outline: 'none',
+                minWidth: '120px',
+                maxWidth: '200px'
+              }}
+            />
           </div>
         );
       })}
       {boundaries.map((bY, i) => {
         const screenY = bY * zoom + y;
+        const color = SWIMLANE_COLORS[(i + 1) % SWIMLANE_COLORS.length].border;
         return (
-          <div key={`boundary-${i}`} style={{ position: 'absolute', left: SWIMLANE_HEADER_WIDTH, right: 0, top: screenY - 3, height: 6, cursor: 'row-resize', pointerEvents: 'auto', borderTop: `2px dashed ${SWIMLANE_COLORS[(i + 1) % SWIMLANE_COLORS.length].border}`, background: 'rgba(100,116,139,0.15)' }}
+          <div key={`boundary-${i}`} style={{ position: 'absolute', left: 0, right: 0, top: screenY - 2, height: 4, cursor: 'row-resize', pointerEvents: 'auto', background: color, opacity: 0.6 }}
             onMouseDown={(e) => {
               e.preventDefault();
               const move = (ev: MouseEvent) => {
@@ -68,9 +84,9 @@ function SwimLaneOverlay() {
 function EmptyStateGuide() {
   const nodes = useStore(s => s.nodes);
   const count = nodes.length;
-  if (count === 0) {
+  if (count <= 1) {
     return (
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0 opacity-60">
+      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 pointer-events-none z-0 opacity-60">
         <div className="border-2 border-dashed border-slate-600 rounded-3xl p-12 text-center space-y-4">
           <div className="text-4xl">🖱️</div>
           <div className="space-y-1">
@@ -84,7 +100,7 @@ function EmptyStateGuide() {
       </div>
     );
   }
-  if (count > 0 && count < 3) {
+  if (count === 2) {
     return (
       <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10 animate-pulse">
         <div className="bg-blue-600/20 border border-blue-500/50 text-blue-200 px-6 py-2 rounded-full text-sm font-medium shadow-[0_0_20px_rgba(59,130,246,0.2)]">
