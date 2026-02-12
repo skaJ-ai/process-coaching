@@ -54,9 +54,9 @@ export default function SetupModal() {
     <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <div className="w-[540px] rounded-2xl p-8 animate-fade-in" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">⚙️</div>
-          <h1 className="text-2xl font-bold text-slate-100">HR Process Mining</h1>
-          <p className="text-sm text-slate-400 mt-1">L7 프로세스 드로잉 도구 v5</p>
+          <div className="text-5xl mb-3">🤖</div>
+          <h1 className="text-2xl font-bold text-slate-100">Process Coaching AI</h1>
+          <p className="text-sm text-slate-400 mt-1">아직 베타 버전인 관계로 AI 기능이 미흡할 수 있으니 양해 부탁드립니다!</p>
         </div>
 
         {showRecovery && (

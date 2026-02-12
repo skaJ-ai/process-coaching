@@ -54,7 +54,22 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
               onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
           )}
+          {suggestion.confidence && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                suggestion.confidence === 'high' ? 'bg-green-900/30 text-green-300 border border-green-700/40' :
+                suggestion.confidence === 'medium' ? 'bg-blue-900/30 text-blue-300 border border-blue-700/40' :
+                'bg-slate-800/50 text-slate-400 border border-slate-700/40'
+              }`}>
+                {suggestion.confidence === 'high' && '⚡'}
+                {suggestion.confidence === 'medium' && '💡'}
+                {suggestion.confidence === 'low' && '💭'}
+                {suggestion.confidence === 'high' ? '높음' : suggestion.confidence === 'medium' ? '중간' : '낮음'}
+              </span>
+            </div>
+          )}
           {suggestion.reason && <div className="text-xs text-slate-400 mt-1">{suggestion.reason}</div>}
+          {suggestion.reasoning && suggestion.reasoning !== suggestion.reason && <div className="text-xs text-slate-500 mt-1 italic">{suggestion.reasoning}</div>}
           {suggestion.branches && (
             <div className="flex gap-2 mt-2 flex-wrap">
               {suggestion.branches.yes && <span className="text-xs px-2 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-800/40">Yes → {suggestion.branches.yes.summary}</span>}

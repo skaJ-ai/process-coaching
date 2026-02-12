@@ -23,6 +23,8 @@ export interface Suggestion {
   type: 'PROCESS' | 'DECISION' | 'SUBPROCESS';
   summary: string;
   reason: string;
+  confidence?: 'high' | 'medium' | 'low';
+  reasoning?: string;
   insertAfterNodeId?: string;
   insertBeforeNodeId?: string;
   targetNodeId?: string;
@@ -49,6 +51,7 @@ export interface L7ReportItem {
   score: number;
   issues: L7Issue[];
   rewriteSuggestion?: string;
+  encouragement?: string;
 }
 
 // ─── Node Change History ───

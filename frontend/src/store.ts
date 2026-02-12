@@ -104,6 +104,17 @@ interface AppStore {
   // v5: contextual suggest debounce
   _contextualSuggestTimer: any;
   triggerContextualSuggest: () => void;
+  // v5.2: user activity tracking
+  lastUserActivity: number;
+  updateUserActivity: () => void;
+  isUserActive: () => boolean;
+  // v5.2: proactive coaching
+  checkFirstShape: () => void;
+  checkOrphanedNodes: () => void;
+  checkFlowCompletion: () => void;
+  checkDecisionLabels: (nodeId: string) => void;
+  checkSwimLaneNeed: () => void;
+  celebrateL7Success: () => void;
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -125,27 +136,43 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   setNodes: (n) => set({ nodes: n }), setEdges: (e) => set({ edges: e }),
   onNodesChange: (c) => {
+    get().updateUserActivity();
     const nn = applyNodeChanges(c, get().nodes) as Node<FlowNodeData>[];
     const hasDrag = c.some(ch => ch.type === 'position' && (ch as any).dragging === false);
     const { dividerY, topLabel, bottomLabel } = get();
     const updated = hasDrag && dividerY > 0 ? assignSwimLanes(nn, dividerY, topLabel, bottomLabel) : nn;
     set({ nodes: updated, saveStatus: 'unsaved' });
   },
-  onEdgesChange: (c) => set({ edges: applyEdgeChanges(c, get().edges), saveStatus: 'unsaved' }),
+  onEdgesChange: (c) => {
+    get().updateUserActivity();
+    set({ edges: applyEdgeChanges(c, get().edges), saveStatus: 'unsaved' });
+    // v5.2: check for orphaned nodes after edge changes
+    setTimeout(() => get().checkOrphanedNodes(), 500);
+  },
   onConnect: (conn) => {
     if (!conn.source || !conn.target) return;
     get().pushHistory();
+    get().updateUserActivity();
     set({ edges: addEdge(makeEdge(conn.source, conn.target, undefined, undefined, conn.sourceHandle || undefined, conn.targetHandle || undefined), get().edges), saveStatus: 'unsaved' });
+    // v5.2: check if flow is now complete
+    setTimeout(() => get().checkFlowCompletion(), 500);
   },
 
   addShape: (type, label, position) => {
     get().pushHistory();
+    get().updateUserActivity();
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type]);
     const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', pendingEdit: true } };
     let updated = reindexByPosition([...get().nodes, node]);
     const { dividerY, topLabel, bottomLabel } = get();
     if (dividerY > 0) updated = assignSwimLanes(updated, dividerY, topLabel, bottomLabel);
     set({ nodes: updated, saveStatus: 'unsaved', pendingEditNodeId: id });
+    // v5.2: proactive coaching triggers
+    setTimeout(() => {
+      get().checkFirstShape();
+      get().checkDecisionLabels(id);
+      get().checkSwimLaneNeed();
+    }, 500);
     // v5: contextual suggest on shape add
     get().triggerContextualSuggest();
     return id;
@@ -169,6 +196,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   updateNodeLabel: (id, label, source = 'user') => {
     get().pushHistory();
+    get().updateUserActivity();
     set({ nodes: get().nodes.map(n => n.id !== id ? n : { ...n, data: { ...n.data, label, pendingEdit: false, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined, changeHistory: [...(n.data.changeHistory || []), { before: n.data.label, after: label, timestamp: Date.now(), source }].slice(-10) } }), saveStatus: 'unsaved' });
   },
   updateNodeMeta: (id, meta) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...meta } } : n), saveStatus: 'unsaved' }); },
@@ -234,7 +262,7 @@ export const useStore = create<AppStore>((set, get) => ({
         if (res.status === 'fulfilled' && res.value) {
           const t = batch[idx];
           const r = res.value;
-          items.push({ nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion });
+          items.push({ nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement });
         }
       });
     }
@@ -243,14 +271,20 @@ export const useStore = create<AppStore>((set, get) => ({
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
     const fail = items.filter(r => !r.pass).length;
     addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: ✓${ok} 준수 | 💡${warn} 개선 | ✏${fail} 추천`, l7Report: items, timestamp: Date.now() });
+    // v5.2: celebrate if all pass
+    setTimeout(() => get().celebrateL7Success(), 500);
   },
   applyL7Rewrite: (id) => { const n = get().nodes.find(n => n.id === id); if (!n?.data.l7Rewrite) return; get().updateNodeLabel(id, n.data.l7Rewrite, 'ai'); set({ nodes: get().nodes.map(x => x.id === id ? { ...x, data: { ...x.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : x) }); },
   lastAutoValidateTime: 0,
   autoValidateDebounced: () => {
-    const now = Date.now(); const { nodes, lastAutoValidateTime, loadingState } = get();
-    if (now - lastAutoValidateTime < 3000 || loadingState.active) return;
+    const now = Date.now();
+    const { nodes, lastAutoValidateTime, loadingState, isUserActive } = get();
+    // Skip if loading or user is actively editing (within 10s)
+    if (loadingState.active || isUserActive() || now - lastAutoValidateTime < 5000) return;
     const t = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
-    if (!t.length) return; set({ lastAutoValidateTime: now }); get().validateNode(t[0].id);
+    if (!t.length) return;
+    set({ lastAutoValidateTime: now });
+    get().validateNode(t[0].id);
   },
 
 
@@ -429,7 +463,14 @@ export const useStore = create<AppStore>((set, get) => ({
   pendingEditNodeId: null,
   clearPendingEdit: () => set({ pendingEditNodeId: null }),
 
-
+  // v5.2: user activity tracking
+  lastUserActivity: Date.now(),
+  updateUserActivity: () => set({ lastUserActivity: Date.now() }),
+  isUserActive: () => {
+    const now = Date.now();
+    const { lastUserActivity } = get();
+    return (now - lastUserActivity) < 10000; // Active if interaction within 10s
+  },
 
   // v5: contextual suggest — after adding shapes, debounced
   _contextualSuggestTimer: null as any,
@@ -437,8 +478,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const timer = get()._contextualSuggestTimer;
     if (timer) clearTimeout(timer);
     const newTimer = setTimeout(async () => {
-      const { nodes, edges, processContext, loadingState, addMessage } = get();
-      if (loadingState.active) return;
+      const { nodes, edges, processContext, loadingState, addMessage, isUserActive } = get();
+      if (loadingState.active || isUserActive()) return; // Skip if user is still active
       const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
       if (processNodes.length < 2) return; // don't suggest with too few nodes
       try {
@@ -456,8 +497,100 @@ export const useStore = create<AppStore>((set, get) => ({
           });
         }
       } catch { /* silent */ }
-    }, 5000);
+    }, 8000); // Increased from 5s to 8s for more user inactivity buffer
     set({ _contextualSuggestTimer: newTimer });
+  },
+
+  // v5.2: Proactive Coaching Triggers
+  checkFirstShape: async () => {
+    const { nodes, processContext, addMessage, setLoadingMessage } = get();
+    if (nodes.length <= 2) { // Only 시작 + 1 shape
+      try {
+        const { nodes: sn, edges: se } = serialize(nodes, edges);
+        const r = await fetch(`${API_BASE_URL}/first-shape-welcome`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context: processContext || {}, currentNodes: sn, currentEdges: se }),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.text) {
+            addMessage({
+              id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+              text: d.text,
+              quickQueries: d.quickQueries || []
+            });
+          }
+        }
+      } catch { /* silent */ }
+    }
+  },
+
+  checkOrphanedNodes: () => {
+    const { nodes, edges, addMessage } = get();
+    const allNodeIds = new Set(nodes.map(n => n.id));
+    const sourceIds = new Set(edges.map(e => e.source));
+    const targetIds = new Set(edges.map(e => e.target));
+    const orphans = Array.from(allNodeIds).filter(id => !sourceIds.has(id) && !targetIds.has(id) && nodes.find(n => n.id === id)?.data.nodeType !== 'start');
+    if (orphans.length > 0) {
+      const orphanLabels = orphans.map(id => nodes.find(n => n.id === id)?.data.label).filter(Boolean);
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: `🔗 ${orphans.length}개의 노드가 연결되지 않았어요: ${orphanLabels.join(', ')}. 어느 단계 이후에 실행되는지 연결해주시면 플로우가 더 명확해질 거예요.`,
+        quickQueries: ['연결 구조를 어떻게 정하면 좋을까요?']
+      });
+    }
+  },
+
+  checkFlowCompletion: () => {
+    const { nodes, edges, addMessage } = get();
+    const hasStart = nodes.some(n => n.data.nodeType === 'start');
+    const hasEnd = nodes.some(n => n.data.nodeType === 'end');
+    const processCount = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType)).length;
+    if (hasStart && hasEnd && processCount >= 3 && edges.length >= processCount - 1) {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '✨ 플로우의 기본 구조가 완성된 것 같아요! 이제 각 단계의 L7 라벨을 다듬거나 L7 검증을 실행해보시겠어요?',
+        quickQueries: ['L7 검증 실행', '라벨 다듬기 팁 주세요']
+      });
+    }
+  },
+
+  checkDecisionLabels: (nodeId) => {
+    const { nodes, edges, addMessage } = get();
+    const node = nodes.find(n => n.id === nodeId);
+    if (node?.data.nodeType === 'decision') {
+      const outEdges = edges.filter(e => e.source === nodeId);
+      if (outEdges.length > 0 && !outEdges.some(e => e.label)) {
+        addMessage({
+          id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+          text: `💭 분기점 "${node.data.label}"의 연결선에 조건을 표시하면 더 명확해질 수 있어요. 예: [예], [아니오], [예외] 등으로 라벨을 추가해보세요.`,
+          quickQueries: ['분기 라벨링 예시 보기']
+        });
+      }
+    }
+  },
+
+  checkSwimLaneNeed: () => {
+    const { nodes, dividerY, addMessage } = get();
+    const processCount = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType)).length;
+    if (processCount >= 6 && dividerY === 0) {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
+        quickQueries: ['수영레인 설정 방법']
+      });
+    }
+  },
+
+  celebrateL7Success: () => {
+    const { nodes, addMessage } = get();
+    const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
+    if (processNodes.length > 0 && processNodes.every(n => n.data.l7Status === 'pass')) {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '🎉 모든 단계가 L7 표준을 준수하고 있어요! 멋진 프로세스 설계입니다. 이제 검수나 공유를 진행하실 준비가 완료되었습니다.'
+      });
+    }
   },
 }));
 

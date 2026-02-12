@@ -13,9 +13,9 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
 
   const sc = item.pass
     ? (item.issues.some(i => i.severity === 'warning')
-      ? { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: '💡', label: '개선 가능' }
+      ? { color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', icon: '💬', label: '개선 제안' }
       : { color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)', icon: '✓', label: '표준 준수' })
-    : { color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.25)', icon: '✏', label: 'AI 추천 있음' };
+    : { color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', icon: '💬', label: '개선 제안' };
 
   return (
     <div className="rounded-lg overflow-hidden" style={{ background: sc.bg, border: `1px solid ${sc.border}`, cursor: 'pointer' }} onClick={() => setFocusNodeId(item.nodeId)}>
@@ -25,17 +25,25 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
         <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ color: sc.color, border: `1px solid ${sc.border}` }}>{sc.label}</span>
         <span className="text-[10px] text-slate-500">{showDetail ? '▲' : '▼'}</span>
       </div>
-      {showDetail && item.issues.length > 0 && (
-        <div className="px-3 pb-2 space-y-1">
+      {showDetail && (item.issues.length > 0 || item.rewriteSuggestion || item.encouragement) && (
+        <div className="px-3 pb-2 space-y-2">
           {item.issues.map((issue, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-xs">
-              <span className="flex-shrink-0 mt-0.5 px-1 py-0.5 rounded text-[9px] font-medium"
-                style={{ background: issue.severity === 'reject' ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.15)', color: issue.severity === 'reject' ? '#fbbf24' : '#60a5fa' }}>
-                {issue.friendlyTag || issue.ruleId}
-              </span>
-              <span className="text-slate-300">{issue.message}</span>
+            <div key={i} className="text-xs">
+              <div className="flex items-start gap-1.5 mb-1">
+                <span className="flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium"
+                  style={{ background: issue.severity === 'reject' ? 'rgba(96,165,250,0.15)' : 'rgba(96,165,250,0.1)', color: '#60a5fa' }}>
+                  {issue.friendlyTag || issue.ruleId}
+                </span>
+                <span className="text-slate-300">{issue.message}</span>
+              </div>
+              {issue.reasoning && <div className="ml-8 text-slate-400 text-[11px] italic">{issue.reasoning}</div>}
             </div>
           ))}
+          {item.encouragement && (
+            <div className="px-2 py-1.5 rounded text-xs text-green-300" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
+              ✨ {item.encouragement}
+            </div>
+          )}
         </div>
       )}
       {item.rewriteSuggestion && !applied && (
