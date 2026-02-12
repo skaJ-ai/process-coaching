@@ -15,7 +15,7 @@ export default function ContextMenu() {
   const applyRewrite = useStore(s => s.applyL7Rewrite);
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
   const deleteEdge = useStore(s => s.deleteEdge);
-  const toggleLock = useStore(s => s.togglePositionLock);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
@@ -65,7 +65,7 @@ export default function ContextMenu() {
         <div className="context-menu-item" onClick={() => { openMetaEdit({ nodeId: cm.nodeId!, inputLabel: node?.data.inputLabel, outputLabel: node?.data.outputLabel, systemName: node?.data.systemName, duration: node?.data.duration }); hide(); }}>📋 메타데이터</div>
         <div className="context-menu-item" onClick={() => { validate(cm.nodeId!); hide(); }}><span style={{ color: '#a855f7' }}>✓</span> L7 검증</div>
         {node?.data.l7Rewrite && <div className="context-menu-item" onClick={() => { applyRewrite(cm.nodeId!); hide(); }}><span style={{ color: '#22c55e' }}>↻</span> AI 추천 적용</div>}
-        <div className="context-menu-item" onClick={() => { toggleLock(cm.nodeId!); hide(); }}>🔒 위치 {node?.data.positionLocked ? '해제' : '잠금'}</div>
+
         <div className="context-menu-sep" />
         <div className="context-menu-header">분류 색상</div>
         {Object.entries(CATEGORY_COLORS).map(([key, val]) => (

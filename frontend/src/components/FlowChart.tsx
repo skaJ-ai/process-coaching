@@ -6,7 +6,6 @@ import { nodeTypes, edgeTypes } from './CustomNodes';
 import Toolbar from './Toolbar';
 import ContextMenu from './ContextMenu';
 import NodeDetailPanel from './NodeDetailPanel';
-import OnboardingOverlay from './OnboardingOverlay';
 import MetaEditModal from './MetaEditModal';
 import HelpGuide from './HelpGuide';
 import { SWIMLANE_COLORS, SWIMLANE_HEADER_WIDTH } from '../constants';
@@ -35,10 +34,10 @@ function SwimLaneOverlay() {
         return (
           <div key={r.lane.id}>
             <div style={{ position: 'absolute', left: 0, right: 0, top: clampTop, height, background: r.color.bg }} />
-            <div style={{ position:'absolute',left:0,top:clampTop,width:SWIMLANE_HEADER_WIDTH,height,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(15,23,41,0.9)',borderRight:`2px solid ${r.color.border}`,pointerEvents:'auto',zIndex:1 }}>
+            <div style={{ position: 'absolute', left: 0, top: clampTop, width: SWIMLANE_HEADER_WIDTH, height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,41,0.9)', borderRight: `2px solid ${r.color.border}`, pointerEvents: 'auto', zIndex: 1 }}>
               <div contentEditable suppressContentEditableWarning
                 onBlur={(e) => updateLaneLabel(r.lane.id, e.currentTarget.textContent || r.lane.label)}
-                style={{ writingMode:'vertical-rl',textOrientation:'mixed',color:r.color.label,fontSize:Math.max(11,13*zoom),fontWeight:600,outline:'none',cursor:'text',padding:'4px 2px',maxHeight:height-16,overflow:'hidden' }}>
+                style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', color: r.color.label, fontSize: Math.max(11, 13 * zoom), fontWeight: 600, outline: 'none', cursor: 'text', padding: '4px 2px', maxHeight: height - 16, overflow: 'hidden' }}>
                 {r.lane.label}
               </div>
             </div>
@@ -48,22 +47,53 @@ function SwimLaneOverlay() {
       {boundaries.map((bY, i) => {
         const screenY = bY * zoom + y;
         return (
-          <div key={`boundary-${i}`} style={{ position:'absolute',left:SWIMLANE_HEADER_WIDTH,right:0,top:screenY-3,height:6,cursor:'row-resize',pointerEvents:'auto',borderTop:`2px dashed ${SWIMLANE_COLORS[(i+1)%SWIMLANE_COLORS.length].border}`,background:'rgba(100,116,139,0.15)' }}
+          <div key={`boundary-${i}`} style={{ position: 'absolute', left: SWIMLANE_HEADER_WIDTH, right: 0, top: screenY - 3, height: 6, cursor: 'row-resize', pointerEvents: 'auto', borderTop: `2px dashed ${SWIMLANE_COLORS[(i + 1) % SWIMLANE_COLORS.length].border}`, background: 'rgba(100,116,139,0.15)' }}
             onMouseDown={(e) => {
               e.preventDefault();
               const move = (ev: MouseEvent) => {
                 const newB = [...boundaries]; newB[i] = (ev.clientY - y) / zoom;
-                if (i > 0 && newB[i] < newB[i-1]+100) newB[i] = newB[i-1]+100;
-                if (i < newB.length-1 && newB[i] > newB[i+1]-100) newB[i] = newB[i+1]-100;
+                if (i > 0 && newB[i] < newB[i - 1] + 100) newB[i] = newB[i - 1] + 100;
+                if (i < newB.length - 1 && newB[i] > newB[i + 1] - 100) newB[i] = newB[i + 1] - 100;
                 setLaneBoundaries(newB);
               };
-              const up = () => { document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
-              document.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
+              const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+              document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
             }} />
         );
       })}
     </div>
   );
+}
+
+function EmptyStateGuide() {
+  const nodes = useStore(s => s.nodes);
+  const count = nodes.length;
+  if (count === 0) {
+    return (
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0 opacity-60">
+        <div className="border-2 border-dashed border-slate-600 rounded-3xl p-12 text-center space-y-4">
+          <div className="text-4xl">🖱️</div>
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold text-slate-300">빈 캔버스</h3>
+            <p className="text-slate-400">우클릭하여 첫 번째 셰이프를 추가하세요</p>
+          </div>
+          <div className="inline-block bg-slate-800/50 px-4 py-2 rounded-lg text-sm text-slate-400 border border-slate-700/50">
+            💡 <b>시작</b> → <b>업무단계</b> → <b>종료</b> 순서로<br />만들어 보세요
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (count > 0 && count < 3) {
+    return (
+      <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10 animate-pulse">
+        <div className="bg-blue-600/20 border border-blue-500/50 text-blue-200 px-6 py-2 rounded-full text-sm font-medium shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+          🔗 셰이프를 연결하려면 파란 점을 드래그하세요
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 function FlowCanvas() {
@@ -98,16 +128,16 @@ function FlowCanvas() {
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      const inInput = ['INPUT','TEXTAREA','SELECT'].includes(tag) || (e.target as HTMLElement).isContentEditable;
-      if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
-      if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveDraft(); }
-      if ((e.ctrlKey||e.metaKey) && e.key==='c' && !inInput) { e.preventDefault(); copySelected(); }
-      if ((e.ctrlKey||e.metaKey) && e.key==='v' && !inInput) { e.preventDefault(); pasteClipboard(); }
-      if ((e.key==='Delete'||e.key==='Backspace') && !inInput) { e.preventDefault(); deleteSelected(); }
-      if (e.key==='F1' || (e.key==='/' && !e.ctrlKey && !e.metaKey && !inInput)) { e.preventDefault(); toggleGuide(); }
+      const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (e.target as HTMLElement).isContentEditable;
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveDraft(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !inInput) { e.preventDefault(); copySelected(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !inInput) { e.preventDefault(); pasteClipboard(); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !inInput) { e.preventDefault(); deleteSelected(); }
+      if (e.key === 'F1' || (e.key === '/' && !e.ctrlKey && !e.metaKey && !inInput)) { e.preventDefault(); toggleGuide(); }
     };
     window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
-  }, [undo,redo,saveDraft,copySelected,pasteClipboard,deleteSelected,toggleGuide]);
+  }, [undo, redo, saveDraft, copySelected, pasteClipboard, deleteSelected, toggleGuide]);
 
   useEffect(() => { const t = setTimeout(saveDraft, 30000); return () => clearTimeout(t); }, [nodes, edges, saveDraft]);
   const memoEdgeTypes = useMemo(() => edgeTypes, []);
@@ -118,7 +148,7 @@ function FlowCanvas() {
       const idx = swimLanes.findIndex(l => l.id === n.data.swimLaneId);
       if (idx >= 0) return SWIMLANE_COLORS[idx % SWIMLANE_COLORS.length].text;
     }
-    return ({ start:'#22c55e', end:'#ef4444', decision:'#f59e0b', subprocess:'#2dd4bf' }[n.data?.nodeType as string] || '#3b82f6');
+    return ({ start: '#22c55e', end: '#ef4444', decision: '#f59e0b', subprocess: '#2dd4bf' }[n.data?.nodeType as string] || '#3b82f6');
   }, [swimLanes]);
 
   return (
@@ -149,12 +179,12 @@ function FlowCanvas() {
         <SwimLaneOverlay />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
         <Controls position="bottom-right" />
-        <MiniMap position="bottom-left" nodeColor={minimapNodeColor} maskColor="rgba(15,23,41,0.8)" style={{ border:'1px solid #2a3a52', borderRadius:8 }} />
+        <MiniMap position="bottom-left" nodeColor={minimapNodeColor} maskColor="rgba(15,23,41,0.8)" style={{ border: '1px solid #2a3a52', borderRadius: 8 }} />
       </ReactFlow>
       <ContextMenu />
       <NodeDetailPanel />
-      <OnboardingOverlay />
-      {metaEditTarget && <MetaEditModal nodeId={metaEditTarget.nodeId} initial={{inputLabel:metaEditTarget.inputLabel,outputLabel:metaEditTarget.outputLabel,systemName:metaEditTarget.systemName,duration:metaEditTarget.duration}} onSave={(id,meta)=>updateNodeMeta(id,meta)} onClose={closeMetaEdit}/>}
+      <EmptyStateGuide />
+      {metaEditTarget && <MetaEditModal nodeId={metaEditTarget.nodeId} initial={{ inputLabel: metaEditTarget.inputLabel, outputLabel: metaEditTarget.outputLabel, systemName: metaEditTarget.systemName, duration: metaEditTarget.duration }} onSave={(id, meta) => updateNodeMeta(id, meta)} onClose={closeMetaEdit} />}
       {showGuide && <HelpGuide onClose={toggleGuide} />}
     </div>
   );

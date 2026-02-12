@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge, MarkerType, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from 'reactflow';
-import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult, ThemeMode } from './types';
+import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult } from './types';
 import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutEngine';
 import { API_BASE_URL, SWIMLANE_COLORS, NODE_DIMENSIONS } from './constants';
 
@@ -65,16 +65,16 @@ interface AppStore {
   updateNodeLabel: (id: string, label: string, source?: 'user' | 'ai') => void;
   updateNodeMeta: (id: string, meta: { inputLabel?: string; outputLabel?: string; systemName?: string; duration?: string }) => void;
   setNodeCategory: (id: string, category: NodeCategory) => void;
-  deleteNode: (id: string) => void; changeNodeType: (id: string, newType: ShapeType) => void; togglePositionLock: (id: string) => void;
+  deleteNode: (id: string) => void; changeNodeType: (id: string, newType: ShapeType) => void;
   updateEdgeLabel: (edgeId: string, label: string) => void; deleteEdge: (edgeId: string) => void;
   applySuggestion: (s: Suggestion) => void; applySuggestionWithEdit: (s: Suggestion, editedLabel: string) => void;
   validateNode: (id: string) => Promise<any>; validateAllNodes: () => Promise<void>; applyL7Rewrite: (id: string) => void;
   lastAutoValidateTime: number; autoValidateDebounced: () => void;
-  autoLayout: () => void;
+
   history: HistoryEntry[]; historyIndex: number; pushHistory: () => void; undo: () => void; redo: () => void;
   messages: ChatMessage[]; loadingState: LoadingState; addMessage: (m: ChatMessage) => void; setLoadingMessage: (m: string) => void;
   sendChat: (msg: string) => Promise<void>; requestReview: () => Promise<void>;
-  interviewMode: boolean; interviewStep: number; toggleInterviewMode: () => void; sendInterviewAnswer: (answer: string) => Promise<void>;
+
   contextMenu: ContextMenuState; showContextMenu: (m: ContextMenuState) => void; hideContextMenu: () => void;
   metaEditTarget: MetaEditTarget | null; openMetaEdit: (target: MetaEditTarget) => void; closeMetaEdit: () => void;
   // v5: multi swim lanes
@@ -94,7 +94,7 @@ interface AppStore {
   copySelected: () => void; pasteClipboard: () => void; deleteSelected: () => void;
   // Save
   saveStatus: SaveStatus; lastSaved: number | null;
-  saveDraft: () => void; submitComplete: () => { ok: boolean; issues: string[] };
+  saveDraft: () => void; submitComplete: (force?: boolean) => { ok: boolean; issues: string[] };
   exportFlow: () => string; importFlow: (json: string) => void; loadFromLocalStorage: () => boolean;
   showOnboarding: boolean; dismissOnboarding: () => void;
   showGuide: boolean; toggleGuide: () => void;
@@ -104,7 +104,7 @@ interface AppStore {
   // v5: pending inline edit
   pendingEditNodeId: string | null; clearPendingEdit: () => void;
   // v5: theme
-  theme: ThemeMode; toggleTheme: () => void;
+
   // v5: contextual suggest debounce
   _contextualSuggestTimer: any;
   triggerContextualSuggest: () => void;
@@ -180,7 +180,7 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ nodes: reindexByPosition(nodes.filter(n => n.id !== id)), edges: newEdges, saveStatus: 'unsaved' });
   },
   changeNodeType: (id, nt) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, type: nt, data: { ...n.data, nodeType: nt } } : n), saveStatus: 'unsaved' }); },
-  togglePositionLock: (id) => set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, positionLocked: !n.data.positionLocked } } : n) }),
+
   updateEdgeLabel: (eid, label) => { get().pushHistory(); set({ edges: get().edges.map(e => e.id === eid ? { ...e, label: label || undefined, labelStyle: label ? { fill: '#e2e8f0', fontWeight: 500, fontSize: 12 } : undefined, labelBgStyle: label ? { fill: '#1e293b', fillOpacity: 0.9 } : undefined, labelBgPadding: label ? [6, 4] as [number, number] : undefined } : e), saveStatus: 'unsaved' }); },
   deleteEdge: (eid) => { get().pushHistory(); set({ edges: get().edges.filter(e => e.id !== eid), saveStatus: 'unsaved' }); },
 
@@ -199,6 +199,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges, processContext } = get();
     const node = nodes.find(n => n.id === id);
     if (!node || ['start', 'end'].includes(node.data.nodeType)) return null;
+    // Skip validation for self-loops (rework/looping tasks)
+    if (edges.some(e => e.source === id && e.target === id)) return null;
     set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'checking' as L7Status } } : n) });
     try {
       const { nodes: sn, edges: se } = serialize(nodes, edges);
@@ -230,11 +232,11 @@ export const useStore = create<AppStore>((set, get) => ({
   autoValidateDebounced: () => {
     const now = Date.now(); const { nodes, lastAutoValidateTime, loadingState } = get();
     if (now - lastAutoValidateTime < 3000 || loadingState.active) return;
-    const t = nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
+    const t = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
     if (!t.length) return; set({ lastAutoValidateTime: now }); get().validateNode(t[0].id);
   },
 
-  autoLayout: () => { const { nodes, edges, swimLanes, laneBoundaries } = get(); get().pushHistory(); const l = applyDagreLayout(nodes, edges); let u = reindexByPosition(l.nodes); if (swimLanes.length > 0) u = assignSwimLanes(u, swimLanes, laneBoundaries); set({ nodes: u, edges: l.edges }); },
+
 
   history: [], historyIndex: -1,
   pushHistory: () => { const { nodes, edges, history, historyIndex } = get(); const h = history.slice(0, historyIndex + 1); h.push({ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }); if (h.length > 50) h.shift(); set({ history: h, historyIndex: h.length - 1 }); },
@@ -253,10 +255,11 @@ export const useStore = create<AppStore>((set, get) => ({
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
       const d = await r.json();
+      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim());
       addMessage({
-        id: generateId('msg'), role: 'bot', text: d.speech || '응답 실패.',
-        suggestions: (d.suggestions || []).map((s: any) => ({ action: s.action || 'ADD', ...s })),
-        followUpQuestions: d.followUpQuestions || [],
+        id: generateId('msg'), role: 'bot', text: d.speech || d.message || d.guidance || '응답 실패.',
+        suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
+        quickQueries: d.quickQueries || [],
         timestamp: Date.now(),
       });
     }
@@ -271,10 +274,11 @@ export const useStore = create<AppStore>((set, get) => ({
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentNodes: sn, currentEdges: se, userMessage: '프로세스 분석 + 제안', context: ctx || {} }) });
       const d = await r.json();
+      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim());
       addMessage({
-        id: generateId('msg'), role: 'bot', text: d.speech || '분석 실패.',
-        suggestions: (d.suggestions || []).map((s: any) => ({ action: s.action || 'ADD', ...s })),
-        followUpQuestions: d.followUpQuestions || [],
+        id: generateId('msg'), role: 'bot', text: d.speech || d.message || '리뷰 완료',
+        suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
+        quickQueries: d.quickQueries || [],
         timestamp: Date.now(),
       });
     }
@@ -282,34 +286,7 @@ export const useStore = create<AppStore>((set, get) => ({
     finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
   },
 
-  // Interview
-  interviewMode: false, interviewStep: 0,
-  toggleInterviewMode: () => {
-    const entering = !get().interviewMode;
-    set({ interviewMode: entering, interviewStep: entering ? 0 : 0 });
-    if (entering) get().addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: '🎙️ 인터뷰 모드를 시작합니다.\n\n이 업무를 시작하게 되는 트리거(계기)는 무엇인가요?\n예: "면접 일정이 확정되면", "퇴직 신청서가 접수되면"' });
-  },
-  sendInterviewAnswer: async (answer) => {
-    const { processContext: ctx, nodes, edges, interviewStep, addMessage } = get();
-    addMessage({ id: generateId('msg'), role: 'user', text: answer, timestamp: Date.now() });
-    set({ loadingState: { active: true, message: '인터뷰 응답 분석 중...', startTime: Date.now(), elapsed: 0 } });
-    try {
-      const { nodes: sn, edges: se } = serialize(nodes, edges);
-      const r = await fetch(`${API_BASE_URL}/interview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: interviewStep, answer, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
-      const d = await r.json();
-      if (d.newNodes?.length) { for (const nn of d.newNodes) { const t: ShapeType = nn.type === 'DECISION' ? 'decision' : nn.type === 'SUBPROCESS' ? 'subprocess' : 'process'; if (nn.insertAfterNodeId) get().addShapeAfter(t, nn.label, nn.insertAfterNodeId); else get().addShape(t, nn.label, { x: 300, y: 100 + nodes.length * 120 }); } get().autoLayout(); }
-      const nextText = d.complete
-        ? '대략적인 흐름이 정리되었습니다! 캔버스에서 확인해보세요.\n추가할 단계나 예외 케이스가 있으면 계속 말씀해주세요. 인터뷰를 마치려면 🎙️ 버튼을 다시 눌러주세요.'
-        : (d.nextQuestion || '다음 단계를 말씀해주세요.');
-      addMessage({
-        id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: nextText,
-        suggestions: d.suggestions || [],
-        followUpQuestions: d.followUpQuestions || [],
-      });
-      set({ interviewStep: interviewStep + 1 });
-    } catch { addMessage({ id: generateId('msg'), role: 'bot', text: '인터뷰 응답 처리 중 오류.', timestamp: Date.now() }); }
-    finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
-  },
+
 
   contextMenu: { show: false, x: 0, y: 0 },
   showContextMenu: (m) => set({ contextMenu: m }), hideContextMenu: () => set({ contextMenu: { show: false, x: 0, y: 0 } }),
@@ -346,8 +323,8 @@ export const useStore = create<AppStore>((set, get) => ({
   // v5 compat: map old divider to 2-lane system
   swimLaneDividerY: 0,
   swimLaneLabels: { top: 'A 주체', bottom: 'B 주체' },
-  setSwimLaneDividerY: () => {},
-  setSwimLaneLabels: () => {},
+  setSwimLaneDividerY: () => { },
+  setSwimLaneLabels: () => { },
 
   // Clipboard
   clipboard: null,
@@ -373,22 +350,22 @@ export const useStore = create<AppStore>((set, get) => ({
 
   saveStatus: 'unsaved', lastSaved: null,
   saveDraft: () => { localStorage.setItem('pm-v5-save', get().exportFlow()); set({ saveStatus: 'draft', lastSaved: Date.now() }); },
-  submitComplete: () => {
+  submitComplete: (force = false) => {
     const { nodes, edges, processContext } = get();
     const issues: string[] = [];
     if (!nodes.some(n => n.data.nodeType === 'end')) issues.push('종료 노드가 없습니다. 우클릭으로 추가해주세요.');
-    const orphans = nodes.filter(n => !['start','end'].includes(n.data.nodeType) && !edges.some(e => e.source === n.id || e.target === n.id));
+    const orphans = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType) && !edges.some(e => e.source === n.id || e.target === n.id));
     if (orphans.length) issues.push(`연결되지 않은 노드 ${orphans.length}개`);
-    const unc = nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType) && (!n.data.l7Status || n.data.l7Status === 'none'));
+    const unc = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType) && (!n.data.l7Status || n.data.l7Status === 'none'));
     if (unc.length) issues.push(`L7 검증 미실행 노드 ${unc.length}개`);
-    if (!issues.length) {
+    if (force || !issues.length) {
       set({ saveStatus: 'complete' });
       const json = get().exportFlow();
       const blob = new Blob([json], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = `process-${processContext?.processName || 'flow'}-완료-${new Date().toISOString().slice(0, 10)}.json`; a.click();
     }
-    return { ok: !issues.length, issues };
+    return { ok: force || !issues.length, issues };
   },
   exportFlow: () => {
     const { processContext, nodes, edges, swimLanes, laneBoundaries } = get();
@@ -438,13 +415,7 @@ export const useStore = create<AppStore>((set, get) => ({
   pendingEditNodeId: null,
   clearPendingEdit: () => set({ pendingEditNodeId: null }),
 
-  // v5: theme
-  theme: (localStorage.getItem('pm-v5-theme') as ThemeMode) || 'dark',
-  toggleTheme: () => {
-    const next = get().theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('pm-v5-theme', next);
-    set({ theme: next });
-  },
+
 
   // v5: contextual suggest — after adding shapes, debounced
   _contextualSuggestTimer: null as any,
@@ -454,7 +425,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const newTimer = setTimeout(async () => {
       const { nodes, edges, processContext, loadingState, addMessage } = get();
       if (loadingState.active) return;
-      const processNodes = nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType));
+      const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
       if (processNodes.length < 2) return; // don't suggest with too few nodes
       try {
         const { nodes: sn, edges: se } = serialize(nodes, edges);
@@ -463,11 +434,11 @@ export const useStore = create<AppStore>((set, get) => ({
           body: JSON.stringify({ context: processContext || {}, currentNodes: sn, currentEdges: se }),
         });
         const d = await r.json();
-        if (d.followUpQuestions?.length) {
+        if (d.guidance || d.quickQueries?.length) {
           addMessage({
             id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-            text: d.hint || '💡 플로우가 업데이트되었습니다.',
-            followUpQuestions: d.followUpQuestions,
+            text: d.guidance || d.hint || '💡 플로우가 업데이트되었습니다.',
+            quickQueries: d.quickQueries,
           });
         }
       } catch { /* silent */ }

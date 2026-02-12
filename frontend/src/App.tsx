@@ -17,7 +17,7 @@ export default function App() {
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   }, []);
 
-  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

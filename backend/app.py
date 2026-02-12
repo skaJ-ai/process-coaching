@@ -10,8 +10,11 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="HR Process Mining v5")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
+# LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
+# LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
+LLM_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"  # Gemini OpenAI compatible endpoint
+LLM_MODEL = "gemini-1.5-flash"
+GEMINI_API_KEY = "AIzaSyBDxyMb9qgsiiCTQfmlm7CZFpCn6h4JOZc"
 USE_MOCK = os.getenv("USE_MOCK", "auto")
 
 class FlowNode(BaseModel):
@@ -27,8 +30,7 @@ class ChatRequest(BaseModel):
     message: str; context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
 class ValidateL7Request(BaseModel):
     nodeId: str; label: str; nodeType: str; context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
-class InterviewRequest(BaseModel):
-    step: int; answer: str; context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
+
 class ContextualSuggestRequest(BaseModel):
     context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
 
@@ -62,15 +64,20 @@ async def check_llm():
     if USE_MOCK == "false": _llm_available = True; return True
     if _llm_available is not None: return _llm_available
     try:
-        async with httpx.AsyncClient(timeout=5.0) as c: r = await c.get(f"{LLM_BASE_URL}/models"); _llm_available = r.status_code == 200
-    except: _llm_available = False
+        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"} if "googleapis.com" in LLM_BASE_URL else None
+        async with httpx.AsyncClient(timeout=5.0) as c: 
+            r = await c.get(f"{LLM_BASE_URL}/models", headers=headers)
+            if r.status_code != 200: logger.error(f"LLM check failed: {r.status_code} {r.text}")
+            _llm_available = r.status_code == 200
+    except Exception as e: logger.error(f"LLM check error: {e}"); _llm_available = False
     return _llm_available
 
 async def call_llm(system_prompt, user_message):
     if not await check_llm(): return None
     try:
-        async with httpx.AsyncClient(timeout=60.0) as c:
-            r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000})
+        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"} if "googleapis.com" in LLM_BASE_URL else None
+        async with httpx.AsyncClient(timeout=None) as c:
+            r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000}, headers=headers)
             r.raise_for_status(); content = r.json()["choices"][0]["message"]["content"]
             if "<think>" in content: content = content.split("</think>")[-1]
             if "```json" in content: content = content.split("```json")[1].split("```")[0]
@@ -78,13 +85,13 @@ async def call_llm(system_prompt, user_message):
             return json.loads(content.strip())
     except Exception as e: logger.error(f"LLM error: {e}"); return None
 
-REVIEW_SYSTEM = f"당신은 HR 프로세스 분석 전문가입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"followUpQuestions\":[\"질문1\",\"질문2\"]}}\nfollowUpQuestions: 사용자가 추가로 궁금할 수 있는 후속 질문 2~3개"
-COACH_TEMPLATE = f"당신은 HR 프로세스 설계 코치입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"followUpQuestions\":[\"질문1\",\"질문2\"]}}\nfollowUpQuestions: 현재 플로우에서 다음으로 확인할 질문 2~3개"
+REVIEW_SYSTEM = f"당신은 HR 프로세스 분석 전문가입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 사용자가 추가로 궁금할 수 있는 후속 질문 2~3개"
+COACH_TEMPLATE = f"당신은 HR 프로세스 설계 코치입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"speech\":\"...\",\"suggestions\":[...],\"quickQueries\":[\"질문1\",\"질문2\"]}}\nquickQueries: 현재 플로우에서 다음으로 확인할 질문 2~3개"
 L7_VALIDATE = f"당신은 L7 품질 검증 에이전트입니다.\n{L7_GUIDE}\n응답은 JSON: {{\"pass\":bool,\"score\":0-100,\"issues\":[...],\"rewriteSuggestion\":\"...\"}}"
-INTERVIEW_SYSTEM = f"""당신은 HR 프로세스 인터뷰어입니다.\n{L7_GUIDE}\n응답(JSON만): {{"newNodes":[{{"label":"L7문장","type":"PROCESS|DECISION|SUBPROCESS","insertAfterNodeId":"..."}}],"nextQuestion":"다음질문","complete":false,"suggestions":[],"followUpQuestions":["질문1"]}}"""
-CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 HR 프로세스 설계 코치입니다. 현재 플로우를 보고 빠진 단계나 예외를 짧게 짚어주세요.\n응답(JSON만): {{"hint":"한줄요약","followUpQuestions":["질문1","질문2"]}}"""
+
+CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 HR 프로세스 설계 코치입니다. 현재 플로우를 보고 빠진 단계나 예외를 짧게 짚어주세요.\n응답(JSON만): {{"guidance":"한줄요약","quickQueries":["질문1","질문2"]}}"""
 PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
-INTERVIEW_QUESTIONS = ["이 업무를 시작하게 되는 트리거는?","첫 번째 행동은?","그 다음 단계는?","판단/분기 필요한 지점?","계속 말씀해 주세요.","예외 케이스?","최종 결과물/종료 상태는?"]
+
 
 def mock_validate(label):
     banned = ["처리한다","진행한다","관리한다","확인한다","검토한다"]
@@ -94,7 +101,7 @@ def mock_validate(label):
     p = len([i for i in issues if i["severity"]=="reject"])==0
     return {"pass":p,"score":90 if p and not issues else 60 if p else 40,"issues":issues,"rewriteSuggestion":None}
 
-def mock_followup(nodes, edges):
+def mock_quick_queries(nodes, edges):
     qs = []
     pn = [n for n in nodes if n.type=="process"]; dn = [n for n in nodes if n.type=="decision"]
     if not any(n.type=="end" for n in nodes) and len(pn)>=2: qs.append("종료 조건은 무엇인가요?")
@@ -106,35 +113,26 @@ def mock_followup(nodes, edges):
 async def review_flow(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    return r or {"speech":"플로우를 살펴보았습니다.","suggestions":[],"followUpQuestions":mock_followup(req.currentNodes,req.currentEdges)}
+    return r or {"speech":"AI 모델 연결 상태가 원활하지 않아 분석을 완료할 수 없습니다. 잠시 후 다시 시도해주세요.","suggestions":[],"quickQueries":[]}
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(COACH_TEMPLATE, f"컨텍스트: {req.context}\n플로우:\n{fd}\n질문: {req.message}")
-    return r or {"speech":"일반적으로 요청접수→서류검토→승인/반려→결과통보 순서입니다.","suggestions":[],"followUpQuestions":mock_followup(req.currentNodes,req.currentEdges)}
+    return r or {"speech":"AI 연결 상태가 원활하지 않아 답변을 드릴 수 없습니다. 관리자에게 문의하거나 잠시 후 다시 시도해주세요.","suggestions":[],"quickQueries":[]}
 
 @app.post("/api/validate-l7")
 async def validate_l7(req: ValidateL7Request):
     r = await call_llm(L7_VALIDATE, f"노드: [{req.nodeId}] {req.nodeType}\nL7: \"{req.label}\"\n컨텍스트: {req.context}")
     return r or mock_validate(req.label)
 
-@app.post("/api/interview")
-async def interview(req: InterviewRequest):
-    fd = describe_flow(req.currentNodes, req.currentEdges)
-    non_end = [n for n in req.currentNodes if n.type != "end"]
-    last_id = non_end[-1].id if non_end else "start"
-    r = await call_llm(INTERVIEW_SYSTEM, f"단계:{req.step}\n컨텍스트:{req.context}\n플로우:\n{fd}\n마지막노드:{last_id}\n답변:\"{req.answer}\"")
-    if r: return r
-    return {"newNodes":[{"label":req.answer,"type":"PROCESS","insertAfterNodeId":last_id}],
-      "nextQuestion":INTERVIEW_QUESTIONS[min(req.step+1,len(INTERVIEW_QUESTIONS)-1)] if req.step<len(INTERVIEW_QUESTIONS)-1 else "추가할 단계가 있으면 말씀해주세요.",
-      "complete":req.step>=len(INTERVIEW_QUESTIONS)-1,"suggestions":[],"followUpQuestions":mock_followup(req.currentNodes,req.currentEdges)}
+
 
 @app.post("/api/contextual-suggest")
 async def contextual_suggest(req: ContextualSuggestRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    return r or {"hint":"","followUpQuestions":mock_followup(req.currentNodes,req.currentEdges)}
+    return r or {"guidance":"","quickQueries":[]}
 
 @app.post("/api/analyze-pdd")
 async def analyze_pdd(req: ReviewRequest):
@@ -156,4 +154,9 @@ async def health():
     return {"status":"ok","version":"5.0","llm_connected":llm,"mode":"live" if llm else "mock"}
 
 if __name__ == "__main__":
-    import uvicorn; uvicorn.run(app, host="0.0.0.0", port=8000)
+    import uvicorn
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    except SystemExit:
+        logger.warning("Port 8000 is busy. Trying port 8001...")
+        uvicorn.run(app, host="0.0.0.0", port=8001)

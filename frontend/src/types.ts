@@ -66,7 +66,7 @@ export interface ChatMessage {
   text: string;
   suggestions?: Suggestion[];
   l7Report?: L7ReportItem[];
-  followUpQuestions?: string[];
+  quickQueries?: string[];
   timestamp: number;
 }
 
@@ -88,7 +88,7 @@ export interface FlowNodeData {
   l7Rewrite?: string;
   changeHistory?: NodeChangeEntry[];
   // Position lock
-  positionLocked?: boolean;
+
   // v5: auto-enter inline edit on creation
   pendingEdit?: boolean;
 }
@@ -150,7 +150,7 @@ export interface LoadingState {
 export type SaveStatus = 'unsaved' | 'draft' | 'complete';
 
 // ─── Theme ───
-export type ThemeMode = 'dark' | 'light';
+
 
 export type AppPhase = 'setup' | 'drawing';
 
