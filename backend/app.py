@@ -12,9 +12,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
-# LLM_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"  # Gemini OpenAI compatible endpoint
-# LLM_MODEL = "gemini-1.5-flash"
-GEMINI_API_KEY = "AIzaSyBDxyMb9qgsiiCTQfmlm7CZFpCn6h4JOZc"
 USE_MOCK = os.getenv("USE_MOCK", "auto")
 
 class FlowNode(BaseModel):
@@ -183,9 +180,8 @@ async def check_llm():
     if USE_MOCK == "false": _llm_available = True; return True
     if _llm_available is not None: return _llm_available
     try:
-        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"} if "googleapis.com" in LLM_BASE_URL else None
-        async with httpx.AsyncClient(timeout=5.0) as c: 
-            r = await c.get(f"{LLM_BASE_URL}/models", headers=headers)
+        async with httpx.AsyncClient(timeout=5.0) as c:
+            r = await c.get(f"{LLM_BASE_URL}/models")
             if r.status_code != 200: logger.error(f"LLM check failed: {r.status_code} {r.text}")
             _llm_available = r.status_code == 200
     except Exception as e: logger.error(f"LLM check error: {e}"); _llm_available = False
@@ -194,9 +190,8 @@ async def check_llm():
 async def call_llm(system_prompt, user_message):
     if not await check_llm(): return None
     try:
-        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}"} if "googleapis.com" in LLM_BASE_URL else None
         async with httpx.AsyncClient(timeout=None) as c:
-            r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000}, headers=headers)
+            r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000})
             r.raise_for_status(); content = r.json()["choices"][0]["message"]["content"]
             if "<think>" in content: content = content.split("</think>")[-1]
             if "```json" in content: content = content.split("```json")[1].split("```")[0]
@@ -263,7 +258,7 @@ L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
   "issues": [
     {{
       "ruleId": "R-XX",
-      "severity": "reject|warning",
+      "severity": "warning|suggestion",
       "friendlyTag": "간단한 태그 (예: '구체화 권장')",
       "message": "제안형 메시지 (예: '더 구체적인 동사를 사용하면 명확해질 수 있어요')",
       "suggestion": "개선 방향",

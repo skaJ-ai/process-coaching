@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { CATEGORY_COLORS } from '../constants';
 
@@ -6,7 +6,10 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
   const ctx = useStore(s => s.processContext);
-  const swimLanes = useStore(s => s.swimLanes);
+  const swimLanes = useMemo(() => {
+    const laneIds = [...new Set(nodes.map(n => n.data.swimLaneId).filter(Boolean))];
+    return laneIds.map(id => ({ id: id!, label: id! }));
+  }, [nodes]);
   const [pddContent, setPddContent] = useState('');
 
   const generatePDD = () => {

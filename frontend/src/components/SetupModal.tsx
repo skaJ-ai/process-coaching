@@ -65,7 +65,7 @@ export default function SetupModal() {
               <span className="text-sm text-blue-300">💾 이전 작업이 발견되었습니다.</span>
               <div className="flex gap-2">
                 <button onClick={handleRecovery} className="px-3 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-500">복구</button>
-                <button onClick={() => { setShowRecovery(false); localStorage.removeItem('pm-v5-save'); }} className="px-3 py-1 rounded text-xs text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">삭제</button>
+                <button onClick={() => { if (confirm('이전 작업 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) { setShowRecovery(false); localStorage.removeItem('pm-v5-save'); } }} className="px-3 py-1 rounded text-xs text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">삭제</button>
               </div>
             </div>
           </div>
@@ -76,6 +76,15 @@ export default function SetupModal() {
         </div>
 
         <div className="flex items-center gap-3 mb-6"><div className="flex-1 h-px bg-slate-700" /><span className="text-xs text-slate-500">또는 새로 시작</span><div className="flex-1 h-px bg-slate-700" /></div>
+
+        {(l4 || l5 || l6) && (
+          <div className="mb-4 px-3 py-2 rounded-lg text-xs text-slate-400" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+            {l4 && <span className="text-blue-300">{l4}</span>}
+            {l5 && <><span className="mx-1.5 text-slate-600">→</span><span className="text-blue-300">{l5}</span></>}
+            {l6 && <><span className="mx-1.5 text-slate-600">→</span><span className="text-blue-300">{l6}</span></>}
+          </div>
+        )}
+
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">L4 모듈</label>

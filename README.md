@@ -38,7 +38,7 @@ L7 프로세스 드로잉 도구 — Visio 스타일 프로세스 맵 + AI 코�
 ```bash
 cd backend
 pip install -r requirements.txt
-python app.py
+py app.py
 # → http://localhost:8000
 ```
 

@@ -109,6 +109,7 @@ interface AppStore {
   updateUserActivity: () => void;
   isUserActive: () => boolean;
   // v5.2: proactive coaching
+  _lastCoachingTrigger: Record<string, number>;
   checkFirstShape: () => void;
   checkOrphanedNodes: () => void;
   checkFlowCompletion: () => void;
@@ -122,6 +123,14 @@ export const useStore = create<AppStore>((set, get) => ({
   setProcessContext: (ctx) => {
     const init = makeInitialNodes();
     set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerY: 0, topLabel: 'A 주체', bottomLabel: 'B 주체' });
+    // 환영 메시지 추가
+    setTimeout(() => {
+      get().addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n왼쪽 도구 모음에서 단계를 추가하거나, 아래에 궁금한 점을 물어보세요.`,
+        quickQueries: ['어떻게 시작하면 좋을까요?', '일반적인 단계는 뭐가 있나요?', '예외 처리는 어떻게 표현하나요?']
+      });
+    }, 300);
   },
   nodes: [], edges: [], selectedNodeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
@@ -218,13 +227,23 @@ export const useStore = create<AppStore>((set, get) => ({
   deleteEdge: (eid) => { get().pushHistory(); set({ edges: get().edges.filter(e => e.id !== eid), saveStatus: 'unsaved' }); },
 
   applySuggestion: (s) => {
-    if (s.action === 'MODIFY' && s.targetNodeId && s.newLabel) { get().updateNodeLabel(s.targetNodeId, s.newLabel, 'ai'); return; }
-    if (s.action === 'DELETE' && s.targetNodeId) { get().deleteNode(s.targetNodeId); return; }
+    const { addMessage } = get();
+    if (s.action === 'MODIFY' && s.targetNodeId && s.newLabel) {
+      get().updateNodeLabel(s.targetNodeId, s.newLabel, 'ai');
+      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${s.newLabel}" 로 수정되었습니다.` });
+      return;
+    }
+    if (s.action === 'DELETE' && s.targetNodeId) {
+      get().deleteNode(s.targetNodeId);
+      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ 단계가 삭제되었습니다.` });
+      return;
+    }
     let afterId = s.insertAfterNodeId;
     const { nodes, edges } = get();
     if (afterId && !nodes.find(n => n.id === afterId)) { const e = edges.find(e => e.target === 'end'); afterId = e?.source || 'start'; }
     const st: ShapeType = s.type === 'DECISION' ? 'decision' : s.type === 'SUBPROCESS' ? 'subprocess' : 'process';
     if (afterId) get().addShapeAfter(st, s.summary, afterId); else get().addShape(st, s.summary, { x: 300, y: 300 });
+    addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${s.summary}" 단계가 추가되었습니다.` });
   },
   applySuggestionWithEdit: (s, l) => { const m = { ...s }; if (s.action === 'MODIFY') m.newLabel = l; else m.summary = l; get().applySuggestion(m); },
 
@@ -314,7 +333,12 @@ export const useStore = create<AppStore>((set, get) => ({
         timestamp: Date.now(),
       });
     }
-    catch { addMessage({ id: generateId('msg'), role: 'bot', text: '서버 통신 오류.', timestamp: Date.now() }); }
+    catch {
+      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '⚠️ AI 서버와 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.\n\n문제가 지속되면 관리자에게 문의하세요.',
+        quickQueries: ['다시 시도']
+      });
+    }
     finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
   },
   requestReview: async () => {
@@ -333,7 +357,12 @@ export const useStore = create<AppStore>((set, get) => ({
         timestamp: Date.now(),
       });
     }
-    catch { addMessage({ id: generateId('msg'), role: 'bot', text: '서버 통신 오류.', timestamp: Date.now() }); }
+    catch {
+      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '⚠️ AI 서버와 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.\n\n문제가 지속되면 관리자에게 문의하세요.',
+        quickQueries: ['🔍 플로우 분석 다시 시도']
+      });
+    }
     finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
   },
 
@@ -463,6 +492,8 @@ export const useStore = create<AppStore>((set, get) => ({
   pendingEditNodeId: null,
   clearPendingEdit: () => set({ pendingEditNodeId: null }),
 
+  _lastCoachingTrigger: {} as Record<string, number>,
+
   // v5.2: user activity tracking
   lastUserActivity: Date.now(),
   updateUserActivity: () => set({ lastUserActivity: Date.now() }),
@@ -501,10 +532,12 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ _contextualSuggestTimer: newTimer });
   },
 
-  // v5.2: Proactive Coaching Triggers
+  // v5.2: Proactive Coaching Triggers (with deduplication guard)
   checkFirstShape: async () => {
-    const { nodes, processContext, addMessage, setLoadingMessage } = get();
+    const { nodes, edges, processContext, addMessage, _lastCoachingTrigger } = get();
+    if (_lastCoachingTrigger['firstShape']) return; // 1회만 발화
     if (nodes.length <= 2) { // Only 시작 + 1 shape
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, firstShape: Date.now() } });
       try {
         const { nodes: sn, edges: se } = serialize(nodes, edges);
         const r = await fetch(`${API_BASE_URL}/first-shape-welcome`, {
@@ -514,11 +547,7 @@ export const useStore = create<AppStore>((set, get) => ({
         if (r.ok) {
           const d = await r.json();
           if (d.text) {
-            addMessage({
-              id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-              text: d.text,
-              quickQueries: d.quickQueries || []
-            });
+            addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: d.text, quickQueries: d.quickQueries || [] });
           }
         }
       } catch { /* silent */ }
@@ -526,12 +555,15 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   checkOrphanedNodes: () => {
-    const { nodes, edges, addMessage } = get();
+    const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
+    const now = Date.now();
+    if (_lastCoachingTrigger['orphan'] && now - _lastCoachingTrigger['orphan'] < 60000) return;
     const allNodeIds = new Set(nodes.map(n => n.id));
     const sourceIds = new Set(edges.map(e => e.source));
     const targetIds = new Set(edges.map(e => e.target));
     const orphans = Array.from(allNodeIds).filter(id => !sourceIds.has(id) && !targetIds.has(id) && nodes.find(n => n.id === id)?.data.nodeType !== 'start');
     if (orphans.length > 0) {
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, orphan: now } });
       const orphanLabels = orphans.map(id => nodes.find(n => n.id === id)?.data.label).filter(Boolean);
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
@@ -542,11 +574,13 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   checkFlowCompletion: () => {
-    const { nodes, edges, addMessage } = get();
+    const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
+    if (_lastCoachingTrigger['completion']) return; // 1회만 발화
     const hasStart = nodes.some(n => n.data.nodeType === 'start');
     const hasEnd = nodes.some(n => n.data.nodeType === 'end');
     const processCount = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType)).length;
     if (hasStart && hasEnd && processCount >= 3 && edges.length >= processCount - 1) {
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, completion: Date.now() } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '✨ 플로우의 기본 구조가 완성된 것 같아요! 이제 각 단계의 L7 라벨을 다듬거나 L7 검증을 실행해보시겠어요?',
@@ -556,11 +590,15 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   checkDecisionLabels: (nodeId) => {
-    const { nodes, edges, addMessage } = get();
+    const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
+    const now = Date.now();
+    const key = `decision_${nodeId}`;
+    if (_lastCoachingTrigger[key]) return; // 같은 노드에 대해 1회만
     const node = nodes.find(n => n.id === nodeId);
     if (node?.data.nodeType === 'decision') {
       const outEdges = edges.filter(e => e.source === nodeId);
       if (outEdges.length > 0 && !outEdges.some(e => e.label)) {
+        set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, [key]: now } });
         addMessage({
           id: generateId('msg'), role: 'bot', timestamp: Date.now(),
           text: `💭 분기점 "${node.data.label}"의 연결선에 조건을 표시하면 더 명확해질 수 있어요. 예: [예], [아니오], [예외] 등으로 라벨을 추가해보세요.`,
@@ -571,9 +609,11 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   checkSwimLaneNeed: () => {
-    const { nodes, dividerY, addMessage } = get();
+    const { nodes, dividerY, addMessage, _lastCoachingTrigger } = get();
+    if (_lastCoachingTrigger['swimLane']) return; // 1회만 발화
     const processCount = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType)).length;
     if (processCount >= 6 && dividerY === 0) {
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: Date.now() } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
@@ -583,9 +623,11 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   celebrateL7Success: () => {
-    const { nodes, addMessage } = get();
+    const { nodes, addMessage, _lastCoachingTrigger } = get();
+    if (_lastCoachingTrigger['l7Success']) return; // 1회만 발화
     const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
     if (processNodes.length > 0 && processNodes.every(n => n.data.l7Status === 'pass')) {
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, l7Success: Date.now() } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '🎉 모든 단계가 L7 표준을 준수하고 있어요! 멋진 프로세스 설계입니다. 이제 검수나 공유를 진행하실 준비가 완료되었습니다.'
