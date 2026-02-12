@@ -11,73 +11,193 @@ import HelpGuide from './HelpGuide';
 import { SWIMLANE_COLORS } from '../constants';
 
 function SwimLaneOverlay() {
-  const lanes = useStore(s => s.swimLanes);
-  const boundaries = useStore(s => s.laneBoundaries);
-  const setLaneBoundaries = useStore(s => s.setLaneBoundaries);
-  const updateLaneLabel = useStore(s => s.updateSwimLaneLabel);
-  const { x, y, zoom } = useViewport();
-  if (lanes.length === 0) return null;
+  const dividerY = useStore(s => s.dividerY);
+  const setDividerY = useStore(s => s.setDividerY);
+  const topLabel = useStore(s => s.topLabel);
+  const bottomLabel = useStore(s => s.bottomLabel);
+  const setTopBottomLabels = useStore(s => s.setTopBottomLabels);
+  const rfInstance = useReactFlow();
+  const [editingLabel, setEditingLabel] = React.useState<'top' | 'bottom' | null>(null);
+  const [tempLabel, setTempLabel] = React.useState('');
 
-  const regions: { lane: typeof lanes[0]; screenTop: number; screenBottom: number; color: typeof SWIMLANE_COLORS[0] }[] = [];
-  for (let i = 0; i < lanes.length; i++) {
-    const topY = i === 0 ? -10000 : boundaries[i - 1];
-    const botY = i < boundaries.length ? boundaries[i] : 10000;
-    regions.push({ lane: lanes[i], screenTop: topY * zoom + y, screenBottom: botY * zoom + y, color: SWIMLANE_COLORS[i % SWIMLANE_COLORS.length] });
-  }
+  if (dividerY === 0) return null;
+
+  const handleDividerDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startFlowY = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY }).y;
+    const initialDividerY = dividerY;
+
+    const move = (ev: MouseEvent) => {
+      const currentFlowY = rfInstance.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }).y;
+      const delta = currentFlowY - startFlowY;
+      const newY = initialDividerY + delta;
+      setDividerY(Math.max(100, Math.min(newY, 2000)));
+    };
+
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  };
+
+  const handleLabelClick = (type: 'top' | 'bottom') => {
+    setEditingLabel(type);
+    setTempLabel(type === 'top' ? topLabel : bottomLabel);
+  };
+
+  const handleLabelSave = (type: 'top' | 'bottom') => {
+    if (tempLabel.trim()) {
+      if (type === 'top') {
+        setTopBottomLabels(tempLabel, bottomLabel);
+      } else {
+        setTopBottomLabels(topLabel, tempLabel);
+      }
+    }
+    setEditingLabel(null);
+  };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-      {regions.map((r) => {
-        const clampTop = Math.max(0, r.screenTop), clampBot = Math.min(window.innerHeight, r.screenBottom);
-        const height = clampBot - clampTop;
-        if (height <= 0) return null;
-        return (
-          <div key={r.lane.id}>
-            <div style={{ position: 'absolute', left: 0, right: 0, top: clampTop, height, background: r.color.bg }} />
-            <input
-              type="text"
-              value={r.lane.label}
-              onChange={(e) => updateLaneLabel(r.lane.id, e.target.value)}
-              style={{
-                position: 'absolute',
-                left: 16,
-                top: clampTop + 12,
-                pointerEvents: 'auto',
-                zIndex: 1,
-                background: 'rgba(15,23,41,0.85)',
-                border: `1px solid ${r.color.border}`,
-                borderRadius: '6px',
-                padding: '4px 10px',
-                color: r.color.label,
-                fontSize: Math.max(11, 12 * zoom),
-                fontWeight: 600,
-                outline: 'none',
-                minWidth: '120px',
-                maxWidth: '200px'
-              }}
-            />
-          </div>
-        );
-      })}
-      {boundaries.map((bY, i) => {
-        const screenY = bY * zoom + y;
-        const color = SWIMLANE_COLORS[(i + 1) % SWIMLANE_COLORS.length].border;
-        return (
-          <div key={`boundary-${i}`} style={{ position: 'absolute', left: 0, right: 0, top: screenY - 2, height: 4, cursor: 'row-resize', pointerEvents: 'auto', background: color, opacity: 0.6 }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              const move = (ev: MouseEvent) => {
-                const newB = [...boundaries]; newB[i] = (ev.clientY - y) / zoom;
-                if (i > 0 && newB[i] < newB[i - 1] + 100) newB[i] = newB[i - 1] + 100;
-                if (i < newB.length - 1 && newB[i] > newB[i + 1] - 100) newB[i] = newB[i + 1] - 100;
-                setLaneBoundaries(newB);
-              };
-              const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
-              document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
-            }} />
-        );
-      })}
-    </div>
+    <>
+      {/* Divider line (non-draggable, visual only) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: -10000,
+          width: 20000,
+          top: dividerY - 1.5,
+          height: 3,
+          borderTop: '3px dashed #94a3b8',
+          pointerEvents: 'none',
+          zIndex: 5,
+          opacity: 0.6,
+        }}
+      />
+
+      {/* Right-side drag handle */}
+      <div
+        style={{
+          position: 'absolute',
+          right: 20,
+          top: dividerY - 30,
+          width: 40,
+          height: 60,
+          background: 'rgba(148, 163, 184, 0.15)',
+          border: '2px solid #94a3b8',
+          borderRadius: '8px',
+          cursor: 'row-resize',
+          pointerEvents: 'auto',
+          zIndex: 6,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'background 0.2s',
+        }}
+        onMouseDown={handleDividerDrag}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(148, 163, 184, 0.15)';
+        }}
+      >
+        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 'bold' }}>⋮⋮</span>
+      </div>
+
+      {/* Top Label */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 20,
+          top: dividerY - 50,
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#94a3b8',
+          background: 'rgba(15,23,41,0.85)',
+          padding: '4px 12px',
+          borderRadius: '6px',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
+          pointerEvents: 'auto',
+          zIndex: 6,
+          cursor: editingLabel === 'top' ? 'text' : 'pointer',
+        }}
+        onClick={() => editingLabel !== 'top' && handleLabelClick('top')}
+      >
+        {editingLabel === 'top' ? (
+          <input
+            autoFocus
+            type="text"
+            value={tempLabel}
+            onChange={(e) => setTempLabel(e.target.value)}
+            onBlur={() => handleLabelSave('top')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleLabelSave('top');
+              if (e.key === 'Escape') setEditingLabel(null);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: 13,
+              fontWeight: 600,
+              outline: 'none',
+              width: '100%',
+              fontFamily: 'inherit',
+            }}
+          />
+        ) : (
+          topLabel
+        )}
+      </div>
+
+      {/* Bottom Label */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 20,
+          top: dividerY + 20,
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#94a3b8',
+          background: 'rgba(15,23,41,0.85)',
+          padding: '4px 12px',
+          borderRadius: '6px',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
+          pointerEvents: 'auto',
+          zIndex: 6,
+          cursor: editingLabel === 'bottom' ? 'text' : 'pointer',
+        }}
+        onClick={() => editingLabel !== 'bottom' && handleLabelClick('bottom')}
+      >
+        {editingLabel === 'bottom' ? (
+          <input
+            autoFocus
+            type="text"
+            value={tempLabel}
+            onChange={(e) => setTempLabel(e.target.value)}
+            onBlur={() => handleLabelSave('bottom')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleLabelSave('bottom');
+              if (e.key === 'Escape') setEditingLabel(null);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: 13,
+              fontWeight: 600,
+              outline: 'none',
+              width: '100%',
+              fontFamily: 'inherit',
+            }}
+          />
+        ) : (
+          bottomLabel
+        )}
+      </div>
+    </>
   );
 }
 
@@ -134,13 +254,11 @@ function FlowCanvas() {
   const updateNodeMeta = useStore(s => s.updateNodeMeta);
   const showGuide = useStore(s => s.showGuide);
   const toggleGuide = useStore(s => s.toggleGuide);
-  const swimLanes = useStore(s => s.swimLanes);
   const wrapper = useRef<HTMLDivElement>(null);
   const rfInstance = useReactFlow();
 
   const focusNodeId = useStore(s => s.focusNodeId);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
-  useEffect(() => { const t = setTimeout(() => rfInstance.fitView({ padding: 0.3, duration: 200 }), 100); return () => clearTimeout(t); }, [nodes.length]);
   useEffect(() => { const t = setTimeout(() => autoValidate(), 3000); return () => clearTimeout(t); }, [nodes, autoValidate]);
 
   useEffect(() => {
@@ -168,14 +286,20 @@ function FlowCanvas() {
   useEffect(() => { const t = setTimeout(saveDraft, 30000); return () => clearTimeout(t); }, [nodes, edges, saveDraft]);
   const memoEdgeTypes = useMemo(() => edgeTypes, []);
 
-  // v5: minimap node color with swim lane awareness
+  // v5.1: minimap node color with 2-lane swim lane awareness
   const minimapNodeColor = useCallback((n: any) => {
-    if (swimLanes.length > 0 && n.data?.swimLaneId) {
-      const idx = swimLanes.findIndex(l => l.id === n.data.swimLaneId);
-      if (idx >= 0) return SWIMLANE_COLORS[idx % SWIMLANE_COLORS.length].text;
+    const { dividerY, topLabel, bottomLabel } = useStore.getState();
+    if (dividerY > 0 && n.data?.swimLaneId) {
+      if (n.data.swimLaneId === topLabel) return SWIMLANE_COLORS[0].text;
+      if (n.data.swimLaneId === bottomLabel) return SWIMLANE_COLORS[1].text;
     }
-    return ({ start: '#22c55e', end: '#ef4444', decision: '#f59e0b', subprocess: '#2dd4bf' }[n.data?.nodeType as string] || '#3b82f6');
-  }, [swimLanes]);
+    return ({
+      start: '#22c55e',
+      end: '#ef4444',
+      decision: '#f59e0b',
+      subprocess: '#2dd4bf'
+    }[n.data?.nodeType as string] || '#3b82f6');
+  }, []);
 
   return (
     <div ref={wrapper} style={{ width: '100%', height: '100%', position: 'relative' }}>

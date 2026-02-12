@@ -40,16 +40,13 @@ function serialize(nodes: Node<FlowNodeData>[], edges: Edge[]) {
   };
 }
 
-// v5: assign swim lane by Y position within lane boundaries
-function assignSwimLanes(nodes: Node<FlowNodeData>[], lanes: SwimLane[], laneBoundaries: number[]): Node<FlowNodeData>[] {
-  if (lanes.length === 0) return nodes.map(n => ({ ...n, data: { ...n.data, swimLaneId: undefined } }));
+// v5.1: assign swim lane (2-lane: A주체 / B주체) by Y position
+function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerY: number, topLabel: string, bottomLabel: string): Node<FlowNodeData>[] {
+  if (dividerY === 0) return nodes.map(n => ({ ...n, data: { ...n.data, swimLaneId: undefined } }));
   return nodes.map(n => {
     const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
     const centerY = n.position.y + dims.height / 2;
-    let laneId = lanes[lanes.length - 1]?.id;
-    for (let i = 0; i < laneBoundaries.length; i++) {
-      if (centerY < laneBoundaries[i]) { laneId = lanes[i]?.id; break; }
-    }
+    const laneId = centerY < dividerY ? topLabel : bottomLabel;
     return { ...n, data: { ...n.data, swimLaneId: laneId } };
   });
 }
@@ -82,18 +79,12 @@ interface AppStore {
 
   contextMenu: ContextMenuState; showContextMenu: (m: ContextMenuState) => void; hideContextMenu: () => void;
   metaEditTarget: MetaEditTarget | null; openMetaEdit: (target: MetaEditTarget) => void; closeMetaEdit: () => void;
-  // v5: multi swim lanes
-  swimLanes: SwimLane[];
-  laneBoundaries: number[];
-  addSwimLane: (label: string) => void;
-  removeSwimLane: (id: string) => void;
-  updateSwimLaneLabel: (id: string, label: string) => void;
-  setLaneBoundaries: (b: number[]) => void;
-  // v5 compat shims
-  swimLaneDividerY: number;
-  swimLaneLabels: { top: string; bottom: string };
-  setSwimLaneDividerY: (y: number) => void;
-  setSwimLaneLabels: (labels: { top: string; bottom: string }) => void;
+  // v5.1: 2-lane swim lane system
+  dividerY: number;
+  topLabel: string;
+  bottomLabel: string;
+  setDividerY: (y: number) => void;
+  setTopBottomLabels: (top: string, bottom: string) => void;
   // Clipboard
   clipboard: { nodes: Node<FlowNodeData>[]; edges: Edge[] } | null;
   copySelected: () => void; pasteClipboard: () => void; deleteSelected: () => void;
@@ -119,7 +110,7 @@ export const useStore = create<AppStore>((set, get) => ({
   processContext: null,
   setProcessContext: (ctx) => {
     const init = makeInitialNodes();
-    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed') });
+    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerY: 0, topLabel: 'A 주체', bottomLabel: 'B 주체' });
   },
   nodes: [], edges: [], selectedNodeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
@@ -136,8 +127,8 @@ export const useStore = create<AppStore>((set, get) => ({
   onNodesChange: (c) => {
     const nn = applyNodeChanges(c, get().nodes) as Node<FlowNodeData>[];
     const hasDrag = c.some(ch => ch.type === 'position' && (ch as any).dragging === false);
-    const { swimLanes, laneBoundaries } = get();
-    const updated = hasDrag && swimLanes.length > 0 ? assignSwimLanes(nn, swimLanes, laneBoundaries) : nn;
+    const { dividerY, topLabel, bottomLabel } = get();
+    const updated = hasDrag && dividerY > 0 ? assignSwimLanes(nn, dividerY, topLabel, bottomLabel) : nn;
     set({ nodes: updated, saveStatus: 'unsaved' });
   },
   onEdgesChange: (c) => set({ edges: applyEdgeChanges(c, get().edges), saveStatus: 'unsaved' }),
@@ -152,8 +143,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type]);
     const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', pendingEdit: true } };
     let updated = reindexByPosition([...get().nodes, node]);
-    const { swimLanes, laneBoundaries } = get();
-    if (swimLanes.length > 0) updated = assignSwimLanes(updated, swimLanes, laneBoundaries);
+    const { dividerY, topLabel, bottomLabel } = get();
+    if (dividerY > 0) updated = assignSwimLanes(updated, dividerY, topLabel, bottomLabel);
     set({ nodes: updated, saveStatus: 'unsaved', pendingEditNodeId: id });
     // v5: contextual suggest on shape add
     get().triggerContextualSuggest();
@@ -170,8 +161,8 @@ export const useStore = create<AppStore>((set, get) => ({
     if (outEdge) { newEdges = newEdges.filter(e => e.id !== outEdge.id); newEdges.push(makeEdge(afterNodeId, id)); newEdges.push(makeEdge(id, outEdge.target)); }
     else newEdges.push(makeEdge(afterNodeId, id));
     let updated = reindexByPosition([...nodes, node]);
-    const { swimLanes, laneBoundaries } = get();
-    if (swimLanes.length > 0) updated = assignSwimLanes(updated, swimLanes, laneBoundaries);
+    const { dividerY, topLabel, bottomLabel } = get();
+    if (dividerY > 0) updated = assignSwimLanes(updated, dividerY, topLabel, bottomLabel);
     set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
     get().triggerContextualSuggest();
     return id;
@@ -319,49 +310,29 @@ export const useStore = create<AppStore>((set, get) => ({
   metaEditTarget: null,
   openMetaEdit: (target) => set({ metaEditTarget: target }), closeMetaEdit: () => set({ metaEditTarget: null }),
 
-  // v5: multi swim lanes
-  swimLanes: [],
-  laneBoundaries: [],
-  addSwimLane: (label) => {
-    const { swimLanes } = get();
-    const id = generateId('lane');
-    const colorIdx = swimLanes.length % SWIMLANE_COLORS.length;
-    const lane: SwimLane = { id, label, order: swimLanes.length, color: SWIMLANE_COLORS[colorIdx].text };
-    const newLanes = [...swimLanes, lane];
-    // auto-set boundaries evenly
-    const totalH = 800;
-    const boundaries = newLanes.slice(0, -1).map((_, i) => ((i + 1) / newLanes.length) * totalH);
-    set({ swimLanes: newLanes, laneBoundaries: boundaries });
+  // v5.1: 2-lane swim lane system
+  dividerY: 400,
+  topLabel: 'A 주체',
+  bottomLabel: 'B 주체',
+  setDividerY: (y) => {
+    const updated = assignSwimLanes(get().nodes, y, get().topLabel, get().bottomLabel);
+    set({ dividerY: y, nodes: updated });
   },
-  removeSwimLane: (id) => {
-    const newLanes = get().swimLanes.filter(l => l.id !== id).map((l, i) => ({ ...l, order: i }));
-    const totalH = 800;
-    const boundaries = newLanes.length > 1 ? newLanes.slice(0, -1).map((_, i) => ((i + 1) / newLanes.length) * totalH) : [];
-    set({ swimLanes: newLanes, laneBoundaries: boundaries });
+  setTopBottomLabels: (top, bottom) => {
+    const updated = assignSwimLanes(get().nodes, get().dividerY, top, bottom);
+    set({ topLabel: top, bottomLabel: bottom, nodes: updated });
   },
-  updateSwimLaneLabel: (id, label) => {
-    set({ swimLanes: get().swimLanes.map(l => l.id === id ? { ...l, label } : l) });
-  },
-  setLaneBoundaries: (b) => {
-    const updated = assignSwimLanes(get().nodes, get().swimLanes, b);
-    set({ laneBoundaries: b, nodes: updated });
-  },
-  // v5 compat: map old divider to 2-lane system
-  swimLaneDividerY: 0,
-  swimLaneLabels: { top: 'A 주체', bottom: 'B 주체' },
-  setSwimLaneDividerY: () => { },
-  setSwimLaneLabels: () => { },
 
   // Clipboard
   clipboard: null,
   copySelected: () => { const { nodes, edges } = get(); const sel = nodes.filter(n => n.selected && n.data.nodeType !== 'start'); if (!sel.length) return; const ids = new Set(sel.map(n => n.id)); set({ clipboard: { nodes: JSON.parse(JSON.stringify(sel)), edges: JSON.parse(JSON.stringify(edges.filter(e => ids.has(e.source) && ids.has(e.target)))) } }); },
   pasteClipboard: () => {
-    const { clipboard, nodes, edges, swimLanes, laneBoundaries } = get(); if (!clipboard?.nodes.length) return; get().pushHistory();
+    const { clipboard, nodes, edges, dividerY, topLabel, bottomLabel } = get(); if (!clipboard?.nodes.length) return; get().pushHistory();
     const idMap: Record<string, string> = {};
     const nn = clipboard.nodes.map(n => { const nid = generateId(n.data.nodeType); idMap[n.id] = nid; return { ...n, id: nid, selected: true, position: { x: n.position.x + 40, y: n.position.y + 40 }, data: { ...n.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } }; });
     const ne = clipboard.edges.map(e => makeEdge(idMap[e.source] || e.source, idMap[e.target] || e.target, (e.label as string) || undefined));
     let u = reindexByPosition([...nodes.map(n => ({ ...n, selected: false })), ...nn]);
-    if (swimLanes.length > 0) u = assignSwimLanes(u, swimLanes, laneBoundaries);
+    if (dividerY > 0) u = assignSwimLanes(u, dividerY, topLabel, bottomLabel);
     set({ nodes: u, edges: [...edges, ...ne], saveStatus: 'unsaved' });
   },
   deleteSelected: () => {
@@ -394,28 +365,45 @@ export const useStore = create<AppStore>((set, get) => ({
     return { ok: force || !issues.length, issues };
   },
   exportFlow: () => {
-    const { processContext, nodes, edges, swimLanes, laneBoundaries } = get();
+    const { processContext, nodes, edges, dividerY, topLabel, bottomLabel } = get();
     const { nodes: sn, edges: se } = serialize(nodes, edges);
-    return JSON.stringify({ processContext, nodes: sn, edges: se, swimLanes, laneBoundaries }, null, 2);
+    return JSON.stringify({
+      processContext,
+      nodes: sn,
+      edges: se,
+      dividerY,
+      topLabel,
+      bottomLabel,
+      // backward compat
+      swimLanes: dividerY > 0 ? [
+        { id: 'lane-top', label: topLabel, order: 0, color: SWIMLANE_COLORS[0].text },
+        { id: 'lane-bottom', label: bottomLabel, order: 1, color: SWIMLANE_COLORS[1].text }
+      ] : [],
+      laneBoundaries: dividerY > 0 ? [dividerY] : []
+    }, null, 2);
   },
   importFlow: (json) => {
     try {
       const d = JSON.parse(json); if (!d.nodes) return;
       const ns: Node<FlowNodeData>[] = d.nodes.map((n: any) => ({ id: n.id, type: n.type, position: n.position || { x: 0, y: 0 }, draggable: true, data: { label: n.label, nodeType: n.type, inputLabel: n.inputLabel, outputLabel: n.outputLabel, systemName: n.systemName, duration: n.duration, category: n.category || 'as_is', swimLaneId: n.swimLaneId } }));
       const es: Edge[] = (d.edges || []).map((e: any) => makeEdge(e.source, e.target, e.label || undefined, undefined, e.sourceHandle || undefined, e.targetHandle || undefined));
-      // backward compat: old divider format → new multi-lane
-      let lanes = d.swimLanes || [];
-      let boundaries = d.laneBoundaries || [];
-      if (d.swimLaneDividerY && d.swimLaneDividerY > 0 && !lanes.length) {
-        const topLabel = d.swimLaneLabels?.top || 'A 주체';
-        const bottomLabel = d.swimLaneLabels?.bottom || 'B 주체';
-        lanes = [
-          { id: 'lane-top', label: topLabel, order: 0, color: SWIMLANE_COLORS[0].text },
-          { id: 'lane-bottom', label: bottomLabel, order: 1, color: SWIMLANE_COLORS[1].text },
-        ];
-        boundaries = [d.swimLaneDividerY];
+      // New format
+      let divY = d.dividerY || 0;
+      let topLbl = d.topLabel || 'A 주체';
+      let botLbl = d.bottomLabel || 'B 주체';
+      // backward compat: old multi-lane format → new 2-lane
+      if (!divY && d.swimLanes?.length === 2 && d.laneBoundaries?.length === 1) {
+        divY = d.laneBoundaries[0];
+        topLbl = d.swimLanes[0]?.label || 'A 주체';
+        botLbl = d.swimLanes[1]?.label || 'B 주체';
       }
-      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, swimLanes: lanes, laneBoundaries: boundaries });
+      // backward compat: very old divider format
+      if (!divY && d.swimLaneDividerY && d.swimLaneDividerY > 0) {
+        divY = d.swimLaneDividerY;
+        topLbl = d.swimLaneLabels?.top || 'A 주체';
+        botLbl = d.swimLaneLabels?.bottom || 'B 주체';
+      }
+      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerY: divY, topLabel: topLbl, bottomLabel: botLbl });
     } catch (e) { console.error('Import failed:', e); }
   },
   loadFromLocalStorage: () => { const j = localStorage.getItem('pm-v5-save'); if (j) { get().importFlow(j); return true; } return false; },
