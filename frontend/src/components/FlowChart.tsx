@@ -185,10 +185,10 @@ function FlowCanvas() {
 
   // v5.1: minimap node color with 2-lane swim lane awareness
   const minimapNodeColor = useCallback((n: any) => {
-    const { dividerY, topLabel, bottomLabel } = useStore.getState();
-    if (dividerY > 0 && n.data?.swimLaneId) {
-      if (n.data.swimLaneId === topLabel) return SWIMLANE_COLORS[0].text;
-      if (n.data.swimLaneId === bottomLabel) return SWIMLANE_COLORS[1].text;
+    const { dividerYs, swimLaneLabels } = useStore.getState();
+    if (dividerYs.length > 0 && n.data?.swimLaneId) {
+      if (n.data.swimLaneId === swimLaneLabels[0]) return SWIMLANE_COLORS[0].text;
+      if (n.data.swimLaneId === swimLaneLabels[1]) return SWIMLANE_COLORS[1].text;
     }
     return ({
       start: '#22c55e',

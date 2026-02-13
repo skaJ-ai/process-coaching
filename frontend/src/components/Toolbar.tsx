@@ -10,8 +10,8 @@ export default function Toolbar() {
   const saveStatus = useStore(s => s.saveStatus);
   const lastSaved = useStore(s => s.lastSaved);
   const nodes = useStore(s => s.nodes);
-  const dividerY = useStore(s => s.dividerY);
-  const setDividerY = useStore(s => s.setDividerY);
+  const dividerYs = useStore(s => s.dividerYs);
+  const setDividerYs = useStore(s => s.setDividerYs);
   const toggleGuide = useStore(s => s.toggleGuide);
 
 
@@ -20,10 +20,10 @@ export default function Toolbar() {
   const sc = nodes.filter(n => n.data.nodeType === 'subprocess').length;
   const savedLabel = lastSaved ? `저장: ${new Date(lastSaved).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : '';
   const statusDot = { unsaved: '#ef4444', draft: '#f59e0b', complete: '#22c55e' }[saveStatus];
-  const laneActive = dividerY > 0;
+  const laneActive = dividerYs.length > 0;
 
   const handleToggleLane = () => {
-    setDividerY(laneActive ? 0 : 400);
+    setDividerYs(laneActive ? [] : [400]);
   };
 
   return (
