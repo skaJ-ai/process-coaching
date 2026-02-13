@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
-import httpx, json, os, logging, time
+import httpx, json, os, logging, time, asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,6 +13,13 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
 USE_MOCK = os.getenv("USE_MOCK", "auto")
+
+# LLM 연결 풀 및 캐시 관리
+_http_client: Optional[httpx.AsyncClient] = None
+_llm_available: Optional[bool] = None
+_llm_check_time: float = 0
+_llm_cache_ttl: float = 300  # 5분마다 재확인
+_llm_lock = asyncio.Lock()
 
 class FlowNode(BaseModel):
     id: str; type: str; label: str; position: dict = Field(default_factory=lambda:{"x":0,"y":0})
@@ -173,39 +180,104 @@ def describe_flow(nodes, edges):
 
     return "\n".join(lines)
 
-_llm_available: Optional[bool] = None
+async def get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0))
+    return _http_client
+
 async def check_llm():
-    global _llm_available
-    if USE_MOCK == "true": _llm_available = False; return False
-    if USE_MOCK == "false": _llm_available = True; return True
-    if _llm_available is not None: return _llm_available
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as c:
-            r = await c.get(f"{LLM_BASE_URL}/models")
-            if r.status_code != 200: logger.error(f"LLM check failed: {r.status_code} {r.text}")
-            _llm_available = r.status_code == 200
-    except Exception as e: logger.error(f"LLM check error: {e}"); _llm_available = False
-    return _llm_available
+    """LLM 연결 상태 확인 (캐시 + 5분 TTL + 재시도)"""
+    global _llm_available, _llm_check_time
+
+    if USE_MOCK == "true": return False
+    if USE_MOCK == "false": return True
+
+    async with _llm_lock:
+        now = time.time()
+        # 캐시가 유효하면 기존 값 반환
+        if _llm_available is not None and (now - _llm_check_time) < _llm_cache_ttl:
+            return _llm_available
+
+        # 캐시 만료 또는 처음 확인: LLM 상태 체크
+        for attempt in range(3):
+            try:
+                client = await get_http_client()
+                r = await client.get(f"{LLM_BASE_URL}/models", timeout=5.0)
+                if r.status_code == 200:
+                    _llm_available = True
+                    _llm_check_time = now
+                    logger.info("LLM 연결 성공")
+                    return True
+                else:
+                    logger.warning(f"LLM 상태 확인 실패: {r.status_code}")
+            except Exception as e:
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(f"LLM 연결 시도 {attempt + 1}/3 실패: {e}. {wait_time}초 후 재시도...")
+                if attempt < 2:
+                    await asyncio.sleep(wait_time)
+
+        _llm_available = False
+        _llm_check_time = now
+        logger.error("LLM 연결 불가 (3회 재시도 모두 실패)")
+        return False
 
 async def call_llm(system_prompt, user_message):
-    if not await check_llm(): return None
-    try:
-        start_time = time.time()
-        async with httpx.AsyncClient(timeout=60.0) as c:
-            r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000})
-            r.raise_for_status(); content = r.json()["choices"][0]["message"]["content"]
-            elapsed = time.time() - start_time; logger.info(f"LLM response time: {elapsed:.2f}s")
-            if "<think>" in content: content = content.split("</think>")[-1]
-            if "```json" in content: content = content.split("```json")[1].split("```")[0]
-            elif "```" in content: content = content.split("```")[1].split("```")[0]
+    """LLM 호출 (재시도 로직 포함)"""
+    if not await check_llm():
+        return None
+
+    client = await get_http_client()
+    payload = {
+        "model": LLM_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 2000
+    }
+
+    for attempt in range(3):
+        try:
+            start_time = time.time()
+            r = await client.post(f"{LLM_BASE_URL}/chat/completions", json=payload, timeout=60.0)
+            r.raise_for_status()
+            content = r.json()["choices"][0]["message"]["content"]
+            elapsed = time.time() - start_time
+            logger.info(f"LLM 응답 시간: {elapsed:.2f}초")
+
+            if "<think>" in content:
+                content = content.split("</think>")[-1]
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
             try:
                 return json.loads(content.strip())
             except json.JSONDecodeError:
                 import re
                 match = re.search(r'\{.*\}', content, re.DOTALL)
-                if match: return json.loads(match.group())
+                if match:
+                    return json.loads(match.group())
                 raise
-    except Exception as e: logger.error(f"LLM error: {e}"); return None
+        except asyncio.TimeoutError:
+            wait_time = 2 ** attempt
+            logger.warning(f"LLM 타임아웃 (시도 {attempt + 1}/3). {wait_time}초 후 재시도...")
+            if attempt < 2:
+                await asyncio.sleep(wait_time)
+        except httpx.HTTPStatusError as e:
+            logger.error(f"LLM HTTP 오류: {e.status_code} {e.response.text}")
+            return None
+        except Exception as e:
+            wait_time = 2 ** attempt
+            logger.warning(f"LLM 요청 실패 (시도 {attempt + 1}/3): {e}. {wait_time}초 후 재시도...")
+            if attempt < 2:
+                await asyncio.sleep(wait_time)
+
+    logger.error("LLM 호출 실패 (3회 재시도 모두 실패)")
+    return None
 
 REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치입니다.
 
@@ -538,6 +610,15 @@ async def analyze_pdd(req: ReviewRequest):
 async def health():
     llm = await check_llm()
     return {"status":"ok","version":"5.0","llm_connected":llm,"mode":"live" if llm else "mock"}
+
+@app.on_event("shutdown")
+async def shutdown():
+    """앱 종료 시 HTTP 클라이언트 정리"""
+    global _http_client
+    if _http_client:
+        await _http_client.aclose()
+        _http_client = None
+        logger.info("HTTP 클라이언트 종료")
 
 if __name__ == "__main__":
     import uvicorn
