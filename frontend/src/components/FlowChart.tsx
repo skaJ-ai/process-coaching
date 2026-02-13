@@ -11,27 +11,29 @@ import HelpGuide from './HelpGuide';
 import { SWIMLANE_COLORS } from '../constants';
 
 function SwimLaneOverlay() {
-  const dividerY = useStore(s => s.dividerY);
-  const setDividerY = useStore(s => s.setDividerY);
-  const topLabel = useStore(s => s.topLabel);
-  const bottomLabel = useStore(s => s.bottomLabel);
-  const setTopBottomLabels = useStore(s => s.setTopBottomLabels);
+  const dividerYs = useStore(s => s.dividerYs);
+  const swimLaneLabels = useStore(s => s.swimLaneLabels);
+  const setDividerYs = useStore(s => s.setDividerYs);
+  const setSwimLaneLabels = useStore(s => s.setSwimLaneLabels);
+  const addDividerY = useStore(s => s.addDividerY);
+  const removeDividerY = useStore(s => s.removeDividerY);
   const rfInstance = useReactFlow();
-  const [editingLabel, setEditingLabel] = React.useState<'top' | 'bottom' | null>(null);
+  const [editingIdx, setEditingIdx] = React.useState<number | null>(null);
   const [tempLabel, setTempLabel] = React.useState('');
 
-  if (dividerY === 0) return null;
+  if (dividerYs.length === 0) return null;
 
-  const handleDividerDrag = (e: React.MouseEvent) => {
+  const handleDividerDrag = (index: number, initialY: number) => (e: React.MouseEvent) => {
     e.preventDefault();
     const startFlowY = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY }).y;
-    const initialDividerY = dividerY;
 
     const move = (ev: MouseEvent) => {
       const currentFlowY = rfInstance.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }).y;
       const delta = currentFlowY - startFlowY;
-      const newY = initialDividerY + delta;
-      setDividerY(Math.max(100, Math.min(newY, 2000)));
+      const newY = Math.max(100, Math.min(initialY + delta, 2000));
+      const newYs = [...dividerYs];
+      newYs[index] = newY;
+      setDividerYs(newYs);
     };
 
     const up = () => {
@@ -43,160 +45,53 @@ function SwimLaneOverlay() {
     document.addEventListener('mouseup', up);
   };
 
-  const handleLabelClick = (type: 'top' | 'bottom') => {
-    setEditingLabel(type);
-    setTempLabel(type === 'top' ? topLabel : bottomLabel);
+  const handleLabelChange = (index: number, newLabel: string) => {
+    const newLabels = [...swimLaneLabels];
+    newLabels[index] = newLabel;
+    setSwimLaneLabels(newLabels);
   };
 
-  const handleLabelSave = (type: 'top' | 'bottom') => {
-    if (tempLabel.trim()) {
-      if (type === 'top') {
-        setTopBottomLabels(tempLabel, bottomLabel);
-      } else {
-        setTopBottomLabels(topLabel, tempLabel);
-      }
-    }
-    setEditingLabel(null);
-  };
+  const laneCount = dividerYs.length + 1;
+  const sortedDividerYs = [...dividerYs].sort((a, b) => a - b);
 
   return (
     <>
-      {/* Divider line (non-draggable, visual only) */}
-      <div
-        style={{
-          position: 'absolute',
-          left: -10000,
-          width: 20000,
-          top: dividerY - 1.5,
-          height: 3,
-          borderTop: '3px dashed #94a3b8',
-          pointerEvents: 'none',
-          zIndex: 5,
-          opacity: 0.6,
-        }}
-      />
+      {sortedDividerYs.map((divY, idx) => (
+        <React.Fragment key={`divider-${idx}`}>
+          {/* Divider line */}
+          <div style={{ position: 'absolute', left: -10000, width: 20000, top: divY - 1.5, height: 3, borderTop: '3px dashed #94a3b8', pointerEvents: 'none', zIndex: 5, opacity: 0.6 }} />
 
-      {/* Right-side drag handle */}
-      <div
-        style={{
-          position: 'absolute',
-          right: 20,
-          top: dividerY - 30,
-          width: 40,
-          height: 60,
-          background: 'rgba(148, 163, 184, 0.15)',
-          border: '2px solid #94a3b8',
-          borderRadius: '8px',
-          cursor: 'row-resize',
-          pointerEvents: 'auto',
-          zIndex: 6,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'background 0.2s',
-        }}
-        onMouseDown={handleDividerDrag}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(148, 163, 184, 0.15)';
-        }}
-      >
-        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 'bold' }}>⋮⋮</span>
-      </div>
+          {/* Drag handle */}
+          <div style={{ position: 'absolute', right: 20, top: divY - 30, width: 40, height: 60, background: 'rgba(148, 163, 184, 0.15)', border: '2px solid #94a3b8', borderRadius: '8px', cursor: 'row-resize', pointerEvents: 'auto', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseDown={handleDividerDrag(idx, divY)} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(148, 163, 184, 0.15)'; }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 'bold' }}>⋮⋮</span>
+          </div>
 
-      {/* Top Label */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 20,
-          top: dividerY - 50,
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#94a3b8',
-          background: 'rgba(15,23,41,0.85)',
-          padding: '4px 12px',
-          borderRadius: '6px',
-          border: '1px solid rgba(148, 163, 184, 0.2)',
-          pointerEvents: 'auto',
-          zIndex: 6,
-          cursor: editingLabel === 'top' ? 'text' : 'pointer',
-        }}
-        onClick={() => editingLabel !== 'top' && handleLabelClick('top')}
-      >
-        {editingLabel === 'top' ? (
-          <input
-            autoFocus
-            type="text"
-            value={tempLabel}
-            onChange={(e) => setTempLabel(e.target.value)}
-            onBlur={() => handleLabelSave('top')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLabelSave('top');
-              if (e.key === 'Escape') setEditingLabel(null);
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: 13,
-              fontWeight: 600,
-              outline: 'none',
-              width: '100%',
-              fontFamily: 'inherit',
-            }}
-          />
-        ) : (
-          topLabel
-        )}
-      </div>
+          {/* Remove button */}
+          {dividerYs.length > 1 && <button onClick={() => removeDividerY(dividerYs.indexOf(divY))} style={{ position: 'absolute', right: 70, top: divY - 25, width: 24, height: 24, borderRadius: '4px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.5)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6 }}>×</button>}
+        </React.Fragment>
+      ))}
 
-      {/* Bottom Label */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 20,
-          top: dividerY + 20,
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#94a3b8',
-          background: 'rgba(15,23,41,0.85)',
-          padding: '4px 12px',
-          borderRadius: '6px',
-          border: '1px solid rgba(148, 163, 184, 0.2)',
-          pointerEvents: 'auto',
-          zIndex: 6,
-          cursor: editingLabel === 'bottom' ? 'text' : 'pointer',
-        }}
-        onClick={() => editingLabel !== 'bottom' && handleLabelClick('bottom')}
-      >
-        {editingLabel === 'bottom' ? (
-          <input
-            autoFocus
-            type="text"
-            value={tempLabel}
-            onChange={(e) => setTempLabel(e.target.value)}
-            onBlur={() => handleLabelSave('bottom')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLabelSave('bottom');
-              if (e.key === 'Escape') setEditingLabel(null);
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: 13,
-              fontWeight: 600,
-              outline: 'none',
-              width: '100%',
-              fontFamily: 'inherit',
-            }}
-          />
-        ) : (
-          bottomLabel
-        )}
-      </div>
+      {/* Labels for each lane */}
+      {Array.from({ length: laneCount }).map((_, laneIdx) => {
+        const prevY = laneIdx === 0 ? -Infinity : sortedDividerYs[laneIdx - 1];
+        const nextY = laneIdx === dividerYs.length ? Infinity : sortedDividerYs[laneIdx];
+        const midY = prevY === -Infinity ? nextY - 80 : nextY === Infinity ? prevY + 60 : (prevY + nextY) / 2;
+
+        return (
+          <div key={`label-${laneIdx}`} style={{ position: 'absolute', left: 20, top: midY - 10, fontSize: 13, fontWeight: 600, color: '#94a3b8', background: 'rgba(15,23,41,0.85)', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(148, 163, 184, 0.2)', pointerEvents: 'auto', zIndex: 6, cursor: editingIdx === laneIdx ? 'text' : 'pointer' }} onClick={() => { setEditingIdx(laneIdx); setTempLabel(swimLaneLabels[laneIdx]); }}>
+            {editingIdx === laneIdx ? (
+              <input autoFocus type="text" value={tempLabel} onChange={(e) => setTempLabel(e.target.value)} onBlur={() => { handleLabelChange(laneIdx, tempLabel); setEditingIdx(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { handleLabelChange(laneIdx, tempLabel); setEditingIdx(null); } if (e.key === 'Escape') setEditingIdx(null); }} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 13, fontWeight: 600, outline: 'none', width: '80px', fontFamily: 'inherit' }} />
+            ) : (
+              swimLaneLabels[laneIdx]
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add divider button */}
+      {dividerYs.length < 3 && (
+        <button onClick={() => addDividerY(sortedDividerYs[sortedDividerYs.length - 1] + 200)} style={{ position: 'absolute', right: 20, bottom: 20, width: 36, height: 36, borderRadius: '6px', background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.5)', color: '#93c5fd', cursor: 'pointer', fontSize: 18, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 6 }}>+</button>
+      )}
     </>
   );
 }
@@ -242,6 +137,8 @@ function FlowCanvas() {
   const hideCM = useStore(s => s.hideContextMenu);
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
   const setSel = useStore(s => s.setSelectedNodeId);
+  const setSelEdge = useStore(s => s.setSelectedEdgeId);
+  const selectedEdgeId = useStore(s => s.selectedEdgeId);
   const undo = useStore(s => s.undo);
   const redo = useStore(s => s.redo);
   const saveDraft = useStore(s => s.saveDraft);
@@ -305,13 +202,14 @@ function FlowCanvas() {
     <div ref={wrapper} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Toolbar />
       <ReactFlow
-        nodes={nodes} edges={edges}
+        nodes={nodes} edges={edges.map(e => e.id === selectedEdgeId ? { ...e, style: { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' } } : { ...e, style: { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined } })}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         nodeTypes={nodeTypes} edgeTypes={memoEdgeTypes}
         multiSelectionKeyCode="Shift"
         connectionRadius={30}
-        onPaneClick={() => { hideCM(); setSel(null); }}
-        onNodeClick={(_e, n) => setSel(n.id)}
+        onPaneClick={() => { hideCM(); setSel(null); setSelEdge(null); }}
+        onNodeClick={(_e, n) => { setSel(n.id); setSelEdge(null); }}
+        onEdgeClick={(_e, edge) => { setSelEdge(edge.id); setSel(null); }}
         onEdgeDoubleClick={(_e, edge) => { const l = prompt('엣지 라벨:', (edge.label as string) || ''); if (l !== null) updateEdgeLabel(edge.id, l); }}
         onNodeContextMenu={(e, n) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, nodeId: n.id }); }}
         onEdgeContextMenu={(e, edge) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, edgeId: edge.id }); }}

@@ -53,6 +53,8 @@ export interface L7ReportItem {
   issues: L7Issue[];
   rewriteSuggestion?: string;
   encouragement?: string;
+  llm_failed?: boolean;
+  warning?: string;
 }
 
 // ─── Node Change History ───

@@ -19,6 +19,11 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
 
   return (
     <div className="rounded-lg overflow-hidden" style={{ background: sc.bg, border: `1px solid ${sc.border}`, cursor: 'pointer' }} onClick={() => setFocusNodeId(item.nodeId)}>
+      {item.llm_failed && item.warning && (
+        <div className="px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+          <div className="text-xs text-yellow-300">{item.warning}</div>
+        </div>
+      )}
       <div className="flex items-center gap-2 px-3 py-2" onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}>
         <span style={{ color: sc.color, fontSize: 14 }}>{sc.icon}</span>
         <span className="text-xs font-medium text-slate-300 flex-1 truncate">{item.nodeLabel}</span>

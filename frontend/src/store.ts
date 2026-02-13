@@ -40,14 +40,25 @@ function serialize(nodes: Node<FlowNodeData>[], edges: Edge[]) {
   };
 }
 
-// v5.1: assign swim lane (2-lane: A주체 / B주체) by Y position
-function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerY: number, topLabel: string, bottomLabel: string): Node<FlowNodeData>[] {
-  if (dividerY === 0) return nodes.map(n => ({ ...n, data: { ...n.data, swimLaneId: undefined } }));
+// v5.2: assign swim lane (multi-lane: up to 4 lanes) by Y position
+function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerYs: number[], labels: string[]): Node<FlowNodeData>[] {
+  if (dividerYs.length === 0 || labels.length === 0) return nodes.map(n => ({ ...n, data: { ...n.data, swimLaneId: undefined } }));
+
+  const sortedDividers = [...dividerYs].sort((a, b) => a - b);
+
   return nodes.map(n => {
     const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
     const centerY = n.position.y + dims.height / 2;
-    const laneId = centerY < dividerY ? topLabel : bottomLabel;
-    return { ...n, data: { ...n.data, swimLaneId: laneId } };
+
+    let laneIndex = 0;
+    for (let i = 0; i < sortedDividers.length; i++) {
+      if (centerY >= sortedDividers[i]) {
+        laneIndex = i + 1;
+      }
+    }
+    laneIndex = Math.min(laneIndex, labels.length - 1);
+
+    return { ...n, data: { ...n.data, swimLaneId: labels[laneIndex] } };
   });
 }
 
@@ -55,6 +66,7 @@ interface AppStore {
   processContext: ProcessContext | null; setProcessContext: (ctx: ProcessContext, onReady?: () => void) => void;
   nodes: Node<FlowNodeData>[]; edges: Edge[];
   selectedNodeId: string | null; setSelectedNodeId: (id: string | null) => void;
+  selectedEdgeId: string | null; setSelectedEdgeId: (id: string | null) => void;
   setNodes: (n: Node<FlowNodeData>[]) => void; setEdges: (e: Edge[]) => void;
   onNodesChange: (c: NodeChange[]) => void; onEdgesChange: (c: EdgeChange[]) => void; onConnect: (c: Connection) => void;
   addShape: (type: ShapeType, label: string, position: { x: number; y: number }) => string;
@@ -79,12 +91,13 @@ interface AppStore {
 
   contextMenu: ContextMenuState; showContextMenu: (m: ContextMenuState) => void; hideContextMenu: () => void;
   metaEditTarget: MetaEditTarget | null; openMetaEdit: (target: MetaEditTarget) => void; closeMetaEdit: () => void;
-  // v5.1: 2-lane swim lane system
-  dividerY: number;
-  topLabel: string;
-  bottomLabel: string;
-  setDividerY: (y: number) => void;
-  setTopBottomLabels: (top: string, bottom: string) => void;
+  // v5.2: multi-lane swim lane system (up to 4 lanes)
+  dividerYs: number[];
+  swimLaneLabels: string[];
+  setDividerYs: (ys: number[]) => void;
+  setSwimLaneLabels: (labels: string[]) => void;
+  addDividerY: (y: number) => void;
+  removeDividerY: (index: number) => void;
   // Clipboard
   clipboard: { nodes: Node<FlowNodeData>[]; edges: Edge[] } | null;
   copySelected: () => void; pasteClipboard: () => void; deleteSelected: () => void;
@@ -122,7 +135,7 @@ export const useStore = create<AppStore>((set, get) => ({
   processContext: null,
   setProcessContext: (ctx, onReady?: () => void) => {
     const init = makeInitialNodes();
-    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerY: 0, topLabel: 'A 주체', bottomLabel: 'B 주체' });
+    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerYs: [], swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'] });
     // 환영 메시지 추가
     setTimeout(() => {
       get().addMessage({
@@ -133,8 +146,9 @@ export const useStore = create<AppStore>((set, get) => ({
       onReady?.();
     }, 300);
   },
-  nodes: [], edges: [], selectedNodeId: null,
+  nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+  setSelectedEdgeId: (id) => set({ selectedEdgeId: id }),
   focusNodeId: null, setFocusNodeId: (id) => set({ focusNodeId: id }),
   forceComplete: () => {
     const { nodes, edges, processContext } = get();
@@ -149,8 +163,8 @@ export const useStore = create<AppStore>((set, get) => ({
     get().updateUserActivity();
     const nn = applyNodeChanges(c, get().nodes) as Node<FlowNodeData>[];
     const hasDrag = c.some(ch => ch.type === 'position' && (ch as any).dragging === false);
-    const { dividerY, topLabel, bottomLabel } = get();
-    const updated = hasDrag && dividerY > 0 ? assignSwimLanes(nn, dividerY, topLabel, bottomLabel) : nn;
+    const { dividerYs, swimLaneLabels } = get();
+    const updated = hasDrag && dividerYs.length > 0 ? assignSwimLanes(nn, dividerYs, swimLaneLabels) : nn;
     set({ nodes: updated, saveStatus: 'unsaved' });
   },
   onEdgesChange: (c) => {
@@ -174,8 +188,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type]);
     const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', pendingEdit: true } };
     let updated = reindexByPosition([...get().nodes, node]);
-    const { dividerY, topLabel, bottomLabel } = get();
-    if (dividerY > 0) updated = assignSwimLanes(updated, dividerY, topLabel, bottomLabel);
+    const { dividerYs, swimLaneLabels } = get();
+    if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, saveStatus: 'unsaved', pendingEditNodeId: id });
     // v5.2: proactive coaching triggers
     setTimeout(() => {
@@ -198,8 +212,8 @@ export const useStore = create<AppStore>((set, get) => ({
     if (outEdge) { newEdges = newEdges.filter(e => e.id !== outEdge.id); newEdges.push(makeEdge(afterNodeId, id)); newEdges.push(makeEdge(id, outEdge.target)); }
     else newEdges.push(makeEdge(afterNodeId, id));
     let updated = reindexByPosition([...nodes, node]);
-    const { dividerY, topLabel, bottomLabel } = get();
-    if (dividerY > 0) updated = assignSwimLanes(updated, dividerY, topLabel, bottomLabel);
+    const { dividerYs, swimLaneLabels } = get();
+    if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
     get().triggerContextualSuggest();
     return id;
@@ -387,29 +401,39 @@ export const useStore = create<AppStore>((set, get) => ({
   metaEditTarget: null,
   openMetaEdit: (target) => set({ metaEditTarget: target }), closeMetaEdit: () => set({ metaEditTarget: null }),
 
-  // v5.1: 2-lane swim lane system
-  dividerY: 400,
-  topLabel: 'A 주체',
-  bottomLabel: 'B 주체',
-  setDividerY: (y) => {
-    const updated = assignSwimLanes(get().nodes, y, get().topLabel, get().bottomLabel);
-    set({ dividerY: y, nodes: updated });
+  // v5.2: multi-lane swim lane system (up to 4 lanes)
+  dividerYs: [],
+  swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'],
+  setDividerYs: (ys) => {
+    const clamped = ys.slice(0, 3).filter(y => y > 0);
+    const updated = assignSwimLanes(get().nodes, clamped, get().swimLaneLabels);
+    set({ dividerYs: clamped, nodes: updated });
   },
-  setTopBottomLabels: (top, bottom) => {
-    const updated = assignSwimLanes(get().nodes, get().dividerY, top, bottom);
-    set({ topLabel: top, bottomLabel: bottom, nodes: updated });
+  setSwimLaneLabels: (labels) => {
+    const updated = assignSwimLanes(get().nodes, get().dividerYs, labels);
+    set({ swimLaneLabels: labels, nodes: updated });
+  },
+  addDividerY: (y) => {
+    if (get().dividerYs.length < 3) {
+      const newYs = [...get().dividerYs, y];
+      get().setDividerYs(newYs);
+    }
+  },
+  removeDividerY: (index) => {
+    const newYs = get().dividerYs.filter((_, i) => i !== index);
+    get().setDividerYs(newYs);
   },
 
   // Clipboard
   clipboard: null,
   copySelected: () => { const { nodes, edges } = get(); const sel = nodes.filter(n => n.selected && n.data.nodeType !== 'start'); if (!sel.length) return; const ids = new Set(sel.map(n => n.id)); set({ clipboard: { nodes: JSON.parse(JSON.stringify(sel)), edges: JSON.parse(JSON.stringify(edges.filter(e => ids.has(e.source) && ids.has(e.target)))) } }); },
   pasteClipboard: () => {
-    const { clipboard, nodes, edges, dividerY, topLabel, bottomLabel } = get(); if (!clipboard?.nodes.length) return; get().pushHistory();
+    const { clipboard, nodes, edges, dividerYs, swimLaneLabels } = get(); if (!clipboard?.nodes.length) return; get().pushHistory();
     const idMap: Record<string, string> = {};
     const nn = clipboard.nodes.map(n => { const nid = generateId(n.data.nodeType); idMap[n.id] = nid; return { ...n, id: nid, selected: true, position: { x: n.position.x + 40, y: n.position.y + 40 }, data: { ...n.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } }; });
     const ne = clipboard.edges.map(e => makeEdge(idMap[e.source] || e.source, idMap[e.target] || e.target, (e.label as string) || undefined));
     let u = reindexByPosition([...nodes.map(n => ({ ...n, selected: false })), ...nn]);
-    if (dividerY > 0) u = assignSwimLanes(u, dividerY, topLabel, bottomLabel);
+    if (dividerYs.length > 0) u = assignSwimLanes(u, dividerYs, swimLaneLabels);
     set({ nodes: u, edges: [...edges, ...ne], saveStatus: 'unsaved' });
   },
   deleteSelected: () => {
