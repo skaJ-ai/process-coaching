@@ -652,9 +652,10 @@ export const useStore = create<AppStore>((set, get) => ({
   checkSwimLaneNeed: () => {
     const { nodes, dividerY, addMessage, _lastCoachingTrigger } = get();
     if (_lastCoachingTrigger['swimLane']) return; // 1회만 발화
+    const now = Date.now();
     const processCount = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType)).length;
     if (processCount >= 6 && dividerY === 0) {
-      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: Date.now() } });
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
