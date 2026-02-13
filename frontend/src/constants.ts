@@ -1,6 +1,6 @@
 import { NodeCategory } from './types';
 
-export const API_BASE_URL = 'http://localhost:8002/api';
+export const API_BASE_URL = '/api';
 
 export const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {
   process: { width: 280, height: 60 },

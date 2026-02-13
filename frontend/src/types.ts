@@ -42,6 +42,7 @@ export interface L7Issue {
   message: string;
   suggestion?: string;
   friendlyTag?: string;
+  reasoning?: string;
 }
 
 export interface L7ReportItem {
