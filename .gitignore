@@ -1,0 +1,16 @@
+# Dependencies
+.frontend/node_modules
+.idea
+
+# Lock files (optional - add if team prefers not to commit)
+.frontend/package-lock.json
+
+# IDE & Editor
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
