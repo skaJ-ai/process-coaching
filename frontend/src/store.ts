@@ -466,21 +466,20 @@ export const useStore = create<AppStore>((set, get) => ({
     return { ok: force || !issues.length, issues };
   },
   exportFlow: () => {
-    const { processContext, nodes, edges, dividerY, topLabel, bottomLabel } = get();
+    const { processContext, nodes, edges, dividerYs, swimLaneLabels } = get();
     const { nodes: sn, edges: se } = serialize(nodes, edges);
     return JSON.stringify({
       processContext,
       nodes: sn,
       edges: se,
-      dividerY,
-      topLabel,
-      bottomLabel,
+      dividerYs,
+      swimLaneLabels,
       // backward compat
-      swimLanes: dividerY > 0 ? [
-        { id: 'lane-top', label: topLabel, order: 0, color: SWIMLANE_COLORS[0].text },
-        { id: 'lane-bottom', label: bottomLabel, order: 1, color: SWIMLANE_COLORS[1].text }
+      swimLanes: dividerYs.length > 0 ? [
+        { id: 'lane-top', label: swimLaneLabels[0], order: 0, color: SWIMLANE_COLORS[0].text },
+        { id: 'lane-bottom', label: swimLaneLabels[1], order: 1, color: SWIMLANE_COLORS[1].text }
       ] : [],
-      laneBoundaries: dividerY > 0 ? [dividerY] : []
+      laneBoundaries: dividerYs
     }, null, 2);
   },
   importFlow: (json) => {
@@ -504,7 +503,7 @@ export const useStore = create<AppStore>((set, get) => ({
         topLbl = d.swimLaneLabels?.top || 'A 주체';
         botLbl = d.swimLaneLabels?.bottom || 'B 주체';
       }
-      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerY: divY, topLabel: topLbl, bottomLabel: botLbl });
+      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divY > 0 ? [divY] : [], swimLaneLabels: [topLbl, botLbl] });
     } catch (e) { console.error('Import failed:', e); }
   },
   loadFromLocalStorage: () => { const j = localStorage.getItem('pm-v5-save'); if (j) { get().importFlow(j); return true; } return false; },
@@ -650,11 +649,11 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   checkSwimLaneNeed: () => {
-    const { nodes, dividerY, addMessage, _lastCoachingTrigger } = get();
+    const { nodes, dividerYs, addMessage, _lastCoachingTrigger } = get();
     if (_lastCoachingTrigger['swimLane']) return; // 1회만 발화
     const now = Date.now();
     const processCount = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType)).length;
-    if (processCount >= 6 && dividerY === 0) {
+    if (processCount >= 6 && dividerYs.length === 0) {
       set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
