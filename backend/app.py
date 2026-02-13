@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
-import httpx, json, os, logging
+import httpx, json, os, logging, time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -190,9 +190,11 @@ async def check_llm():
 async def call_llm(system_prompt, user_message):
     if not await check_llm(): return None
     try:
-        async with httpx.AsyncClient(timeout=None) as c:
+        start_time = time.time()
+        async with httpx.AsyncClient(timeout=60.0) as c:
             r = await c.post(f"{LLM_BASE_URL}/chat/completions", json={"model": LLM_MODEL, "messages": [{"role":"system","content":system_prompt},{"role":"user","content":user_message}], "temperature": 0.7, "max_tokens": 2000})
             r.raise_for_status(); content = r.json()["choices"][0]["message"]["content"]
+            elapsed = time.time() - start_time; logger.info(f"LLM response time: {elapsed:.2f}s")
             if "<think>" in content: content = content.split("</think>")[-1]
             if "```json" in content: content = content.split("```json")[1].split("```")[0]
             elif "```" in content: content = content.split("```")[1].split("```")[0]
