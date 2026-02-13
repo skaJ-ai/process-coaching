@@ -242,6 +242,8 @@ function FlowCanvas() {
   const hideCM = useStore(s => s.hideContextMenu);
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
   const setSel = useStore(s => s.setSelectedNodeId);
+  const setSelEdge = useStore(s => s.setSelectedEdgeId);
+  const selectedEdgeId = useStore(s => s.selectedEdgeId);
   const undo = useStore(s => s.undo);
   const redo = useStore(s => s.redo);
   const saveDraft = useStore(s => s.saveDraft);
@@ -305,13 +307,14 @@ function FlowCanvas() {
     <div ref={wrapper} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Toolbar />
       <ReactFlow
-        nodes={nodes} edges={edges}
+        nodes={nodes} edges={edges.map(e => e.id === selectedEdgeId ? { ...e, style: { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' } } : { ...e, style: { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined } })}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         nodeTypes={nodeTypes} edgeTypes={memoEdgeTypes}
         multiSelectionKeyCode="Shift"
         connectionRadius={30}
-        onPaneClick={() => { hideCM(); setSel(null); }}
-        onNodeClick={(_e, n) => setSel(n.id)}
+        onPaneClick={() => { hideCM(); setSel(null); setSelEdge(null); }}
+        onNodeClick={(_e, n) => { setSel(n.id); setSelEdge(null); }}
+        onEdgeClick={(_e, edge) => { setSelEdge(edge.id); setSel(null); }}
         onEdgeDoubleClick={(_e, edge) => { const l = prompt('엣지 라벨:', (edge.label as string) || ''); if (l !== null) updateEdgeLabel(edge.id, l); }}
         onNodeContextMenu={(e, n) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, nodeId: n.id }); }}
         onEdgeContextMenu={(e, edge) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, edgeId: edge.id }); }}

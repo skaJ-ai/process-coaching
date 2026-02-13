@@ -55,6 +55,7 @@ interface AppStore {
   processContext: ProcessContext | null; setProcessContext: (ctx: ProcessContext, onReady?: () => void) => void;
   nodes: Node<FlowNodeData>[]; edges: Edge[];
   selectedNodeId: string | null; setSelectedNodeId: (id: string | null) => void;
+  selectedEdgeId: string | null; setSelectedEdgeId: (id: string | null) => void;
   setNodes: (n: Node<FlowNodeData>[]) => void; setEdges: (e: Edge[]) => void;
   onNodesChange: (c: NodeChange[]) => void; onEdgesChange: (c: EdgeChange[]) => void; onConnect: (c: Connection) => void;
   addShape: (type: ShapeType, label: string, position: { x: number; y: number }) => string;
@@ -133,8 +134,9 @@ export const useStore = create<AppStore>((set, get) => ({
       onReady?.();
     }, 300);
   },
-  nodes: [], edges: [], selectedNodeId: null,
+  nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
+  setSelectedEdgeId: (id) => set({ selectedEdgeId: id }),
   focusNodeId: null, setFocusNodeId: (id) => set({ focusNodeId: id }),
   forceComplete: () => {
     const { nodes, edges, processContext } = get();
