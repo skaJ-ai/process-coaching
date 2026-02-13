@@ -196,7 +196,13 @@ async def call_llm(system_prompt, user_message):
             if "<think>" in content: content = content.split("</think>")[-1]
             if "```json" in content: content = content.split("```json")[1].split("```")[0]
             elif "```" in content: content = content.split("```")[1].split("```")[0]
-            return json.loads(content.strip())
+            try:
+                return json.loads(content.strip())
+            except json.JSONDecodeError:
+                import re
+                match = re.search(r'\{.*\}', content, re.DOTALL)
+                if match: return json.loads(match.group())
+                raise
     except Exception as e: logger.error(f"LLM error: {e}"); return None
 
 REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치입니다.
@@ -462,8 +468,8 @@ async def first_shape_welcome(req: ContextualSuggestRequest):
             "quickQueries": r.get('quickQueries', [])
         }
     return {
-        "text": f"👋 좋은 시작입니다! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.",
-        "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?"]
+        "text": f"👋 좋은 시작입니다! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요.",
+        "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"]
     }
 
 @app.post("/api/analyze-pdd")

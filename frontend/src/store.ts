@@ -52,7 +52,7 @@ function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerY: number, topLabel
 }
 
 interface AppStore {
-  processContext: ProcessContext | null; setProcessContext: (ctx: ProcessContext) => void;
+  processContext: ProcessContext | null; setProcessContext: (ctx: ProcessContext, onReady?: () => void) => void;
   nodes: Node<FlowNodeData>[]; edges: Edge[];
   selectedNodeId: string | null; setSelectedNodeId: (id: string | null) => void;
   setNodes: (n: Node<FlowNodeData>[]) => void; setEdges: (e: Edge[]) => void;
@@ -120,7 +120,7 @@ interface AppStore {
 
 export const useStore = create<AppStore>((set, get) => ({
   processContext: null,
-  setProcessContext: (ctx) => {
+  setProcessContext: (ctx, onReady?: () => void) => {
     const init = makeInitialNodes();
     set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerY: 0, topLabel: 'A 주체', bottomLabel: 'B 주체' });
     // 환영 메시지 추가
@@ -130,6 +130,7 @@ export const useStore = create<AppStore>((set, get) => ({
         text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n왼쪽 도구 모음에서 단계를 추가하거나, 아래에 궁금한 점을 물어보세요.`,
         quickQueries: ['어떻게 시작하면 좋을까요?', '일반적인 단계는 뭐가 있나요?', '예외 처리는 어떻게 표현하나요?']
       });
+      onReady?.();
     }, 300);
   },
   nodes: [], edges: [], selectedNodeId: null,
@@ -263,10 +264,11 @@ export const useStore = create<AppStore>((set, get) => ({
     } catch { set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status } } : n) }); return null; }
   },
   validateAllNodes: async () => {
-    const { nodes, addMessage, setLoadingMessage } = get();
+    const { nodes, addMessage, setLoadingMessage, loadingState } = get();
     const targets = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
     if (!targets.length) { addMessage({ id: generateId('msg'), role: 'bot', text: '검증할 노드가 없습니다.', timestamp: Date.now() }); return; }
-    set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0 } });
+    const newCount = (loadingState.requestCount || 0) + 1;
+    set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0, requestCount: newCount } });
 
     // Parallel Execution (Batch 4)
     const BATCH_SIZE = 4;
@@ -285,7 +287,9 @@ export const useStore = create<AppStore>((set, get) => ({
         }
       });
     }
-    set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } });
+    const ls = get().loadingState;
+    const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+    set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
     const fail = items.filter(r => !r.pass).length;
@@ -313,14 +317,15 @@ export const useStore = create<AppStore>((set, get) => ({
   undo: () => { const { history: h, historyIndex: i } = get(); if (i <= 0) return; set({ nodes: h[i - 1].nodes, edges: h[i - 1].edges, historyIndex: i - 1 }); },
   redo: () => { const { history: h, historyIndex: i } = get(); if (i >= h.length - 1) return; set({ nodes: h[i + 1].nodes, edges: h[i + 1].edges, historyIndex: i + 1 }); },
 
-  messages: [], loadingState: { active: false, message: '', startTime: 0, elapsed: 0 },
+  messages: [], loadingState: { active: false, message: '', startTime: 0, elapsed: 0, requestCount: 0 },
   addMessage: (m) => set(s => ({ messages: [...s.messages, m] })),
   setLoadingMessage: (m) => set(s => ({ loadingState: { ...s.loadingState, message: m } })),
 
   sendChat: async (msg) => {
-    const { processContext: ctx, nodes, edges, addMessage } = get();
+    const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
     addMessage({ id: generateId('msg'), role: 'user', text: msg, timestamp: Date.now() });
-    set({ loadingState: { active: true, message: '응답 생성 중...', startTime: Date.now(), elapsed: 0 } });
+    const newCount = (loadingState.requestCount || 0) + 1;
+    set({ loadingState: { active: true, message: '응답 생성 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     try {
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
@@ -339,11 +344,16 @@ export const useStore = create<AppStore>((set, get) => ({
         quickQueries: ['다시 시도']
       });
     }
-    finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
+    finally {
+      const ls = get().loadingState;
+      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
+    }
   },
   requestReview: async () => {
-    const { processContext: ctx, nodes, edges, addMessage } = get();
-    set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0 } });
+    const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
+    const newCount = (loadingState.requestCount || 0) + 1;
+    set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     addMessage({ id: generateId('msg'), role: 'user', text: '🔍 플로우 분석 요청', timestamp: Date.now() });
     try {
       const { nodes: sn, edges: se } = serialize(nodes, edges);
@@ -363,7 +373,11 @@ export const useStore = create<AppStore>((set, get) => ({
         quickQueries: ['🔍 플로우 분석 다시 시도']
       });
     }
-    finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
+    finally {
+      const ls = get().loadingState;
+      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
+    }
   },
 
 
@@ -547,7 +561,7 @@ export const useStore = create<AppStore>((set, get) => ({
         if (r.ok) {
           const d = await r.json();
           if (d.text) {
-            addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: d.text, quickQueries: d.quickQueries || [] });
+            addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: d.text, quickQueries: d.quickQueries || [], dismissible: true });
           }
         }
       } catch { /* silent */ }
@@ -568,7 +582,8 @@ export const useStore = create<AppStore>((set, get) => ({
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: `🔗 ${orphans.length}개의 노드가 연결되지 않았어요: ${orphanLabels.join(', ')}. 어느 단계 이후에 실행되는지 연결해주시면 플로우가 더 명확해질 거예요.`,
-        quickQueries: ['연결 구조를 어떻게 정하면 좋을까요?']
+        quickQueries: ['연결 구조를 어떻게 정하면 좋을까요?'],
+        dismissible: true
       });
     }
   },
@@ -584,7 +599,8 @@ export const useStore = create<AppStore>((set, get) => ({
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '✨ 플로우의 기본 구조가 완성된 것 같아요! 이제 각 단계의 L7 라벨을 다듬거나 L7 검증을 실행해보시겠어요?',
-        quickQueries: ['L7 검증 실행', '라벨 다듬기 팁 주세요']
+        quickQueries: ['L7 검증 실행', '라벨 다듬기 팁 주세요'],
+        dismissible: true
       });
     }
   },
@@ -602,7 +618,8 @@ export const useStore = create<AppStore>((set, get) => ({
         addMessage({
           id: generateId('msg'), role: 'bot', timestamp: Date.now(),
           text: `💭 분기점 "${node.data.label}"의 연결선에 조건을 표시하면 더 명확해질 수 있어요. 예: [예], [아니오], [예외] 등으로 라벨을 추가해보세요.`,
-          quickQueries: ['분기 라벨링 예시 보기']
+          quickQueries: ['분기 라벨링 예시 보기'],
+          dismissible: true
         });
       }
     }
@@ -617,7 +634,8 @@ export const useStore = create<AppStore>((set, get) => ({
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
-        quickQueries: ['수영레인 설정 방법']
+        quickQueries: ['수영레인 설정 방법'],
+        dismissible: true
       });
     }
   },
@@ -630,7 +648,8 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, l7Success: Date.now() } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: '🎉 모든 단계가 L7 표준을 준수하고 있어요! 멋진 프로세스 설계입니다. 이제 검수나 공유를 진행하실 준비가 완료되었습니다.'
+        text: '🎉 모든 단계가 L7 표준을 준수하고 있어요! 멋진 프로세스 설계입니다. 이제 검수나 공유를 진행하실 준비가 완료되었습니다.',
+        dismissible: true
       });
     }
   },

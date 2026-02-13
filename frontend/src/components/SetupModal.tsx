@@ -37,9 +37,16 @@ export default function SetupModal() {
         try {
           const json = ev.target?.result as string;
           const data = JSON.parse(json);
-          if (data.processContext) { setCtx(data.processContext); setTimeout(() => importFlow(json), 100); }
-          else alert('유효하지 않은 파일입니다.');
-        } catch { alert('파일을 읽을 수 없습니다.'); }
+          if (!data.processContext) {
+            alert('유효하지 않은 파일입니다.\n\nprocessContext 필드가 필요합니다.');
+            return;
+          }
+          if (!data.processContext.l4 || !data.processContext.l5 || !data.processContext.processName) {
+            alert('유효하지 않은 파일입니다.\n\nL4, L5, processName 필드가 모두 필요합니다.');
+            return;
+          }
+          setCtx(data.processContext, () => importFlow(json));
+        } catch (e) { alert(`파일을 읽을 수 없습니다.\n\n${e instanceof Error ? e.message : '알 수 없는 오류'}`); }
       };
       reader.readAsText(file);
     };
@@ -108,9 +115,12 @@ export default function SetupModal() {
             </select>
           </div>}
         </div>
-        <button onClick={handleStart} disabled={!ok} className="w-full mt-6 px-4 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
-          프로세스 드로잉 시작 →
-        </button>
+        <div>
+          <button onClick={handleStart} disabled={!ok} className="w-full mt-6 px-4 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed">
+            프로세스 드로잉 시작 →
+          </button>
+          {!ok && <p className="text-xs text-slate-500 mt-2 text-center">3개 항목을 모두 선택해주세요</p>}
+        </div>
       </div>
     </div>
   );

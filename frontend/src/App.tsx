@@ -35,6 +35,7 @@ export default function App() {
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      useStore.getState().updateUserActivity();
       if (e.ctrlKey && e.shiftKey && e.key === 'A') {
         e.preventDefault();
         const pw = prompt('관리자 비밀번호:');

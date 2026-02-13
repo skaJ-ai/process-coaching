@@ -71,6 +71,7 @@ export interface ChatMessage {
   l7Report?: L7ReportItem[];
   quickQueries?: string[];
   timestamp: number;
+  dismissible?: boolean;
 }
 
 // ─── Flow Node Data ───
@@ -147,6 +148,7 @@ export interface LoadingState {
   message: string;
   startTime: number;
   elapsed: number;
+  requestCount?: number;
 }
 
 // ─── Save State ───
