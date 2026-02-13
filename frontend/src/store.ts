@@ -281,7 +281,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, addMessage, setLoadingMessage, loadingState } = get();
     const targets = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
     if (!targets.length) { addMessage({ id: generateId('msg'), role: 'bot', text: '검증할 노드가 없습니다.', timestamp: Date.now() }); return; }
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0, requestCount: newCount } });
 
     // Parallel Execution (Batch 4)
@@ -338,7 +338,7 @@ export const useStore = create<AppStore>((set, get) => ({
   sendChat: async (msg) => {
     const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
     addMessage({ id: generateId('msg'), role: 'user', text: msg, timestamp: Date.now() });
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '응답 생성 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     try {
       const { nodes: sn, edges: se } = serialize(nodes, edges);
@@ -366,7 +366,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   requestReview: async () => {
     const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     addMessage({ id: generateId('msg'), role: 'user', text: '🔍 플로우 분석 요청', timestamp: Date.now() });
     try {
