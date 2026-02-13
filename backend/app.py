@@ -323,22 +323,57 @@ FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는
 PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
 
 
-def mock_validate(label):
-    """Mock L7 validation with gentle, suggestive feedback"""
-    need_specificity = ["처리한다","진행한다","관리한다","확인한다","검토한다"]
+def mock_validate(label, llm_failed=False):
+    """Rule-based L7 validation - used when LLM fails or for backup verification"""
     issues = []
 
-    for v in need_specificity:
+    # R-01: Length validation
+    if len(label.strip()) < 4:
+        issues.append({
+            "ruleId": "R-01",
+            "severity": "warning",
+            "friendlyTag": "길이 부족",
+            "message": "라벨이 너무 짧아서 내용을 충분히 표현하지 못할 수 있어요",
+            "suggestion": "좀 더 자세하게 표현해보세요",
+            "reasoning": "명확한 라벨은 제3자가 정확히 이해할 수 있도록 도와줍니다"
+        })
+
+    if len(label.strip()) > 100:
+        issues.append({
+            "ruleId": "R-02",
+            "severity": "warning",
+            "friendlyTag": "길이 초과",
+            "message": "라벨이 너무 길면 핵심이 흐릿해질 수 있어요",
+            "suggestion": "핵심만 간결하게 표현해보세요",
+            "reasoning": "간결한 표현이 플로우 전체의 가독성을 높입니다"
+        })
+
+    # R-03: Vague verb check
+    vague_verbs = ["처리한다","진행한다","관리한다","확인한다","검토한다","대응한다","지원한다"]
+    for v in vague_verbs:
         if v in label:
             issues.append({
                 "ruleId": "R-03",
                 "severity": "warning",
                 "friendlyTag": "구체화 권장",
                 "message": f"'{v}' 대신 더 구체적인 동사를 사용하면 명확해질 수 있어요",
-                "suggestion": "예: 조회한다, 입력한다, 저장한다, 승인한다 등",
+                "suggestion": "예: 조회한다, 입력한다, 저장한다, 승인한다, 반려한다 등",
                 "reasoning": "구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다"
             })
+            break
 
+    # R-04: Parentheses/System name in label
+    if "(" in label or ")" in label or "[" in label or "]" in label:
+        issues.append({
+            "ruleId": "R-04",
+            "severity": "warning",
+            "friendlyTag": "시스템명 분리",
+            "message": "시스템명은 라벨이 아닌 노드 메타데이터로 관리하면 더 깔끔합니다",
+            "suggestion": "라벨: '송금 요청하다', 메타: 시스템명 '회계시스템'",
+            "reasoning": "라벨과 시스템명을 분리하면 프로세스 로직이 명확해집니다"
+        })
+
+    # R-15: Formal ending check (반말 형식)
     if not label.strip().endswith("다") and not label.strip().endswith("다."):
         issues.append({
             "ruleId": "R-15",
@@ -353,14 +388,20 @@ def mock_validate(label):
     score = 90 if has_critical and not issues else 70 if has_critical else 50
     encouragement = "잘 작성하셨어요!" if not issues else "좋은 시작입니다. 조금만 더 다듬으면 완벽해요!"
 
-    return {
+    result = {
         "pass": has_critical,
         "score": score,
-        "confidence": "medium",
+        "confidence": "low" if llm_failed else "medium",
         "issues": issues,
         "rewriteSuggestion": None,
         "encouragement": encouragement
     }
+
+    if llm_failed:
+        result["llm_failed"] = True
+        result["warning"] = "⚠️ AI 분석이 불가능해 표준 가이드라인으로 검증했습니다. 정확한 검토를 위해 다시 시도해보세요."
+
+    return result
 
 def mock_quick_queries(nodes, edges):
     """Generate follow-up questions in suggestive tone"""
@@ -450,7 +491,10 @@ async def chat(req: ChatRequest):
 @app.post("/api/validate-l7")
 async def validate_l7(req: ValidateL7Request):
     r = await call_llm(L7_VALIDATE, f"노드: [{req.nodeId}] {req.nodeType}\nL7: \"{req.label}\"\n컨텍스트: {req.context}")
-    return r or mock_validate(req.label)
+    if r:
+        return r
+    logger.warning(f"LLM validation failed for node {req.nodeId}: {req.label}, using rule-based validation")
+    return mock_validate(req.label, llm_failed=True)
 
 
 
