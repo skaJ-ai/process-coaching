@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Suggestion } from '../types';
 import { useStore } from '../store';
+import { detectCompoundAction } from '../utils/labelUtils';
 
 export default function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const applySuggestion = useStore(s => s.applySuggestion);
@@ -26,7 +27,18 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
     </div>
   );
 
-  const handleApply = () => { applySuggestion(suggestion); setApplied(true); };
+  const handleApply = () => {
+    if (suggestion.action === 'ADD') {
+      const label = suggestion.labelSuggestion || suggestion.summary;
+      const detection = detectCompoundAction(label);
+      if (detection.isCompound) {
+        const msg = `이 추천에는 2개의 동작이 포함되어 있어요:\n• ${detection.parts[0]}\n• ${detection.parts[1]}\n\n셰이프를 나누어 추가하는 것을 권장합니다.`;
+        alert(msg);
+      }
+    }
+    applySuggestion(suggestion);
+    setApplied(true);
+  };
   const handleApplyEdited = () => { applySuggestionWithEdit(suggestion, editText); setApplied(true); };
 
   return (
@@ -48,7 +60,12 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
           ) : action === 'DELETE' && target ? (
             <div className="text-sm font-medium" style={{ color: cfg.text }}>"{target.data.label}" 삭제</div>
           ) : !editing ? (
-            <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.summary}</div>
+            <>
+              <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.summary}</div>
+              {suggestion.labelSuggestion && (
+                <div className="text-xs text-slate-500 mt-1">셰이프 라벨: <span className="text-slate-300 font-medium">{suggestion.labelSuggestion}</span></div>
+              )}
+            </>
           ) : (
             <input value={editText} onChange={e => setEditText(e.target.value)} autoFocus
               className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"

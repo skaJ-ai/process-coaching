@@ -25,6 +25,7 @@ export interface Suggestion {
   reason: string;
   confidence?: 'high' | 'medium' | 'low';
   reasoning?: string;
+  labelSuggestion?: string;
   insertAfterNodeId?: string;
   insertBeforeNodeId?: string;
   targetNodeId?: string;

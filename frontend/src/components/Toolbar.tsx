@@ -12,6 +12,7 @@ export default function Toolbar() {
   const nodes = useStore(s => s.nodes);
   const dividerYs = useStore(s => s.dividerYs);
   const setDividerYs = useStore(s => s.setDividerYs);
+  const addDividerY = useStore(s => s.addDividerY);
   const toggleGuide = useStore(s => s.toggleGuide);
 
 
@@ -25,6 +26,15 @@ export default function Toolbar() {
   const handleToggleLane = () => {
     setDividerYs(laneActive ? [] : [400]);
   };
+  const handleAddLane = () => {
+    if (!laneActive) {
+      setDividerYs([400]);
+      return;
+    }
+    if (dividerYs.length >= 3) return;
+    const lastY = Math.max(...dividerYs);
+    addDividerY(lastY + 200);
+  };
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5"
@@ -33,8 +43,13 @@ export default function Toolbar() {
       <button onClick={redo} disabled={hi >= hl - 1} title="Ctrl+Shift+Z" className="p-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20 disabled:opacity-30">↪</button>
       <div className="w-px h-5 bg-slate-700" />
       <button onClick={handleToggleLane} className={`px-2 py-1.5 rounded-lg text-xs hover:bg-slate-600/20 ${laneActive ? 'text-blue-400' : 'text-slate-400'}`}>
-        🏊 구분선 {laneActive ? '◆' : '○'}
+        ≡ 역할 구분선 {laneActive ? 'ON' : 'OFF'}
       </button>
+      {laneActive && dividerYs.length < 3 && (
+        <button onClick={handleAddLane} className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20">
+          + 레인
+        </button>
+      )}
       <div className="w-px h-5 bg-slate-700" />
       <div className="flex items-center gap-2 px-2 text-xs text-slate-500">
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />

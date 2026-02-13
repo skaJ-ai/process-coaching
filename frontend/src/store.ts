@@ -3,6 +3,7 @@ import { Node, Edge, Connection, addEdge, MarkerType, applyNodeChanges, applyEdg
 import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult } from './types';
 import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutEngine';
 import { API_BASE_URL, SWIMLANE_COLORS, NODE_DIMENSIONS } from './constants';
+import { detectCompoundAction } from './utils/labelUtils';
 
 function makeInitialNodes(): Node<FlowNodeData>[] {
   return [
@@ -257,10 +258,32 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges } = get();
     if (afterId && !nodes.find(n => n.id === afterId)) { const e = edges.find(e => e.target === 'end'); afterId = e?.source || 'start'; }
     const st: ShapeType = s.type === 'DECISION' ? 'decision' : s.type === 'SUBPROCESS' ? 'subprocess' : 'process';
-    if (afterId) get().addShapeAfter(st, s.summary, afterId); else get().addShape(st, s.summary, { x: 300, y: 300 });
-    addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${s.summary}" 단계가 추가되었습니다.` });
+    const label = s.labelSuggestion || s.newLabel || s.summary;
+    const compound = detectCompoundAction(label);
+    const primaryLabel = compound.isCompound ? compound.parts[0] : label;
+    const secondaryLabel = compound.isCompound ? compound.parts[1] : '';
+    if (afterId) get().addShapeAfter(st, primaryLabel, afterId); else get().addShape(st, primaryLabel, { x: 300, y: 300 });
+    addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${primaryLabel}" 단계가 추가되었습니다.` });
+    if (compound.isCompound) {
+      addMessage({
+        id: generateId('msg'),
+        role: 'bot',
+        timestamp: Date.now(),
+        text: `💡 추천 문장에 동작이 2개 포함되어 있어 첫 번째 동작만 반영했어요.\n다음 셰이프를 추가해 "${secondaryLabel}"를 이어서 표현하면 L7 기준에 더 잘 맞습니다.`,
+        dismissible: true
+      });
+    }
   },
-  applySuggestionWithEdit: (s, l) => { const m = { ...s }; if (s.action === 'MODIFY') m.newLabel = l; else m.summary = l; get().applySuggestion(m); },
+  applySuggestionWithEdit: (s, l) => {
+    const m = { ...s };
+    if (s.action === 'MODIFY') {
+      m.newLabel = l;
+    } else {
+      m.summary = l;
+      m.labelSuggestion = l;
+    }
+    get().applySuggestion(m);
+  },
 
   validateNode: async (id) => {
     const { nodes, edges, processContext } = get();
@@ -297,7 +320,15 @@ export const useStore = create<AppStore>((set, get) => ({
         if (res.status === 'fulfilled' && res.value) {
           const t = batch[idx];
           const r = res.value;
-          items.push({ nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement });
+          const item = { nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement };
+          items.push(item);
+          addMessage({
+            id: generateId('msg'),
+            role: 'bot',
+            text: `🔎 "${t.data.label}" 검증 결과가 도착했어요.`,
+            l7Report: [item],
+            timestamp: Date.now()
+          });
         }
       });
     }
@@ -311,7 +342,24 @@ export const useStore = create<AppStore>((set, get) => ({
     // v5.2: celebrate if all pass
     setTimeout(() => get().celebrateL7Success(), 500);
   },
-  applyL7Rewrite: (id) => { const n = get().nodes.find(n => n.id === id); if (!n?.data.l7Rewrite) return; get().updateNodeLabel(id, n.data.l7Rewrite, 'ai'); set({ nodes: get().nodes.map(x => x.id === id ? { ...x, data: { ...x.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : x) }); },
+  applyL7Rewrite: (id) => {
+    const n = get().nodes.find(n => n.id === id);
+    if (!n?.data.l7Rewrite) return;
+    const { addMessage } = get();
+    const compound = detectCompoundAction(n.data.l7Rewrite);
+    const primaryLabel = compound.isCompound ? compound.parts[0] : n.data.l7Rewrite;
+    get().updateNodeLabel(id, primaryLabel, 'ai');
+    set({ nodes: get().nodes.map(x => x.id === id ? { ...x, data: { ...x.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : x) });
+    if (compound.isCompound) {
+      addMessage({
+        id: generateId('msg'),
+        role: 'bot',
+        timestamp: Date.now(),
+        text: `💡 AI 추천에 복수 동작이 있어 첫 동작만 적용했어요. 다음 단계로 "${compound.parts[1]}" 셰이프를 추가해 주세요.`,
+        dismissible: true
+      });
+    }
+  },
   lastAutoValidateTime: 0,
   autoValidateDebounced: () => {
     const now = Date.now();
@@ -344,7 +392,7 @@ export const useStore = create<AppStore>((set, get) => ({
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
       const d = await r.json();
-      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim());
+      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
       addMessage({
         id: generateId('msg'), role: 'bot', text: d.speech || d.message || d.guidance || '응답 실패.',
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
@@ -373,7 +421,7 @@ export const useStore = create<AppStore>((set, get) => ({
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentNodes: sn, currentEdges: se, userMessage: '프로세스 분석 + 제안', context: ctx || {} }) });
       const d = await r.json();
-      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim());
+      const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
       addMessage({
         id: generateId('msg'), role: 'bot', text: d.speech || d.message || '리뷰 완료',
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
@@ -405,7 +453,10 @@ export const useStore = create<AppStore>((set, get) => ({
   dividerYs: [],
   swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'],
   setDividerYs: (ys) => {
-    const clamped = ys.slice(0, 3).filter(y => y > 0);
+    const clamped = ys
+      .slice(0, 3)
+      .map(y => Number(y))
+      .filter(y => Number.isFinite(y));
     const updated = assignSwimLanes(get().nodes, clamped, get().swimLaneLabels);
     set({ dividerYs: clamped, nodes: updated });
   },
@@ -657,7 +708,7 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
+        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 상단 툴바의 "≡ 역할 구분선" 버튼으로 활성화할 수 있습니다.',
         quickQueries: ['수영레인 설정 방법'],
         dismissible: true
       });
@@ -681,11 +732,11 @@ export const useStore = create<AppStore>((set, get) => ({
 
 function friendlyTag(ruleId: string): string {
   const m: Record<string, string> = {
-    'R-01': '복수 동사', 'R-02': '목적어 누락', 'R-03': '금지 동사', 'R-04': '복합 동사',
-    'R-05': '위치 누락', 'R-06': '추상적 위치', 'R-07': '오프라인 대상 불명',
-    'R-08': '입력 대상 누락', 'R-09': '산출물 누락', 'R-10': '상태변화 누락', 'R-11': '완료조건 누락',
+    'R-01': '길이 부족', 'R-02': '길이 초과', 'R-03': '구체화 권장', 'R-04': '시스템명 분리',
+    'R-05': '복수 동작', 'R-06': '주어 누락', 'R-07': '목적어 누락',
+    'R-08': '기준값 누락', 'R-09': '어미 불일치', 'R-10': '맥락 부족', 'R-11': '복합문 감지',
     'R-12': '판단 기준 없음', 'R-13': '기준값 누락', 'R-14': '결과값 누락',
-    'R-15': '비표준 동사', 'R-16': '금지 동사 사용', 'R-17': '동사 치환 가능',
+    'R-15': '표준 형식', 'R-16': '구체화 권장', 'R-17': '동사 치환 가능',
   };
   return m[ruleId] || ruleId;
 }

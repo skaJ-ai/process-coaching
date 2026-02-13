@@ -127,7 +127,7 @@ def describe_flow(nodes, edges):
     # ─── Generate Rich Description ───
     lines = [
         f"[플로우 통계] 총 {total_nodes}개 노드, {total_edges}개 연결",
-        f"  구성: 시작({node_types['start']}) > 태스크({node_types['process']}) / 분기({node_types['decision']}) / 하위공정({node_types['subprocess']}) > 종료({node_types['end']})",
+        f"  구성: 시작({node_types['start']}) > 태스크({node_types['process']}) / 분기({node_types['decision']}) / L6 프로세스({node_types['subprocess']}) > 종료({node_types['end']})",
         f"  수영레인: {'사용 중' if has_swim_lanes else '미사용'}",
         f"[진행도] {phase}",
         f"[구조 상태] 시작({has_start}), 종료({has_end}), 고아({orphan_count}), 연결율({100*total_edges//max(total_nodes-1,1)}%)",
@@ -148,7 +148,7 @@ def describe_flow(nodes, edges):
         node_id = n.id if hasattr(n, 'id') else getattr(n, 'id', '?')
         node_type = getattr(n, 'nodeType', None) or (n.data.get('nodeType') if hasattr(n, 'data') else 'process')
         label = getattr(n, 'label', '') or (n.data.get('label', '') if hasattr(n, 'data') else '')
-        t = {"process":"태스크","decision":"분기","subprocess":"하위공정","start":"시작","end":"종료"}.get(node_type, node_type)
+        t = {"process":"태스크","decision":"분기","subprocess":"L6 프로세스","start":"시작","end":"종료"}.get(node_type, node_type)
 
         meta = ""
         if hasattr(n, 'systemName') and n.systemName:
@@ -288,11 +288,12 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치�
 
 응답 형식 (JSON):
 {{
-  "speech": "분석 결과를 친근하게 요약 (예: '좋은 시작입니다! 몇 가지 고려사항을 공유드릴게요')",
+  "speech": "분석 결과를 친근하게 요약 (예: '분석 결과를 공유드릴게요. 몇 가지 고려사항이 있어요.')",
   "suggestions": [
     {{
       "action": "ADD|MODIFY|DELETE",
-      "summary": "제안 내용",
+      "summary": "제안 설명(사용자 안내용)",
+      "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)",
       "reason": "왜 이것이 도움이 되는지 구체적 이유. '~하면 더 명확해질 수 있습니다' 형태",
       "confidence": "high|medium|low",
       ...
@@ -302,6 +303,8 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치�
 }}
 
 중요: 모든 제안은 제안형 어조로 작성하세요 (예: "추가하면 좋을 것 같아요", "고려해 보시겠어요?").
+- summary(설명)와 labelSuggestion(셰이프 라벨)을 반드시 분리하세요.
+- labelSuggestion은 반드시 단일 동작으로 작성하세요. "~하고, ~한다" 같은 복합문 금지.
 """
 
 COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 코치입니다.
@@ -313,14 +316,22 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
 
 응답 형식 (JSON):
 {{
-  "speech": "공감하며 답변 (예: '좋은 질문입니다. 이런 관점에서 생각해볼 수 있어요')",
-  "suggestions": [...],
+  "speech": "공감하며 답변 (예: '그 부분은 이렇게 접근해볼 수 있어요.')",
+  "suggestions": [
+    {{
+      "action": "ADD|MODIFY|DELETE",
+      "summary": "제안 설명(사용자 안내용)",
+      "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)"
+    }}
+  ],
   "quickQueries": ["다음으로 확인할 질문2~3개"]
 }}
 
 중요:
 - 모든 문장을 제안형으로 ("~하면 어떨까요?", "~를 고려해보세요")
 - 부정적 표현 회피 ("문제", "틀렸다" 대신 "개선 기회", "더 나은 방법")
+- summary(설명)와 labelSuggestion(셰이프 라벨)을 반드시 분리하세요.
+- labelSuggestion은 반드시 단일 동작으로 작성하세요. "~하고, ~한다" 같은 복합문 금지.
 """
 
 L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
@@ -329,6 +340,20 @@ L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
 {L7_GUIDE}
 
 역할: L7 라벨을 검토하고 개선 방향을 제안합니다. 비판이 아닌 코칭으로 접근하세요.
+
+[검증 규칙]
+R-01: 길이 부족 (4자 미만)
+R-02: 길이 초과 (100자 초과)
+R-03: 구체화 권장 (모호 동사)
+R-04: 시스템명 분리 (괄호/시스템명 혼입)
+R-05: 복수 동작 (한 라벨에 2개 이상의 동작)
+R-08: 기준값 누락 (decision 노드 판단 기준)
+R-15: 표준 형식 (process는 "~한다", decision은 "~인가?" 또는 "~여부")
+
+[판정 기준]
+- R-05가 있으면 pass=false
+- 나머지는 warning 중심, pass=true 유지 가능
+- score 권장: 이슈 0개=95, 1개=80, 2개=65, 3개 이상=50
 
 응답 형식 (JSON):
 {{
@@ -352,6 +377,8 @@ L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
 중요:
 - "금지", "틀렸다" 같은 부정 표현 금지. 항상 개선의 이유와 이점 설명.
 - rewriteSuggestion은 반드시 반말(~한다)로만 작성. 존댓말 절대 금지.
+- rewriteSuggestion은 단일 동작만 작성. 복합문("~하고, ~한다") 금지.
+- ruleId는 위 정의된 코드만 사용하세요.
 """
 
 CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 조용히 지켜보다가 필요한 순간 한마디 건네는 사려깊은 코치입니다.
@@ -383,7 +410,7 @@ FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는
 
 응답 형식 (JSON):
 {{
-  "greeting": "환영 인사 (예: '좋은 시작입니다! 함께 프로세스를 완성해보겠습니다')",
+  "greeting": "환영 인사 (예: '첫 단계가 추가되었네요! 함께 프로세스를 완성해보겠습니다.')",
   "processFlowExample": "일반적인 프로세스 흐름 (→로 단계를 연결)",
   "guidanceText": "이 프로세스에서 고려할 점들을 포함한 친절한 설명 (2-3문장)",
   "quickQueries": ["후속 질문1", "후속 질문2", "후속 질문3"]
@@ -395,7 +422,7 @@ FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는
 PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
 
 
-def mock_validate(label, llm_failed=False):
+def mock_validate(label, node_type="process", llm_failed=False):
     """Rule-based L7 validation - used when LLM fails or for backup verification"""
     issues = []
 
@@ -446,7 +473,10 @@ def mock_validate(label, llm_failed=False):
         })
 
     # R-15: Formal ending check (반말 형식)
-    if not label.strip().endswith("다") and not label.strip().endswith("다."):
+    normalized = label.strip()
+    decision_like = normalized.endswith("?") or "여부" in normalized
+    needs_process_ending = node_type != "decision"
+    if (needs_process_ending and not normalized.endswith("다") and not normalized.endswith("다.")) or (not needs_process_ending and not decision_like and not normalized.endswith("다") and not normalized.endswith("다.")):
         issues.append({
             "ruleId": "R-15",
             "severity": "warning",
@@ -458,7 +488,7 @@ def mock_validate(label, llm_failed=False):
 
     has_critical = len([i for i in issues if i["severity"] == "reject"]) == 0
     score = 90 if has_critical and not issues else 70 if has_critical else 50
-    encouragement = "잘 작성하셨어요!" if not issues else "좋은 시작입니다. 조금만 더 다듬으면 완벽해요!"
+    encouragement = "잘 작성하셨어요!" if not issues else "방향이 잘 잡혔어요. 조금만 더 다듬어 볼까요?"
 
     result = {
         "pass": has_critical,
@@ -505,6 +535,7 @@ def mock_review(nodes, edges):
             "action": "ADD",
             "type": "END",
             "summary": "종료 노드 추가",
+            "labelSuggestion": "종료",
             "reason": "플로우의 끝을 명확히 표시하면 완결성이 높아집니다",
             "reasoning": "프로세스의 시작과 끝이 명확하면 제3자가 전체 범위를 이해하기 쉬워집니다. HR 프로세스에서는 특히 완료 조건(예: 결과 저장, 알림)을 명시하는 것이 중요합니다.",
             "confidence": "high",
@@ -527,6 +558,7 @@ def mock_review(nodes, edges):
             "action": "ADD",
             "type": "DECISION",
             "summary": "분기점 추가 고려",
+            "labelSuggestion": "승인 여부를 판단한다",
             "reason": "승인/반려 같은 판단 지점을 추가하면 실제 프로세스에 더 가까워집니다",
             "reasoning": "HR 프로세스는 대부분 조건부 분기를 포함합니다(예: 조건 검토 → 승인/반려 결정). 5개 이상의 단계가 있는데 분기가 없다면, 예외 처리나 검토 프로세스를 추가하는 것이 좋습니다.",
             "confidence": "medium"
@@ -534,7 +566,7 @@ def mock_review(nodes, edges):
 
     # Positive framing
     tone = "긍정적" if len(suggestions) < 2 else "건설적"
-    speech = f"총 {len(nodes)}개 단계로 잘 구성되셨네요! " if len(nodes) > 2 else "좋은 시작입니다! "
+    speech = "좋은 구조예요! " if len(nodes) > 2 else "프로세스 설계를 시작해볼게요. "
 
     if suggestions:
         speech += f"{len(suggestions)}가지 개선 아이디어를 공유드릴게요."
@@ -566,7 +598,7 @@ async def validate_l7(req: ValidateL7Request):
     if r:
         return r
     logger.warning(f"LLM validation failed for node {req.nodeId}: {req.label}, using rule-based validation")
-    return mock_validate(req.label, llm_failed=True)
+    return mock_validate(req.label, req.nodeType, llm_failed=True)
 
 
 
@@ -588,7 +620,7 @@ async def first_shape_welcome(req: ContextualSuggestRequest):
             "quickQueries": r.get('quickQueries', [])
         }
     return {
-        "text": f"👋 좋은 시작입니다! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요.",
+        "text": f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요.",
         "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"]
     }
 

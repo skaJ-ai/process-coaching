@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
 
 export default function NodeDetailPanel() {
@@ -9,6 +9,8 @@ export default function NodeDetailPanel() {
   const applyRewrite = useStore(s => s.applyL7Rewrite);
   const validate = useStore(s => s.validateNode);
   const del = useStore(s => s.deleteNode);
+  const [editingRewrite, setEditingRewrite] = useState(false);
+  const [editRewriteText, setEditRewriteText] = useState('');
   const node = nodes.find(n => n.id === sel);
   if (!node || node.data.nodeType === 'start' || node.data.nodeType === 'end') return null;
   const { l7Status, l7Issues, l7Rewrite, changeHistory } = node.data;
@@ -39,8 +41,25 @@ export default function NodeDetailPanel() {
           ))}
         </div>}
         {l7Rewrite && <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
-          <div className="flex-1"><div className="text-[10px] text-green-500 font-medium mb-1">💡 AI 추천</div><div className="text-xs text-slate-300 mb-0.5 line-through opacity-50">{node.data.label}</div><div className="text-sm text-green-300 font-medium">{l7Rewrite}</div></div>
-          <button onClick={() => applyRewrite(node.id)} className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
+          {!editingRewrite ? (
+            <>
+              <div className="flex-1"><div className="text-[10px] text-green-500 font-medium mb-1">💡 AI 추천</div><div className="text-xs text-slate-300 mb-0.5 line-through opacity-50">{node.data.label}</div><div className="text-sm text-green-300 font-medium">{l7Rewrite}</div></div>
+              <div className="flex flex-col gap-1 flex-shrink-0">
+                <button onClick={() => applyRewrite(node.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
+                <button onClick={() => { setEditRewriteText(l7Rewrite || ''); setEditingRewrite(true); }} className="px-3 py-1.5 rounded-lg text-xs text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">수정</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex-1">
+                <input value={editRewriteText} onChange={e => setEditRewriteText(e.target.value)} className="w-full text-xs bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1.5 text-slate-200 focus:outline-none focus:border-green-500/50 mb-2" />
+                <div className="flex gap-1">
+                  <button onClick={() => { updateLabel(node.id, editRewriteText, 'user'); applyRewrite(node.id); setEditingRewrite(false); }} className="px-2 py-1 rounded text-[10px] font-semibold bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
+                  <button onClick={() => setEditingRewrite(false)} className="px-2 py-1 rounded text-[10px] text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">취소</button>
+                </div>
+              </div>
+            </>
+          )}
         </div>}
         {/* Change History */}
         {changeHistory && changeHistory.length > 0 && <div>

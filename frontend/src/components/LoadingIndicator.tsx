@@ -10,7 +10,13 @@ export default function LoadingIndicator() {
     return () => clearInterval(iv);
   }, [ls.active, ls.startTime]);
   if (!ls.active) return null;
-  const msg = elapsed < 5 ? ls.message : elapsed < 15 ? `${ls.message} (${elapsed}초)` : `AI가 열심히 답변을 고민 중입니다! 잠시만 기다려주세요 (${elapsed}초)`;
+  const getPhaseMsg = () => {
+    if (elapsed < 5) return '분석 중...';
+    if (elapsed < 15) return '라벨 품질을 꼼꼼히 살펴보는 중...';
+    if (elapsed < 30) return '거의 다 됐어요. 마지막 검토 중...';
+    return '조금 더 걸릴 수 있어요. 복잡한 내용을 분석하고 있어요.';
+  };
+  const msg = ls.message + ' ' + getPhaseMsg();
   const pct = Math.min(95, (elapsed / 30) * 100);
   return (
     <div className="flex items-start gap-2 animate-fade-in">

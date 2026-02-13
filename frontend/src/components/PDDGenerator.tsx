@@ -50,7 +50,7 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
     md += `## 단계별 상세\n\n`;
     for (const node of sorted) {
       const num = node.data.stepNumber || '?';
-      const typeLabel = ({ process: '태스크', decision: '판단', subprocess: '하위공정' } as any)[node.data.nodeType] || '';
+      const typeLabel = ({ process: '태스크', decision: '판단', subprocess: 'L6 프로세스' } as any)[node.data.nodeType] || '';
       const lane = swimLanes.find(l => l.id === node.data.swimLaneId);
       const catLabel = catLabels[(node.data.category || 'as_is')];
       const outEdges = edges.filter(e => e.source === node.id);
