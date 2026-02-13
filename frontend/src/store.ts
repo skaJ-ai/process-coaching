@@ -281,7 +281,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, addMessage, setLoadingMessage, loadingState } = get();
     const targets = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
     if (!targets.length) { addMessage({ id: generateId('msg'), role: 'bot', text: '검증할 노드가 없습니다.', timestamp: Date.now() }); return; }
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0, requestCount: newCount } });
 
     // Parallel Execution (Batch 4)
@@ -302,7 +302,7 @@ export const useStore = create<AppStore>((set, get) => ({
       });
     }
     const ls = get().loadingState;
-    const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+    newCount = Math.max(0, (ls.requestCount || 1) - 1);
     set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
@@ -338,7 +338,7 @@ export const useStore = create<AppStore>((set, get) => ({
   sendChat: async (msg) => {
     const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
     addMessage({ id: generateId('msg'), role: 'user', text: msg, timestamp: Date.now() });
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '응답 생성 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     try {
       const { nodes: sn, edges: se } = serialize(nodes, edges);
@@ -360,13 +360,13 @@ export const useStore = create<AppStore>((set, get) => ({
     }
     finally {
       const ls = get().loadingState;
-      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      newCount = Math.max(0, (ls.requestCount || 1) - 1);
       set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     }
   },
   requestReview: async () => {
     const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
-    const newCount = (loadingState.requestCount || 0) + 1;
+    let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     addMessage({ id: generateId('msg'), role: 'user', text: '🔍 플로우 분석 요청', timestamp: Date.now() });
     try {
@@ -389,7 +389,7 @@ export const useStore = create<AppStore>((set, get) => ({
     }
     finally {
       const ls = get().loadingState;
-      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      newCount = Math.max(0, (ls.requestCount || 1) - 1);
       set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     }
   },
@@ -652,9 +652,10 @@ export const useStore = create<AppStore>((set, get) => ({
   checkSwimLaneNeed: () => {
     const { nodes, dividerY, addMessage, _lastCoachingTrigger } = get();
     if (_lastCoachingTrigger['swimLane']) return; // 1회만 발화
+    const now = Date.now();
     const processCount = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType)).length;
     if (processCount >= 6 && dividerY === 0) {
-      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: Date.now() } });
+      set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 오른쪽 상단의 "🏊 구분선" 버튼으로 활성화할 수 있습니다.',
