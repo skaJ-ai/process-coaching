@@ -302,7 +302,7 @@ export const useStore = create<AppStore>((set, get) => ({
       });
     }
     const ls = get().loadingState;
-    const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+    newCount = Math.max(0, (ls.requestCount || 1) - 1);
     set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
@@ -360,7 +360,7 @@ export const useStore = create<AppStore>((set, get) => ({
     }
     finally {
       const ls = get().loadingState;
-      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      newCount = Math.max(0, (ls.requestCount || 1) - 1);
       set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     }
   },
@@ -389,7 +389,7 @@ export const useStore = create<AppStore>((set, get) => ({
     }
     finally {
       const ls = get().loadingState;
-      const newCount = Math.max(0, (ls.requestCount || 1) - 1);
+      newCount = Math.max(0, (ls.requestCount || 1) - 1);
       set({ loadingState: { ...ls, active: newCount > 0, requestCount: newCount } });
     }
   },
