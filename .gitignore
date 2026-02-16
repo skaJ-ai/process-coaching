@@ -1,6 +1,15 @@
 # Dependencies
-.frontend/node_modules
-.idea
+node_modules/
+frontend/node_modules/
+backend/__pycache__/
+*.pyc
+
+# Build outputs
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
 
 # Local environment files
 .env
@@ -9,10 +18,11 @@ backend/.env
 backend/environment.txt
 
 # Lock files (optional - add if team prefers not to commit)
-.frontend/package-lock.json
+frontend/package-lock.json
 
 # IDE & Editor
 .vscode
+.idea
 *.swp
 *.swo
 *~
@@ -20,6 +30,13 @@ backend/environment.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# Test/QA artifacts
+QA_ARTIFACTS/
+.chrome-pw-profile/
+
+# Claude Code
+.claude/
 
 # Keep examples tracked
 !.env.example
