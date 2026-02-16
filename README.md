@@ -56,7 +56,18 @@ npm run dev
 
 ## 환경 변수
 
-백엔드에서 사용합니다.
+백엔드 시작 시 아래 파일들을 자동으로 읽습니다(위에서 아래 순서로 확인).
+
+- `backend/.env`
+- `backend/environment.txt`
+- `.env` (프로젝트 루트)
+- `environment.txt` (프로젝트 루트)
+
+권장 방식:
+
+1. `backend/environment.txt.example`를 복사해서 `backend/environment.txt` 생성
+2. 주소/모델만 수정
+3. 백엔드 재시작
 
 - `LLM_BASE_URL` (default: `http://10.240.248.157:8533/v1`)
 - `LLM_MODEL` (default: `Qwen3-Next`)
@@ -68,9 +79,13 @@ npm run dev
 예시:
 
 ```bash
-set USE_MOCK=true
-set LLM_MODEL=Qwen3-Next
+# backend/environment.txt
+LLM_BASE_URL=http://10.240.248.157:8533/v1
+LLM_MODEL=Qwen3-Next
+USE_MOCK=auto
 ```
+
+참고: 셸에서 같은 키를 이미 설정했다면(`set LLM_BASE_URL=...`) 셸 값이 우선됩니다.
 
 ## API 요약
 

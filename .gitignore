@@ -2,6 +2,12 @@
 .frontend/node_modules
 .idea
 
+# Local environment files
+.env
+environment.txt
+backend/.env
+backend/environment.txt
+
 # Lock files (optional - add if team prefers not to commit)
 .frontend/package-lock.json
 
@@ -14,3 +20,7 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Keep examples tracked
+!.env.example
+!backend/environment.txt.example

@@ -9,18 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "clsx": "^2.1.0",
+    "dagre": "^0.8.5",
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.11.3",
-    "zustand": "^4.5.0",
-    "dagre": "^0.8.5",
-    "clsx": "^2.1.0",
-    "lucide-react": "^0.263.1"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/dagre": "^0.7.52",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
-    "@types/dagre": "^0.7.52",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",

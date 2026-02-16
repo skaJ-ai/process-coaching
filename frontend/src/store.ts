@@ -5,6 +5,21 @@ import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutE
 import { API_BASE_URL, SWIMLANE_COLORS, NODE_DIMENSIONS } from './constants';
 import { detectCompoundAction } from './utils/labelUtils';
 
+function isDebugEnabled(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage?.getItem('pm-v5-debug') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function debugTrace(event: string, payload?: Record<string, any>) {
+  if (!isDebugEnabled()) return;
+  const now = new Date().toISOString();
+  // Debug traces are intentionally opt-in through localStorage key.
+  console.debug(`[pm-v5][${now}] ${event}`, payload || {});
+}
+
 function makeInitialNodes(): Node<FlowNodeData>[] {
   return [
     { id: 'start', type: 'start', position: { x: 300, y: 40 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
@@ -176,6 +191,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   onConnect: (conn) => {
     if (!conn.source || !conn.target) return;
+    debugTrace('onConnect', { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle || null, targetHandle: conn.targetHandle || null });
     get().pushHistory();
     get().updateUserActivity();
     set({ edges: addEdge(makeEdge(conn.source, conn.target, undefined, undefined, conn.sourceHandle || undefined, conn.targetHandle || undefined), get().edges), saveStatus: 'unsaved' });
@@ -192,6 +208,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const { dividerYs, swimLaneLabels } = get();
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, saveStatus: 'unsaved', pendingEditNodeId: id });
+    debugTrace('addShape', { id, type, label, x: position.x, y: position.y, nodeCount: updated.length });
     // v5.2: proactive coaching triggers
     setTimeout(() => {
       get().checkFirstShape();
@@ -216,13 +233,16 @@ export const useStore = create<AppStore>((set, get) => ({
     const { dividerYs, swimLaneLabels } = get();
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
+    debugTrace('addShapeAfter', { id, type, label, afterNodeId, nodeCount: updated.length, edgeCount: newEdges.length });
     get().triggerContextualSuggest();
     return id;
   },
   updateNodeLabel: (id, label, source = 'user') => {
+    const prev = get().nodes.find(n => n.id === id)?.data.label;
     get().pushHistory();
     get().updateUserActivity();
     set({ nodes: get().nodes.map(n => n.id !== id ? n : { ...n, data: { ...n.data, label, pendingEdit: false, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined, changeHistory: [...(n.data.changeHistory || []), { before: n.data.label, after: label, timestamp: Date.now(), source }].slice(-10) } }), saveStatus: 'unsaved' });
+    debugTrace('updateNodeLabel', { id, before: prev || null, after: label, source });
   },
   updateNodeMeta: (id, meta) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...meta } } : n), saveStatus: 'unsaved' }); },
   setNodeCategory: (id, category) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, category } } : n), saveStatus: 'unsaved' }); },
@@ -293,12 +313,17 @@ export const useStore = create<AppStore>((set, get) => ({
     if (edges.some(e => e.source === id && e.target === id)) return null;
     set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'checking' as L7Status } } : n) });
     try {
+      debugTrace('validateNode:start', { id, label: node.data.label, type: node.data.nodeType });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const res = await fetch(`${API_BASE_URL}/validate-l7`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: id, label: node.data.label, nodeType: node.data.nodeType, context: processContext || {}, currentNodes: sn, currentEdges: se }) });
       const data = await res.json();
+      debugTrace('validateNode:success', { id, pass: !!data.pass, score: data.score ?? null, issues: (data.issues || []).length });
       set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: (data.pass ? (data.issues?.some((i: any) => i.severity === 'warning') ? 'warning' : 'pass') : 'reject') as L7Status, l7Score: data.score ?? 0, l7Issues: (data.issues || []).map((i: any) => ({ ...i, friendlyTag: i.friendlyTag || friendlyTag(i.ruleId) })), l7Rewrite: data.rewriteSuggestion || undefined } } : n) });
       return data;
-    } catch { set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status } } : n) }); return null; }
+    } catch {
+      debugTrace('validateNode:error', { id });
+      set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status } } : n) }); return null;
+    }
   },
   validateAllNodes: async () => {
     const { nodes, addMessage, setLoadingMessage, loadingState } = get();
@@ -389,10 +414,12 @@ export const useStore = create<AppStore>((set, get) => ({
     let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '응답 생성 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     try {
+      debugTrace('chat:start', { messageLength: msg.length, nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
       const d = await r.json();
       const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
+      debugTrace('chat:success', { hasText: !!(d.speech || d.message || d.guidance), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
       addMessage({
         id: generateId('msg'), role: 'bot', text: d.speech || d.message || d.guidance || '응답 실패.',
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
@@ -401,6 +428,7 @@ export const useStore = create<AppStore>((set, get) => ({
       });
     }
     catch {
+      debugTrace('chat:error');
       addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '⚠️ AI 서버와 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.\n\n문제가 지속되면 관리자에게 문의하세요.',
         quickQueries: ['다시 시도']
@@ -418,10 +446,12 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
     addMessage({ id: generateId('msg'), role: 'user', text: '🔍 플로우 분석 요청', timestamp: Date.now() });
     try {
+      debugTrace('review:start', { nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentNodes: sn, currentEdges: se, userMessage: '프로세스 분석 + 제안', context: ctx || {} }) });
       const d = await r.json();
       const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
+      debugTrace('review:success', { hasText: !!(d.speech || d.message), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
       addMessage({
         id: generateId('msg'), role: 'bot', text: d.speech || d.message || '리뷰 완료',
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
@@ -430,6 +460,7 @@ export const useStore = create<AppStore>((set, get) => ({
       });
     }
     catch {
+      debugTrace('review:error');
       addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(),
         text: '⚠️ AI 서버와 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.\n\n문제가 지속되면 관리자에게 문의하세요.',
         quickQueries: ['🔍 플로우 분석 다시 시도']
@@ -519,6 +550,7 @@ export const useStore = create<AppStore>((set, get) => ({
   exportFlow: () => {
     const { processContext, nodes, edges, dividerYs, swimLaneLabels } = get();
     const { nodes: sn, edges: se } = serialize(nodes, edges);
+    debugTrace('exportFlow', { nodeCount: sn.length, edgeCount: se.length, dividerCount: dividerYs.length });
     return JSON.stringify({
       processContext,
       nodes: sn,
@@ -555,7 +587,8 @@ export const useStore = create<AppStore>((set, get) => ({
         botLbl = d.swimLaneLabels?.bottom || 'B 주체';
       }
       set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divY > 0 ? [divY] : [], swimLaneLabels: [topLbl, botLbl] });
-    } catch (e) { console.error('Import failed:', e); }
+      debugTrace('importFlow:success', { nodeCount: ns.length, edgeCount: es.length, dividerY: divY || null });
+    } catch (e) { debugTrace('importFlow:error', { error: String(e) }); console.error('Import failed:', e); }
   },
   loadFromLocalStorage: () => { const j = localStorage.getItem('pm-v5-save'); if (j) { get().importFlow(j); return true; } return false; },
 
@@ -569,10 +602,16 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges, processContext } = get();
     set({ loadingState: { active: true, message: 'PDD 자동분석 중...', startTime: Date.now(), elapsed: 0 } });
     try {
+      debugTrace('analyzePDD:start', { nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/analyze-pdd`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: processContext || {}, currentNodes: sn, currentEdges: se }) });
-      set({ pddAnalysis: await r.json() });
-    } catch { set({ pddAnalysis: null }); }
+      const data = await r.json();
+      debugTrace('analyzePDD:success', { recommendationCount: (data?.recommendations || []).length });
+      set({ pddAnalysis: data });
+    } catch {
+      debugTrace('analyzePDD:error');
+      set({ pddAnalysis: null });
+    }
     finally { set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } }); }
   },
 
@@ -603,11 +642,13 @@ export const useStore = create<AppStore>((set, get) => ({
       if (processNodes.length < 2) return; // don't suggest with too few nodes
       try {
         const { nodes: sn, edges: se } = serialize(nodes, edges);
+        debugTrace('contextualSuggest:start', { nodeCount: sn.length, edgeCount: se.length });
         const r = await fetch(`${API_BASE_URL}/contextual-suggest`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ context: processContext || {}, currentNodes: sn, currentEdges: se }),
         });
         const d = await r.json();
+        debugTrace('contextualSuggest:success', { hasGuidance: !!(d.guidance || d.hint), quickQueries: (d.quickQueries || []).length });
         if (d.guidance || d.quickQueries?.length) {
           addMessage({
             id: generateId('msg'), role: 'bot', timestamp: Date.now(),
@@ -615,7 +656,7 @@ export const useStore = create<AppStore>((set, get) => ({
             quickQueries: d.quickQueries || [],
           });
         }
-      } catch { /* silent */ }
+      } catch { debugTrace('contextualSuggest:error'); }
     }, 8000); // Increased from 5s to 8s for more user inactivity buffer
     set({ _contextualSuggestTimer: newTimer });
   },

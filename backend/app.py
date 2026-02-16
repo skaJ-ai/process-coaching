@@ -3,12 +3,55 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
+from pathlib import Path
 import httpx, json, os, logging, time, asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = FastAPI(title="HR Process Mining v5")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+
+def _parse_env_file(path: Path) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    try:
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.lower().startswith("export "):
+                line = line[7:].strip()
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key:
+                parsed[key] = value
+    except Exception as e:
+        logger.warning(f"환경 설정 파일 로딩 실패 ({path}): {e}")
+    return parsed
+
+
+def _load_local_env_files() -> None:
+    backend_dir = Path(__file__).resolve().parent
+    candidates = [
+        backend_dir / ".env",
+        backend_dir / "environment.txt",
+        backend_dir.parent / ".env",
+        backend_dir.parent / "environment.txt",
+    ]
+    for env_path in candidates:
+        if not env_path.exists():
+            continue
+        loaded = _parse_env_file(env_path)
+        for key, value in loaded.items():
+            # 셸 환경변수로 이미 지정된 값이 있으면 우선합니다.
+            os.environ.setdefault(key, value)
+        logger.info(f"환경 설정 파일 로드 완료: {env_path}")
+
+
+_load_local_env_files()
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
