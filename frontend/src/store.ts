@@ -121,7 +121,7 @@ interface AppStore {
   saveStatus: SaveStatus; lastSaved: number | null;
   saveDraft: () => void; submitComplete: (force?: boolean) => { ok: boolean; issues: string[] };
   exportFlow: () => string; importFlow: (json: string) => void; loadFromLocalStorage: () => boolean;
-  showOnboarding: boolean; dismissOnboarding: () => void;
+  showOnboarding: boolean; hideOnboarding: () => void; dismissOnboarding: () => void; showOnboardingPanel: () => void;
   showGuide: boolean; toggleGuide: () => void;
   adminMode: boolean; toggleAdminMode: (password: string) => boolean;
   // PDD
@@ -592,7 +592,10 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   loadFromLocalStorage: () => { const j = localStorage.getItem('pm-v5-save'); if (j) { get().importFlow(j); return true; } return false; },
 
-  showOnboarding: false, dismissOnboarding: () => { localStorage.setItem('pm-v5-onboarding-dismissed', '1'); set({ showOnboarding: false }); },
+  showOnboarding: false,
+  hideOnboarding: () => set({ showOnboarding: false }),
+  dismissOnboarding: () => { localStorage.setItem('pm-v5-onboarding-dismissed', '1'); set({ showOnboarding: false }); },
+  showOnboardingPanel: () => set({ showOnboarding: true }),
   showGuide: false, toggleGuide: () => set(s => ({ showGuide: !s.showGuide })),
   adminMode: false, toggleAdminMode: (pw) => { if (pw === 'pm2025') { set({ adminMode: !get().adminMode }); return true; } return false; },
 

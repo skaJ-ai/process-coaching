@@ -9,6 +9,7 @@ import ContextMenu from './ContextMenu';
 import NodeDetailPanel from './NodeDetailPanel';
 import MetaEditModal from './MetaEditModal';
 import HelpGuide from './HelpGuide';
+import OnboardingPreview from './OnboardingPreview';
 import { SWIMLANE_COLORS } from '../constants';
 
 function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement> }) {
@@ -289,6 +290,7 @@ function FlowCanvas() {
       <ContextMenu />
       <NodeDetailPanel />
       <EmptyStateGuide />
+      <OnboardingPreview />
       {metaEditTarget && <MetaEditModal nodeId={metaEditTarget.nodeId} initial={{ inputLabel: metaEditTarget.inputLabel, outputLabel: metaEditTarget.outputLabel, systemName: metaEditTarget.systemName, duration: metaEditTarget.duration }} onSave={(id, meta) => updateNodeMeta(id, meta)} onClose={closeMetaEdit} />}
       {showGuide && <HelpGuide onClose={toggleGuide} />}
     </div>
