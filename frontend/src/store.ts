@@ -33,7 +33,7 @@ function makeEdge(source: string, target: string, label?: string, color?: string
   return {
     id: `edge-${source}-${target}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     source, target, sourceHandle: sourceHandle || undefined, targetHandle: targetHandle || undefined,
-    type: source === target ? 'selfLoop' : 'step',
+    type: source === target ? 'selfLoop' : 'smartStep',
     label: label || undefined,
     labelStyle: label ? { fill: '#e2e8f0', fontWeight: 500, fontSize: 12 } : undefined,
     labelBgStyle: label ? { fill: '#1e293b', fillOpacity: 0.9 } : undefined,

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, useViewport, useStore as useRFStore, BackgroundVariant } from 'reactflow';
+import ReactFlow, { Background, ConnectionMode, Controls, Edge, MiniMap, ReactFlowProvider, useReactFlow, useViewport, useStore as useRFStore, BackgroundVariant } from 'reactflow';
 import { createPortal } from 'react-dom';
 import 'reactflow/dist/style.css';
 import { useStore } from '../store';
@@ -239,6 +239,78 @@ function FlowCanvas() {
 
   useEffect(() => { const t = setTimeout(saveDraft, 30000); return () => clearTimeout(t); }, [nodes, edges, saveDraft]);
   const memoEdgeTypes = useMemo(() => edgeTypes, []);
+  const displayEdges = useMemo(() => {
+    const sourceGroups = new Map<string, Edge[]>();
+    for (const edge of edges) {
+      if (edge.source === edge.target) continue;
+      const key = `${edge.source}:${edge.sourceHandle || 'default'}`;
+      const group = sourceGroups.get(key);
+      if (group) group.push(edge);
+      else sourceGroups.set(key, [edge]);
+    }
+
+    const bySourceEdgeId = new Map<string, { index: number; total: number }>();
+    for (const group of sourceGroups.values()) {
+      const sorted = [...group].sort((a, b) => a.target.localeCompare(b.target));
+      sorted.forEach((edge, idx) => bySourceEdgeId.set(edge.id, { index: idx, total: sorted.length }));
+    }
+
+    return edges.map((edge) => {
+      const groupInfo = bySourceEdgeId.get(edge.id);
+      const level = groupInfo ? groupInfo.index % 3 : 0;
+      const isSelected = edge.id === selectedEdgeId;
+      const baseStyle = edge.style || {};
+
+      const enhanced = groupInfo && groupInfo.total > 1
+        ? {
+            ...edge,
+            type: edge.type === 'selfLoop' ? edge.type : 'smartStep',
+            data: {
+              ...edge.data,
+              laneOffset: groupInfo.index * 12,
+            },
+            style: {
+              ...baseStyle,
+              strokeWidth: isSelected ? 3 : 2 + level * 0.35,
+              strokeDasharray: level === 0 ? undefined : level === 1 ? '7 4' : '3 3',
+              opacity: isSelected ? 1 : 0.94,
+            },
+            zIndex: isSelected ? 20 : 10 + level,
+          }
+        : {
+            ...edge,
+            type: edge.type === 'selfLoop' ? edge.type : 'smartStep',
+            data: {
+              ...edge.data,
+              laneOffset: 0,
+            },
+            style: {
+              ...baseStyle,
+              strokeWidth: isSelected ? 3 : baseStyle.strokeWidth,
+            },
+            zIndex: isSelected ? 20 : edge.zIndex,
+          };
+
+      if (isSelected) {
+        return {
+          ...enhanced,
+          style: {
+            ...enhanced.style,
+            stroke: '#3b82f6',
+            filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))',
+          },
+        };
+      }
+
+      return {
+        ...enhanced,
+        style: {
+          ...enhanced.style,
+          filter: undefined,
+        },
+      };
+    });
+  }, [edges, selectedEdgeId]);
 
   // v5.1: minimap node color with 2-lane swim lane awareness
   const minimapNodeColor = useCallback((n: any) => {
@@ -259,11 +331,12 @@ function FlowCanvas() {
     <div ref={wrapperRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Toolbar />
       <ReactFlow
-        nodes={nodes} edges={edges.map(e => e.id === selectedEdgeId ? { ...e, style: { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' } } : { ...e, style: { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined } })}
+        nodes={nodes} edges={displayEdges}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         nodeTypes={nodeTypes} edgeTypes={memoEdgeTypes}
+        connectionMode={ConnectionMode.Loose}
         multiSelectionKeyCode="Shift"
-        connectionRadius={30}
+        connectionRadius={42}
         onPaneClick={() => { hideCM(); setSel(null); setSelEdge(null); }}
         onNodeClick={(_e, n) => { setSel(n.id); setSelEdge(null); }}
         onEdgeClick={(_e, edge) => { setSelEdge(edge.id); setSel(null); }}
@@ -276,7 +349,7 @@ function FlowCanvas() {
           showCM({ show: true, x: e.clientX, y: e.clientY, flowX: flowPos.x, flowY: flowPos.y });
         }}
         fitView fitViewOptions={{ padding: 0.3 }}
-        defaultEdgeOptions={{ type: 'step' }}
+        defaultEdgeOptions={{ type: 'smartStep' }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2} maxZoom={2} snapToGrid snapGrid={[10, 10]}
         connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}

@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, NodeProps, EdgeProps } from 'reactflow';
+import { BaseEdge, Handle, Position, NodeProps, EdgeProps, getSmoothStepPath } from 'reactflow';
 import { FlowNodeData, L7Status } from '../types';
 import { CATEGORY_COLORS } from '../constants';
 import { useStore } from '../store';
@@ -11,13 +11,13 @@ const statusMap: Record<L7Status, { color: string; badge: string }> = {
 
 const AllHandles = ({ color = '#60a5fa' }: { color?: string }) => (<>
   <Handle type="target" position={Position.Top} id="top-target" style={{ top: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Top} id="top-source" style={{ top: -7, left: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Top} id="top-source" style={{ top: -11, left: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
   <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ bottom: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Bottom} id="bottom-source" style={{ bottom: -7, left: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Bottom} id="bottom-source" style={{ bottom: -11, left: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
   <Handle type="target" position={Position.Left} id="left-target" style={{ left: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Left} id="left-source" style={{ left: -7, top: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Left} id="left-source" style={{ left: -11, top: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
   <Handle type="target" position={Position.Right} id="right-target" style={{ right: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Right} id="right-source" style={{ right: -7, top: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Right} id="right-source" style={{ right: -11, top: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
 </>);
 
 function useInlineEdit(nodeId: string, currentLabel: string, autoPending?: boolean) {
@@ -91,11 +91,24 @@ export const DecisionNode = memo(({ id, data, selected }: NodeProps<FlowNodeData
   const cat = CATEGORY_COLORS[data.category || 'as_is'];
   const defaultBg = selected ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#92400e,#78350f)';
   const bg = (data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
+  const ie = useInlineEdit(id, data.label, true);
   return (<div className="relative" style={{ width: 160, height: 160 }}>
     <AllHandles color={selected ? '#fbbf24' : '#f59e0b'} />
     {data.category && data.category !== 'as_is' && <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
-    <div className={`absolute inset-0 flex items-center justify-center ${selected ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : ''}`} style={{ clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', background: bg }}>
-      <span className="text-amber-100 text-xs font-semibold text-center px-6 leading-tight max-w-[120px]" style={{ wordBreak: 'break-all' }}>{data.label}</span>
+    <div className={`absolute inset-0 flex items-center justify-center ${selected ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : ''}`} style={{ clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', background: bg }} onDoubleClick={ie.startEdit}>
+      {ie.editing ? (
+        <textarea
+          ref={ie.textRef}
+          value={ie.editText}
+          onChange={e => ie.setEditText(e.target.value)}
+          onBlur={ie.commitEdit}
+          onKeyDown={ie.handleKeyDown}
+          className="w-[112px] bg-transparent text-amber-100 text-xs font-semibold text-center leading-tight outline-none resize-none border-b border-amber-300/50"
+          rows={Math.max(1, Math.ceil(ie.editText.length / 16))}
+        />
+      ) : (
+        <span className="text-amber-100 text-xs font-semibold text-center px-6 leading-tight max-w-[120px]" style={{ wordBreak: 'break-all' }}>{data.label}</span>
+      )}
     </div>
   </div>);
 });
@@ -120,6 +133,45 @@ export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeDa
   </div>);
 });
 SubprocessNode.displayName = 'SubprocessNode';
+
+export function SmartStepEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  markerEnd,
+  style,
+  label,
+  data,
+}: EdgeProps) {
+  const laneOffset = Number((data as any)?.laneOffset || 0);
+  const [path, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    borderRadius: 14,
+    offset: 24 + laneOffset,
+  });
+
+  return (
+    <>
+      <BaseEdge id={id} path={path} markerEnd={markerEnd as string} style={style} />
+      {label && (
+        <foreignObject x={labelX - 40} y={labelY - 12} width={80} height={24}>
+          <div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+            {label as string}
+          </div>
+        </foreignObject>
+      )}
+    </>
+  );
+}
 
 export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHandleId, targetHandleId, style, markerEnd, label }: EdgeProps) {
   // Orthogonal Polyline Self Loop: Start -> P2 -> P3 -> P4 -> End
@@ -168,4 +220,4 @@ export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHan
 }
 
 export const nodeTypes = { start: StartNode, end: EndNode, process: ProcessNode, decision: DecisionNode, subprocess: SubprocessNode };
-export const edgeTypes = { selfLoop: SelfLoopEdge };
+export const edgeTypes = { selfLoop: SelfLoopEdge, smartStep: SmartStepEdge };
