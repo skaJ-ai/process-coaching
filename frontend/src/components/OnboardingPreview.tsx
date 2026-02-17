@@ -46,28 +46,28 @@ export default function OnboardingPreview() {
   const steps = [
     {
       done: nonStartNodes.length >= 1,
-      title: '1. Add a node',
-      desc: 'Right click empty canvas and create your first process node.'
+      title: '1. 노드 1개 추가',
+      desc: '빈 캔버스에서 우클릭 후 첫 프로세스 노드를 추가해 보세요.'
     },
     {
       done: nonStartNodes.length >= 2,
-      title: '2. Add one more node',
-      desc: 'Create one additional node so that you can connect a flow.'
+      title: '2. 노드 하나 더 추가',
+      desc: '흐름 연결을 위해 노드를 1개 더 만들어 주세요.'
     },
     {
       done: edges.length >= 1,
-      title: '3. Connect nodes',
-      desc: 'Drag from source handle to target node to create one edge.'
+      title: '3. 노드 연결',
+      desc: '노드 핸들을 드래그해서 연결선(엣지)을 1개 생성하세요.'
     },
     {
       done: decisions.length === 0 ? false : hasLabeledDecision,
-      title: '4. Label a decision edge',
-      desc: 'If you add a decision, set edge labels such as Yes / No.'
+      title: '4. 분기 라벨 입력',
+      desc: 'Decision 노드를 썼다면 연결선 라벨(예/아니오 등)을 입력하세요.'
     },
     {
       done: saveStatus !== 'unsaved',
-      title: '5. Save draft',
-      desc: 'Press Ctrl+S once to confirm save flow and keyboard shortcut.'
+      title: '5. 저장 실행',
+      desc: 'Ctrl+S를 눌러 저장이 동작하는지 확인하세요.'
     }
   ];
 
@@ -75,9 +75,9 @@ export default function OnboardingPreview() {
   const progress = Math.round((doneCount / steps.length) * 100);
 
   return (
-    <div className="absolute inset-0 z-[1200] flex items-start justify-center pt-16 pointer-events-none">
+    <div className="absolute top-20 right-4 z-[1200] pointer-events-none">
       <div
-        className="w-[560px] rounded-2xl border shadow-2xl pointer-events-auto"
+        className="w-[380px] rounded-2xl border shadow-2xl pointer-events-auto"
         style={{
           borderColor: 'rgba(148,163,184,0.35)',
           background:
@@ -85,14 +85,14 @@ export default function OnboardingPreview() {
         }}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">Preview Onboarding</div>
-          <h3 className="text-lg font-bold text-slate-100 mt-1">Tool Usage Drill (Sample)</h3>
+          <div className="text-[11px] tracking-[0.16em] text-cyan-300">온보딩 미리보기</div>
+          <h3 className="text-lg font-bold text-slate-100 mt-1">툴 사용법 연습</h3>
           <p className="text-xs text-slate-300 mt-1">
-            This is a UI mock for onboarding flow. It focuses on tool operation, not domain template quality.
+            도메인 추천이 아니라 조작법 숙련에 집중한 예시 화면입니다.
           </p>
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-              <span>Progress</span>
+              <span>진행률</span>
               <span>{doneCount} / {steps.length} ({progress}%)</span>
             </div>
             <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -111,21 +111,21 @@ export default function OnboardingPreview() {
         </div>
 
         <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
-          <div className="text-xs text-slate-400">F1 opens the existing help guide.</div>
+          <div className="text-xs text-slate-400">도움말은 F1에서 열 수 있습니다.</div>
           <div className="flex items-center gap-2">
             <button
               onClick={hide}
               className="px-3 py-1.5 rounded-lg text-xs border text-slate-300 hover:bg-slate-700/45"
               style={{ borderColor: 'rgba(148,163,184,0.4)' }}
             >
-              Close
+              닫기
             </button>
             <button
               onClick={dismiss}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
               style={{ background: 'linear-gradient(90deg,#0ea5e9,#2563eb)' }}
             >
-              Do not show again
+              다시 보지 않기
             </button>
           </div>
         </div>
@@ -133,4 +133,3 @@ export default function OnboardingPreview() {
     </div>
   );
 }
-
