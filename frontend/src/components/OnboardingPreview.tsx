@@ -4,14 +4,14 @@ import { useStore } from '../store';
 type DemoItem = {
   id: string;
   label: string;
-  src: string;
+  file: string;
 };
 
 const DEMOS: DemoItem[] = [
-  { id: 'add', label: '노드 추가', src: '/onboarding/01-add-node.gif' },
-  { id: 'connect', label: '연결하기', src: '/onboarding/02-connect-nodes.gif' },
-  { id: 'label', label: '분기 라벨', src: '/onboarding/03-decision-label.gif' },
-  { id: 'save', label: '저장하기', src: '/onboarding/04-save-flow.gif' }
+  { id: 'add', label: '노드 추가', file: '01-add-node.gif' },
+  { id: 'connect', label: '연결하기', file: '02-connect-nodes.gif' },
+  { id: 'label', label: '분기 라벨', file: '03-decision-label.gif' },
+  { id: 'save', label: '저장하기', file: '04-save-flow.gif' }
 ];
 
 function Item({ done, title, desc }: { done: boolean; title: string; desc: string }) {
@@ -56,6 +56,9 @@ export default function OnboardingPreview() {
   if (!show) return null;
 
   const selectedDemo = DEMOS.find((d) => d.id === selectedDemoId) || DEMOS[0];
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const basePrefix = path.startsWith('/flowchart') ? '/flowchart/' : '/';
+  const demoSrc = `${basePrefix}onboarding/${selectedDemo.file}`;
   const nonStartNodes = nodes.filter((n) => n.data.nodeType !== 'start');
   const decisions = nodes.filter((n) => n.data.nodeType === 'decision');
   const hasLabeledDecision = decisions.some((d) => edges.some((e) => e.source === d.id && !!e.label));
@@ -128,8 +131,8 @@ export default function OnboardingPreview() {
           <div className="mt-2 rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
             {!demoLoadFailed ? (
               <img
-                key={selectedDemo.src}
-                src={selectedDemo.src}
+                key={demoSrc}
+                src={demoSrc}
                 alt={`${selectedDemo.label} 데모`}
                 className="w-full h-[128px] object-cover"
                 onError={() => setDemoLoadFailed(true)}
@@ -137,7 +140,7 @@ export default function OnboardingPreview() {
             ) : (
               <div className="h-[128px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
                 <div className="font-semibold text-slate-200">GIF 파일을 찾지 못했습니다.</div>
-                <div className="mt-1 break-all text-slate-400">경로: {selectedDemo.src}</div>
+                <div className="mt-1 break-all text-slate-400">경로: {demoSrc}</div>
                 <div className="mt-1 text-slate-400">`frontend/public/onboarding/` 아래에 GIF를 넣으면 바로 표시됩니다.</div>
               </div>
             )}
@@ -191,4 +194,3 @@ export default function OnboardingPreview() {
     </div>
   );
 }
-
