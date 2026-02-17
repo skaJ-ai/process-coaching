@@ -10,14 +10,10 @@ const statusMap: Record<L7Status, { color: string; badge: string }> = {
 };
 
 const AllHandles = ({ color = '#60a5fa' }: { color?: string }) => (<>
-  <Handle type="target" position={Position.Top} id="top-target" style={{ top: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Top} id="top-source" style={{ top: -11, left: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ bottom: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Bottom} id="bottom-source" style={{ bottom: -11, left: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Left} id="left-target" style={{ left: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Left} id="left-source" style={{ left: -11, top: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Right} id="right-target" style={{ right: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Right} id="right-source" style={{ right: -11, top: '50%', width: 22, height: 22, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Top} id="top" isConnectableStart isConnectableEnd style={{ top: -8, left: '50%', width: 16, height: 16, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 11 }} />
+  <Handle type="source" position={Position.Bottom} id="bottom" isConnectableStart isConnectableEnd style={{ bottom: -8, left: '50%', width: 16, height: 16, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 11 }} />
+  <Handle type="source" position={Position.Left} id="left" isConnectableStart isConnectableEnd style={{ left: -8, top: '50%', width: 16, height: 16, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 11 }} />
+  <Handle type="source" position={Position.Right} id="right" isConnectableStart isConnectableEnd style={{ right: -8, top: '50%', width: 16, height: 16, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 11 }} />
 </>);
 
 function useInlineEdit(nodeId: string, currentLabel: string, autoPending?: boolean) {

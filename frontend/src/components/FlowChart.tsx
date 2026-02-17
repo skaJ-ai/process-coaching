@@ -257,7 +257,7 @@ function FlowCanvas() {
 
     return edges.map((edge) => {
       const groupInfo = bySourceEdgeId.get(edge.id);
-      const level = groupInfo ? groupInfo.index % 3 : 0;
+      const patternIndex = groupInfo ? groupInfo.index % 2 : 0;
       const isSelected = edge.id === selectedEdgeId;
       const baseStyle = edge.style || {};
 
@@ -271,11 +271,11 @@ function FlowCanvas() {
             },
             style: {
               ...baseStyle,
-              strokeWidth: isSelected ? 3 : 2 + level * 0.35,
-              strokeDasharray: level === 0 ? undefined : level === 1 ? '7 4' : '3 3',
-              opacity: isSelected ? 1 : 0.94,
+              strokeWidth: isSelected ? 3 : 2,
+              strokeDasharray: patternIndex === 0 ? undefined : '7 4',
+              opacity: isSelected ? 1 : 0.9,
             },
-            zIndex: isSelected ? 20 : 10 + level,
+            zIndex: isSelected ? 20 : 10 + patternIndex,
           }
         : {
             ...edge,
@@ -286,7 +286,9 @@ function FlowCanvas() {
             },
             style: {
               ...baseStyle,
-              strokeWidth: isSelected ? 3 : baseStyle.strokeWidth,
+              strokeWidth: isSelected ? 3 : 2,
+              strokeDasharray: undefined,
+              opacity: isSelected ? 1 : 0.9,
             },
             zIndex: isSelected ? 20 : edge.zIndex,
           };
