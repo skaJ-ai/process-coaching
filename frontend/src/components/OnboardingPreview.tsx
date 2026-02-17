@@ -1,6 +1,19 @@
 import React from 'react';
 import { useStore } from '../store';
 
+type DemoItem = {
+  id: string;
+  label: string;
+  src: string;
+};
+
+const DEMOS: DemoItem[] = [
+  { id: 'add', label: '노드 추가', src: '/onboarding/01-add-node.gif' },
+  { id: 'connect', label: '연결하기', src: '/onboarding/02-connect-nodes.gif' },
+  { id: 'label', label: '분기 라벨', src: '/onboarding/03-decision-label.gif' },
+  { id: 'save', label: '저장하기', src: '/onboarding/04-save-flow.gif' }
+];
+
 function Item({ done, title, desc }: { done: boolean; title: string; desc: string }) {
   return (
     <div
@@ -37,8 +50,12 @@ export default function OnboardingPreview() {
   const edges = useStore((s) => s.edges);
   const saveStatus = useStore((s) => s.saveStatus);
 
+  const [selectedDemoId, setSelectedDemoId] = React.useState<string>(DEMOS[0].id);
+  const [demoLoadFailed, setDemoLoadFailed] = React.useState<boolean>(false);
+
   if (!show) return null;
 
+  const selectedDemo = DEMOS.find((d) => d.id === selectedDemoId) || DEMOS[0];
   const nonStartNodes = nodes.filter((n) => n.data.nodeType !== 'start');
   const decisions = nodes.filter((n) => n.data.nodeType === 'decision');
   const hasLabeledDecision = decisions.some((d) => edges.some((e) => e.source === d.id && !!e.label));
@@ -47,7 +64,7 @@ export default function OnboardingPreview() {
     {
       done: nonStartNodes.length >= 1,
       title: '1. 노드 1개 추가',
-      desc: '빈 캔버스에서 우클릭 후 첫 프로세스 노드를 추가해 보세요.'
+      desc: '빈 캔버스 우클릭으로 첫 프로세스 노드를 추가하세요.'
     },
     {
       done: nonStartNodes.length >= 2,
@@ -57,17 +74,17 @@ export default function OnboardingPreview() {
     {
       done: edges.length >= 1,
       title: '3. 노드 연결',
-      desc: '노드 핸들을 드래그해서 연결선(엣지)을 1개 생성하세요.'
+      desc: '노드 핸들을 드래그해 연결선(엣지)을 1개 생성하세요.'
     },
     {
       done: decisions.length === 0 ? false : hasLabeledDecision,
       title: '4. 분기 라벨 입력',
-      desc: 'Decision 노드를 썼다면 연결선 라벨(예/아니오 등)을 입력하세요.'
+      desc: 'Decision을 사용했다면 연결선 라벨(예/아니오 등)을 입력하세요.'
     },
     {
       done: saveStatus !== 'unsaved',
       title: '5. 저장 실행',
-      desc: 'Ctrl+S를 눌러 저장이 동작하는지 확인하세요.'
+      desc: 'Ctrl+S를 눌러 저장 동작을 확인하세요.'
     }
   ];
 
@@ -77,7 +94,7 @@ export default function OnboardingPreview() {
   return (
     <div className="absolute top-20 right-4 z-[1200] pointer-events-none">
       <div
-        className="w-[380px] rounded-2xl border shadow-2xl pointer-events-auto"
+        className="w-[390px] rounded-2xl border shadow-2xl pointer-events-auto"
         style={{
           borderColor: 'rgba(148,163,184,0.35)',
           background:
@@ -87,13 +104,51 @@ export default function OnboardingPreview() {
         <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
           <div className="text-[11px] tracking-[0.16em] text-cyan-300">온보딩 미리보기</div>
           <h3 className="text-lg font-bold text-slate-100 mt-1">툴 사용법 연습</h3>
-          <p className="text-xs text-slate-300 mt-1">
-            도메인 추천이 아니라 조작법 숙련에 집중한 예시 화면입니다.
-          </p>
+          <p className="text-xs text-slate-300 mt-1">짧은 GIF 데모로 조작 순서를 먼저 보고 바로 따라할 수 있습니다.</p>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {DEMOS.map((demo) => (
+              <button
+                key={demo.id}
+                onClick={() => {
+                  setSelectedDemoId(demo.id);
+                  setDemoLoadFailed(false);
+                }}
+                className={`px-2 py-1 text-[11px] rounded-md border ${
+                  selectedDemo.id === demo.id
+                    ? 'text-cyan-200 border-cyan-400/60 bg-cyan-500/10'
+                    : 'text-slate-300 border-slate-500/40 bg-slate-700/30'
+                }`}
+              >
+                {demo.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-2 rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
+            {!demoLoadFailed ? (
+              <img
+                key={selectedDemo.src}
+                src={selectedDemo.src}
+                alt={`${selectedDemo.label} 데모`}
+                className="w-full h-[128px] object-cover"
+                onError={() => setDemoLoadFailed(true)}
+              />
+            ) : (
+              <div className="h-[128px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
+                <div className="font-semibold text-slate-200">GIF 파일을 찾지 못했습니다.</div>
+                <div className="mt-1 break-all text-slate-400">경로: {selectedDemo.src}</div>
+                <div className="mt-1 text-slate-400">`frontend/public/onboarding/` 아래에 GIF를 넣으면 바로 표시됩니다.</div>
+              </div>
+            )}
+          </div>
+
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
               <span>진행률</span>
-              <span>{doneCount} / {steps.length} ({progress}%)</span>
+              <span>
+                {doneCount} / {steps.length} ({progress}%)
+              </span>
             </div>
             <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
               <div
@@ -110,7 +165,10 @@ export default function OnboardingPreview() {
           ))}
         </div>
 
-        <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
+        <div
+          className="px-5 py-3 border-t flex items-center justify-between"
+          style={{ borderColor: 'rgba(148,163,184,0.25)' }}
+        >
           <div className="text-xs text-slate-400">도움말은 F1에서 열 수 있습니다.</div>
           <div className="flex items-center gap-2">
             <button
@@ -133,3 +191,4 @@ export default function OnboardingPreview() {
     </div>
   );
 }
+
