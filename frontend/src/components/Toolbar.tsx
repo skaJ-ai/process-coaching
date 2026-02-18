@@ -14,7 +14,6 @@ export default function Toolbar() {
   const setDividerYs = useStore((s) => s.setDividerYs);
   const addDividerY = useStore((s) => s.addDividerY);
   const toggleGuide = useStore((s) => s.toggleGuide);
-  const showOnboardingPanel = useStore((s) => s.showOnboardingPanel);
 
   const pc = nodes.filter((n) => n.data.nodeType === 'process').length;
   const dc = nodes.filter((n) => n.data.nodeType === 'decision').length;
@@ -89,16 +88,6 @@ export default function Toolbar() {
         {savedLabel && <span>{savedLabel}</span>}
         <span>{pc}P {dc}D {sc}S</span>
       </div>
-
-      <div className="w-px h-5 bg-slate-700" />
-
-      <button
-        onClick={showOnboardingPanel}
-        title="Onboarding preview"
-        className="px-2 py-1.5 rounded-lg text-xs text-cyan-300 hover:bg-slate-600/20"
-      >
-        ONB
-      </button>
 
       <div className="w-px h-5 bg-slate-700" />
 

@@ -36,6 +36,22 @@ def _extract_text(payload: Any) -> str:
     return ""
 
 
+def _infer_suggestion_type(s: dict) -> str:
+    """type 필드가 없을 때 label/summary 키워드로 추론"""
+    if s.get("type"):
+        return s["type"]
+    text = " ".join(filter(None, [s.get("labelSuggestion", ""), s.get("summary", "")])).lower()
+    if any(k in text for k in ["종료", "완료", "끝", "end", "finish"]):
+        return "END"
+    if any(k in text for k in ["시작", "start", "begin"]):
+        return "START"
+    if any(k in text for k in ["판단", "결정", "여부", "분기", "decision", "승인", "반려"]):
+        return "DECISION"
+    if any(k in text for k in ["subprocess", "서브", "하위"]):
+        return "SUBPROCESS"
+    return "PROCESS"
+
+
 def _normalize(payload: Any) -> dict:
     text = _extract_text(payload)
     suggestions = []
@@ -43,7 +59,7 @@ def _normalize(payload: Any) -> dict:
     if isinstance(payload, dict):
         raw_suggestions = payload.get("suggestions") or []
         if isinstance(raw_suggestions, list):
-            suggestions = raw_suggestions
+            suggestions = [{**s, "type": _infer_suggestion_type(s)} for s in raw_suggestions if isinstance(s, dict)]
         raw_quick = payload.get("quickQueries") or []
         if isinstance(raw_quick, list):
             quick_queries = raw_quick

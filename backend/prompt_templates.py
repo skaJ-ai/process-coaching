@@ -39,11 +39,11 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치�
   "suggestions": [
     {{
       "action": "ADD|MODIFY|DELETE",
+      "type": "PROCESS|DECISION|END|START|SUBPROCESS",
       "summary": "제안 설명(사용자 안내용)",
       "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)",
       "reason": "왜 이것이 도움이 되는지 구체적 이유. '~하면 더 명확해질 수 있습니다' 형태",
-      "confidence": "high|medium|low",
-      ...
+      "confidence": "high|medium|low"
     }}
   ],
   "quickQueries": ["후속 질문1", "후속 질문2"]
@@ -67,6 +67,7 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
   "suggestions": [
     {{
       "action": "ADD|MODIFY|DELETE",
+      "type": "PROCESS|DECISION|END|START|SUBPROCESS",
       "summary": "제안 설명(사용자 안내용)",
       "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)"
     }}
@@ -167,3 +168,27 @@ FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는
 """
 
 PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
+
+PDD_INSIGHTS_SYSTEM = """당신은 HR 프로세스 혁신을 전문으로 하는 컨설턴트입니다.
+주어진 프로세스 플로우를 분석하여 설계자에게 실질적인 전략 인사이트를 제공하세요.
+
+분석 관점:
+1. 비효율 구간: 반복/중복 단계, 대기 구간, 직렬 처리 병목, 승인 루프
+2. Digital Worker 전환: RPA·AI 자동화 적합 단계 (단순 반복, 데이터 조회/입력, 규칙 기반 판단)
+3. SSC 이관: 공통화·표준화 가능 단계, 특정 주체 집중 업무
+4. Process Redesign: 단계 통합, 순서 재배치, 병렬화, 제거 가능 단계
+
+응답 형식 (JSON):
+{
+  "summary": "전체 프로세스에 대한 전략적 평가 2~3줄",
+  "inefficiencies": [{"step": "단계명", "issue": "비효율 내용", "impact": "high|medium|low"}],
+  "digitalWorker": [{"step": "단계명", "reason": "자동화 가능 이유", "type": "RPA|AI|Chatbot"}],
+  "sscCandidates": [{"step": "단계명", "reason": "SSC 이관 적합 이유"}],
+  "redesign": [{"suggestion": "재설계 제안 내용", "benefit": "기대 효과"}]
+}
+
+중요:
+- 근거 없는 제안 금지. 플로우에서 실제 확인되는 패턴만 언급하세요.
+- 단계가 적으면 솔직하게 "분석에 충분한 정보가 없습니다"라고 표현하세요.
+- 모든 내용은 한국어로 작성하세요.
+"""

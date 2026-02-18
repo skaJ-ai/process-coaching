@@ -83,6 +83,9 @@ interface AppStore {
   exportFlow: () => string; importFlow: (json: string) => void; loadFromLocalStorage: () => boolean;
   showOnboarding: boolean; hideOnboarding: () => void; dismissOnboarding: () => void; showOnboardingPanel: () => void;
   showGuide: boolean; toggleGuide: () => void;
+  // Product Tour
+  tourActive: boolean; tourStep: number;
+  startTour: () => void; nextTourStep: () => void; skipTour: () => void;
   adminMode: boolean; toggleAdminMode: (password: string) => boolean;
   // PDD
   pddAnalysis: PDDAnalysisResult | null; analyzePDD: () => Promise<void>;
@@ -120,12 +123,15 @@ export const useStore = create<AppStore>((set, get) => ({
         quickQueries: ['어떻게 시작하면 좋을까요?', '일반적인 단계는 뭐가 있나요?', '예외 처리는 어떻게 표현하나요?']
       });
       onReady?.();
+      if (!localStorage.getItem('pm-v5-tour-done')) {
+        setTimeout(() => get().startTour(), 600);
+      }
     }, 300);
   },
   nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
   setSelectedEdgeId: (id) => set({ selectedEdgeId: id }),
-  focusNodeId: null, setFocusNodeId: (id) => set({ focusNodeId: id }),
+  focusNodeId: null, setFocusNodeId: (id) => { set({ focusNodeId: null }); setTimeout(() => set({ focusNodeId: id }), 10); },
   forceComplete: () => {
     const { nodes, edges, processContext } = get();
     set({ saveStatus: 'complete' });
@@ -177,6 +183,8 @@ export const useStore = create<AppStore>((set, get) => ({
     }, 500);
     // v5: contextual suggest on shape add
     get().triggerContextualSuggest();
+    // auto L7 validation after label entry (6s delay to let user finish typing)
+    setTimeout(() => get().autoValidateDebounced(), 6000);
     return id;
   },
   addShapeAfter: (type, label, afterNodeId) => {
@@ -238,11 +246,15 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges } = get();
     if (afterId && !nodes.find(n => n.id === afterId)) { const e = edges.find(e => e.target === 'end'); afterId = e?.source || 'start'; }
     const suggestionType = String((s as any).type || '').toUpperCase();
+    const labelText = (s.labelSuggestion || s.newLabel || s.summary || '').toLowerCase();
     const st: ShapeType =
       suggestionType === 'START' ? 'start'
       : suggestionType === 'END' ? 'end'
       : suggestionType === 'DECISION' ? 'decision'
       : suggestionType === 'SUBPROCESS' ? 'subprocess'
+      : /종료|완료|끝|finish/.test(labelText) ? 'end'
+      : /시작|start|begin/.test(labelText) ? 'start'
+      : /판단|결정|여부|분기|승인|반려/.test(labelText) ? 'decision'
       : 'process';
     const label = s.labelSuggestion || s.newLabel || s.summary;
     const compound = detectCompoundAction(label);
@@ -576,6 +588,14 @@ export const useStore = create<AppStore>((set, get) => ({
   dismissOnboarding: () => { localStorage.setItem('pm-v5-onboarding-dismissed', '1'); set({ showOnboarding: false }); },
   showOnboardingPanel: () => set({ showOnboarding: true }),
   showGuide: false, toggleGuide: () => set(s => ({ showGuide: !s.showGuide })),
+  tourActive: false, tourStep: 0,
+  startTour: () => set({ tourActive: true, tourStep: 0 }),
+  nextTourStep: () => {
+    const { tourStep } = get();
+    if (tourStep >= 4) get().skipTour();
+    else set({ tourStep: tourStep + 1 });
+  },
+  skipTour: () => { localStorage.setItem('pm-v5-tour-done', '1'); set({ tourActive: false, tourStep: 0 }); },
   adminMode: false, toggleAdminMode: (pw) => { if (pw === 'pm2025') { set({ adminMode: !get().adminMode }); return true; } return false; },
 
   // PDD Analysis

@@ -11,6 +11,7 @@ export default function ChatPanel() {
   const messages = useStore(s => s.messages);
   const ls = useStore(s => s.loadingState);
   const sendChat = useStore(s => s.sendChat);
+  const requestReview = useStore(s => s.requestReview);
   const ctx = useStore(s => s.processContext);
   const exportFlow = useStore(s => s.exportFlow);
   const submitComplete = useStore(s => s.submitComplete);
@@ -48,14 +49,12 @@ export default function ChatPanel() {
         <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />Process Coaching AI</h2>
         {ctx && <p className="text-xs text-slate-500 mb-2">{ctx.l4} → {ctx.l5} → {ctx.processName}</p>}
         <div className="flex gap-1.5 flex-wrap">
-          <button onClick={() => quickSend('현재 프로세스를 리뷰해줘')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 프로세스 리뷰</button>
-          <button onClick={() => quickSend('개선 방향을 제안해줘')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/30 disabled:opacity-40">💡 개선 제안</button>
-          <button onClick={() => quickSend('다음 단계로 무엇을 하면 좋을까?')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 disabled:opacity-40">➡ 다음 단계</button>
+          <button data-tour="review" onClick={() => requestReview()} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 전체 흐름 검토</button>
 
           {adminMode && <button onClick={() => setShowPDD(true)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">📄 PDD</button>}
         </div>
       </div>
-      <QualityDashboard />
+      <div data-tour="quality"><QualityDashboard /></div>
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {!messages.length && <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
           <div className="text-4xl mb-3">💬</div><p className="text-sm text-slate-400">우클릭으로 셰이프를 추가하고,<br />챗봇에 언제든 질문하세요.</p>
@@ -95,7 +94,7 @@ export default function ChatPanel() {
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
         <div className="flex gap-2 mb-2">
           <label htmlFor="chat-input" className="sr-only">채팅 입력</label>
-          <textarea id="chat-input" name="chat_input" aria-label="채팅 입력" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          <textarea data-tour="chat" id="chat-input" name="chat_input" aria-label="채팅 입력" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder={'질문하거나 아이디어를 요청하세요...'}
             disabled={ls.active} rows={3}
@@ -105,7 +104,7 @@ export default function ChatPanel() {
         </div>
         <div className="flex gap-2">
           <button onClick={handleSaveIntermediate} className="flex-1 px-4 py-2 rounded-xl text-sm font-medium border border-slate-600/40 text-slate-300 hover:bg-slate-700/30">💾 중간저장</button>
-          <button onClick={handleSubmit} disabled={saveStatus === 'complete'}
+          <button data-tour="complete" onClick={handleSubmit} disabled={saveStatus === 'complete'}
             className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 disabled:from-slate-600 disabled:to-slate-600 disabled:text-slate-400">
             {saveStatus === 'complete' ? '✅ 완료됨' : '✓ 완료하기'}
           </button>

@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, NodeProps, EdgeProps } from 'reactflow';
+import { Handle, Position, NodeProps, EdgeProps, getSmoothStepPath } from 'reactflow';
 import { FlowNodeData, L7Status } from '../types';
 import { CATEGORY_COLORS } from '../constants';
 import { useStore } from '../store';
@@ -167,5 +167,35 @@ export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHan
     {label && <foreignObject x={p3x - 40} y={p3y - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}</>);
 }
 
+export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style, markerEnd, label }: EdgeProps) {
+  const SPREAD = 18;
+  const srcCount: number = (data?.sourceSiblingCount as number) || 1;
+  const srcIdx: number = (data?.sourceSiblingIndex as number) || 0;
+  const tgtCount: number = (data?.targetSiblingCount as number) || 1;
+  const tgtIdx: number = (data?.targetSiblingIndex as number) || 0;
+
+  const getOffset = (pos: Position, idx: number, count: number): { dx: number; dy: number } => {
+    if (count <= 1) return { dx: 0, dy: 0 };
+    const mid = (count - 1) / 2;
+    const offset = (idx - mid) * SPREAD;
+    if (pos === Position.Top || pos === Position.Bottom) return { dx: offset, dy: 0 };
+    return { dx: 0, dy: offset };
+  };
+
+  const srcOff = getOffset(sourcePosition, srcIdx, srcCount);
+  const tgtOff = getOffset(targetPosition, tgtIdx, tgtCount);
+
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX: sourceX + srcOff.dx, sourceY: sourceY + srcOff.dy,
+    targetX: targetX + tgtOff.dx, targetY: targetY + tgtOff.dy,
+    sourcePosition, targetPosition, borderRadius: 8,
+  });
+
+  return (<>
+    <path id={id} d={edgePath} style={{ ...style, fill: 'none' }} className="react-flow__edge-path" markerEnd={markerEnd as string} />
+    {label && <foreignObject x={labelX - 40} y={labelY - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}
+  </>);
+}
+
 export const nodeTypes = { start: StartNode, end: EndNode, process: ProcessNode, decision: DecisionNode, subprocess: SubprocessNode };
-export const edgeTypes = { selfLoop: SelfLoopEdge };
+export const edgeTypes = { selfLoop: SelfLoopEdge, spread: SpreadEdge };

@@ -12,13 +12,13 @@ try:
     from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from .chat_orchestrator import orchestrate_chat, get_chain_status
-    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS
+    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM
     from .flow_services import describe_flow, mock_review, mock_validate
 except ImportError:
     from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from chat_orchestrator import orchestrate_chat, get_chain_status
-    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS
+    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM
     from flow_services import describe_flow, mock_review, mock_validate
 
 
@@ -27,6 +27,13 @@ async def review_flow(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
     return r or mock_review(req.currentNodes, req.currentEdges)
+
+
+@app.post("/api/pdd-insights")
+async def pdd_insights(req: ReviewRequest):
+    fd = describe_flow(req.currentNodes, req.currentEdges)
+    r = await call_llm(PDD_INSIGHTS_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
+    return r or {"summary": "분석에 충분한 정보가 없습니다.", "inefficiencies": [], "digitalWorker": [], "sscCandidates": [], "redesign": []}
 
 
 @app.post("/api/chat")

@@ -9,7 +9,7 @@ import ContextMenu from './ContextMenu';
 import NodeDetailPanel from './NodeDetailPanel';
 import MetaEditModal from './MetaEditModal';
 import HelpGuide from './HelpGuide';
-import OnboardingPreview from './OnboardingPreview';
+import TourOverlay from './TourOverlay';
 import { SWIMLANE_COLORS } from '../constants';
 
 function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement> }) {
@@ -157,34 +157,150 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
   );
 }
 
-function EmptyStateGuide() {
+// Vertical ghost flow (no start node — it already exists on canvas)
+function GhostFlow() {
+  return (
+    <svg width="250" height="320" viewBox="0 0 250 320">
+      <defs>
+        <marker id="ga" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#334155" />
+        </marker>
+      </defs>
+      {/* Process 1 */}
+      <rect x="25" y="0" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="23" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 접수한다</text>
+      {/* Arrow ↓ */}
+      <line x1="80" y1="40" x2="80" y2="62" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      {/* Process 2 */}
+      <rect x="25" y="64" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="87" textAnchor="middle" fill="#93c5fd" fontSize="11">내용을 검토한다</text>
+      {/* Arrow ↓ */}
+      <line x1="80" y1="104" x2="80" y2="126" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      {/* Decision diamond — center (80, 154) */}
+      <polygon points="80,126 114,154 80,182 46,154" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="158" textAnchor="middle" fill="#fcd34d" fontSize="10">승인 여부 판단</text>
+      {/* Arrow ↓ 예 */}
+      <line x1="80" y1="184" x2="80" y2="206" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <text x="90" y="200" fill="#64748b" fontSize="9">예</text>
+      {/* Process Yes */}
+      <rect x="25" y="208" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="231" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 처리한다</text>
+      {/* Arrow ↓ to End */}
+      <line x1="80" y1="248" x2="80" y2="283" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      {/* Arrow → 아니오 */}
+      <line x1="116" y1="154" x2="158" y2="154" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <text x="136" y="148" textAnchor="middle" fill="#64748b" fontSize="9">아니오</text>
+      {/* Process No */}
+      <rect x="160" y="134" width="82" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="201" y="157" textAnchor="middle" fill="#93c5fd" fontSize="10">보완을 요청한다</text>
+      {/* Process No → End (path right→down→left) */}
+      <path d="M 201 174 L 201 300 L 99 300" stroke="#334155" strokeWidth="1.5" fill="none" markerEnd="url(#ga)" />
+      {/* End circle */}
+      <circle cx="80" cy="300" r="18" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="304" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="600">종료</text>
+    </svg>
+  );
+}
+
+function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlow> }) {
   const nodes = useStore(s => s.nodes);
-  const count = nodes.length;
-  if (count <= 1) {
+  const edges = useStore(s => s.edges);
+  const addShape = useStore(s => s.addShape);
+  const onConnect = useStore(s => s.onConnect);
+  const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
+
+  const workNodes = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType));
+  const hasEnd = nodes.some(n => n.data.nodeType === 'end');
+
+  const handleQuickStart = () => {
+    // Reuse existing start node — do NOT create a new one
+    const existingStart = useStore.getState().nodes.find(n => n.data.nodeType === 'start');
+    const sId = existingStart?.id ?? 'start';
+    const cx = 190; // process node x (width 220 → center at 300)
+
+    // Vertical layout, centered at x≈300
+    const p1   = addShape('process',  '요청을 접수한다',  { x: cx,       y: 180 });
+    const p2   = addShape('process',  '내용을 검토한다',  { x: cx,       y: 330 });
+    const d1   = addShape('decision', '승인 여부 판단',   { x: cx + 30,  y: 480 }); // decision 160px wide → center 300
+    const pYes = addShape('process',  '요청을 처리한다',  { x: cx,       y: 690 });
+    const pNo  = addShape('process',  '보완을 요청한다',  { x: cx + 280, y: 530 });
+    const eId  = addShape('end',      '종료',             { x: cx + 80,  y: 870 }); // end 60px wide → center 300
+
+    setTimeout(() => {
+      onConnect({ source: sId,  target: p1,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      onConnect({ source: p1,   target: p2,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      onConnect({ source: p2,   target: d1,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      onConnect({ source: d1,   target: pYes, sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      onConnect({ source: d1,   target: pNo,  sourceHandle: 'right-source',  targetHandle: 'left-target' });
+      onConnect({ source: pYes, target: eId,  sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      onConnect({ source: pNo,  target: eId,  sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+
+      // Attach 예/아니오 labels to decision branches
+      setTimeout(() => {
+        const curEdges = useStore.getState().edges;
+        const yesEdge = curEdges.find(e => e.source === d1 && e.target === pYes);
+        const noEdge  = curEdges.find(e => e.source === d1 && e.target === pNo);
+        if (yesEdge) updateEdgeLabel(yesEdge.id, '예');
+        if (noEdge)  updateEdgeLabel(noEdge.id,  '아니오');
+        rfInstance.fitView({ padding: 0.2, duration: 500 });
+      }, 120);
+    }, 80);
+  };
+
+  // Phase 0: only start node exists → show ghost + CTA at bottom (avoids overlapping the start node)
+  if (workNodes.length === 0) {
     return (
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 pointer-events-none z-0 opacity-60">
-        <div className="border-2 border-dashed border-slate-600 rounded-3xl p-12 text-center space-y-4">
-          <div className="text-4xl">🖱️</div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold text-slate-300">빈 캔버스</h3>
-            <p className="text-slate-400">우클릭하여 첫 번째 셰이프를 추가하세요</p>
-          </div>
-          <div className="inline-block bg-slate-800/50 px-4 py-2 rounded-lg text-sm text-slate-400 border border-slate-700/50">
-            💡 <b>시작</b> → <b>업무단계</b> → <b>종료</b> 순서로<br />만들어 보세요
+      <div className="absolute bottom-32 inset-x-0 flex items-end justify-center gap-10 pointer-events-none z-0 select-none">
+        {/* Ghost SVG */}
+        <div style={{ opacity: 0.22 }}>
+          <div className="text-[10px] text-slate-600 mb-1.5 font-medium tracking-wide">예시 플로우</div>
+          <GhostFlow />
+        </div>
+        {/* CTA card */}
+        <div className="flex flex-col items-start gap-2 pb-6">
+          <p className="text-sm text-slate-400 leading-relaxed">
+            시작 노드 아래에 업무 단계를 연결하거나<br />빠른 시작으로 예시 플로우를 만들어보세요
+          </p>
+          <button
+            onClick={handleQuickStart}
+            className="pointer-events-auto mt-1 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)', boxShadow: '0 4px 20px rgba(79,70,229,0.35)' }}
+          >
+            ⚡ 빠른 시작
+          </button>
+          <span className="text-xs text-slate-600">또는 캔버스 우클릭 → 직접 추가</span>
+          <div className="flex flex-col gap-1 mt-1 text-[11px] text-slate-600">
+            <span>🖱️ 우클릭 → 셰이프 추가</span>
+            <span>🔗 파란 점 드래그 → 연결</span>
+            <span>✏️ 더블클릭 → 이름 수정</span>
           </div>
         </div>
       </div>
     );
   }
-  if (count === 2) {
+
+  // Phase 1: nodes exist but not connected yet
+  if (workNodes.length >= 1 && edges.length === 0) {
     return (
       <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10 animate-pulse">
-        <div className="bg-blue-600/20 border border-blue-500/50 text-blue-200 px-6 py-2 rounded-full text-sm font-medium shadow-[0_0_20px_rgba(59,130,246,0.2)]">
-          🔗 셰이프를 연결하려면 파란 점을 드래그하세요
+        <div className="bg-indigo-600/15 border border-indigo-500/40 text-indigo-200 px-5 py-2 rounded-full text-sm font-medium shadow-lg">
+          🔗 파란 핸들을 드래그해서 노드를 연결하세요
         </div>
       </div>
     );
   }
+
+  // Phase 2: connected but no end node
+  if (edges.length >= 1 && !hasEnd && workNodes.length >= 2) {
+    return (
+      <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+        <div className="bg-red-900/15 border border-red-500/30 text-red-300 px-5 py-2 rounded-full text-sm font-medium shadow-lg">
+          ⬛ 우클릭 → 종료 노드를 추가해 흐름을 완성하세요
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -244,6 +360,44 @@ function FlowCanvas() {
   useEffect(() => { const t = setTimeout(saveDraft, 30000); return () => clearTimeout(t); }, [nodes, edges, saveDraft]);
   const memoEdgeTypes = useMemo(() => edgeTypes, []);
 
+  // Auto-spread: assign sibling indices so edges from the same handle fan out
+  const edgesWithSpread = useMemo(() => {
+    const srcGroups: Record<string, string[]> = {};
+    const tgtGroups: Record<string, string[]> = {};
+    edges.forEach(e => {
+      if (e.type === 'selfloop') return;
+      const sk = `${e.source}::${e.sourceHandle ?? ''}`;
+      const tk = `${e.target}::${e.targetHandle ?? ''}`;
+      if (!srcGroups[sk]) srcGroups[sk] = [];
+      if (!tgtGroups[tk]) tgtGroups[tk] = [];
+      srcGroups[sk].push(e.id);
+      tgtGroups[tk].push(e.id);
+    });
+    return edges.map(e => {
+      const isSelfLoop = e.type === 'selfloop';
+      const edgeStyle = e.id === selectedEdgeId
+        ? { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' }
+        : { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined };
+      if (isSelfLoop) return { ...e, type: 'selfloop', style: edgeStyle };
+      const sk = `${e.source}::${e.sourceHandle ?? ''}`;
+      const tk = `${e.target}::${e.targetHandle ?? ''}`;
+      const sg = srcGroups[sk] ?? [e.id];
+      const tg = tgtGroups[tk] ?? [e.id];
+      return {
+        ...e,
+        type: 'spread',
+        style: edgeStyle,
+        data: {
+          ...e.data,
+          sourceSiblingIndex: sg.indexOf(e.id),
+          sourceSiblingCount: sg.length,
+          targetSiblingIndex: tg.indexOf(e.id),
+          targetSiblingCount: tg.length,
+        },
+      };
+    });
+  }, [edges, selectedEdgeId]);
+
   // v5.1: minimap node color with 2-lane swim lane awareness
   const minimapNodeColor = useCallback((n: any) => {
     const { dividerYs, swimLaneLabels } = useStore.getState();
@@ -260,10 +414,10 @@ function FlowCanvas() {
   }, []);
 
   return (
-    <div ref={wrapperRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={wrapperRef} data-tour="canvas" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Toolbar />
       <ReactFlow
-        nodes={nodes} edges={edges.map(e => e.id === selectedEdgeId ? { ...e, style: { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' } } : { ...e, style: { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined } })}
+        nodes={nodes} edges={edgesWithSpread}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         nodeTypes={nodeTypes} edgeTypes={memoEdgeTypes}
         multiSelectionKeyCode="Shift"
@@ -280,7 +434,7 @@ function FlowCanvas() {
           showCM({ show: true, x: e.clientX, y: e.clientY, flowX: flowPos.x, flowY: flowPos.y });
         }}
         fitView fitViewOptions={{ padding: 0.3 }}
-        defaultEdgeOptions={{ type: 'step' }}
+        defaultEdgeOptions={{ type: 'smoothstep' }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2} maxZoom={2} snapToGrid snapGrid={[10, 10]}
         connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}
@@ -292,10 +446,10 @@ function FlowCanvas() {
       </ReactFlow>
       <ContextMenu />
       <NodeDetailPanel />
-      <EmptyStateGuide />
-      <OnboardingPreview />
+      <CanvasGuide rfInstance={rfInstance} />
       {metaEditTarget && <MetaEditModal nodeId={metaEditTarget.nodeId} initial={{ inputLabel: metaEditTarget.inputLabel, outputLabel: metaEditTarget.outputLabel, systemName: metaEditTarget.systemName, duration: metaEditTarget.duration }} onSave={(id, meta) => updateNodeMeta(id, meta)} onClose={closeMetaEdit} />}
       {showGuide && <HelpGuide onClose={toggleGuide} />}
+      <TourOverlay />
     </div>
   );
 }

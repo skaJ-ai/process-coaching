@@ -43,10 +43,10 @@ export default function QualityDashboard() {
         {unchecked > 0 && <span className="text-slate-500">○ {unchecked} 미검증</span>}
       </div>
       <div className="space-y-1.5">
-        {structIssues.length === 0 ? (
+        {structIssues.filter(i => !(i.ruleId === 'S-01' && total < 3)).length === 0 ? (
           <div className="text-[10px] text-green-400">구조(S): 주요 이상 없음</div>
         ) : (
-          structIssues.map((issue) => {
+          structIssues.filter(i => !(i.ruleId === 'S-01' && total < 3)).map((issue) => {
             const focusFirst = () => {
               const id = issue.nodeIds?.[0];
               if (id) setFocusNodeId(id);

@@ -1,6 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { CATEGORY_COLORS } from '../constants';
+import { API_BASE_URL } from '../constants';
+
+interface PddInsights {
+  summary: string;
+  inefficiencies: { step: string; issue: string; impact: string }[];
+  digitalWorker: { step: string; reason: string; type: string }[];
+  sscCandidates: { step: string; reason: string }[];
+  redesign: { suggestion: string; benefit: string }[];
+}
 
 export default function PDDGenerator({ onClose }: { onClose: () => void }) {
   const nodes = useStore(s => s.nodes);
@@ -11,6 +20,8 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
     return laneIds.map(id => ({ id: id!, label: id! }));
   }, [nodes]);
   const [pddContent, setPddContent] = useState('');
+  const [insights, setInsights] = useState<PddInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const generatePDD = () => {
     const processNodes = nodes.filter(n => ['process','decision','subprocess'].includes(n.data.nodeType));
@@ -76,6 +87,22 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
     setPddContent(md);
   };
 
+  const generateInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
+      const r = await fetch(`${API_BASE_URL}/pdd-insights`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentNodes: processNodes.map(n => ({ id: n.id, type: n.data.nodeType, label: n.data.label, category: n.data.category, swimLaneId: n.data.swimLaneId })), currentEdges: edges.map(e => ({ source: e.source, target: e.target, label: e.label })), context: ctx || {} }),
+      });
+      if (r.ok) setInsights(await r.json());
+    } catch (e) { console.error('PDD insights error:', e); }
+    finally { setInsightsLoading(false); }
+  };
+
+  const impactColor = (impact: string) => impact === 'high' ? 'text-red-400' : impact === 'medium' ? 'text-amber-400' : 'text-slate-400';
+
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
       <div className="w-[700px] max-h-[80vh] rounded-xl overflow-hidden flex flex-col animate-fade-in"
@@ -95,7 +122,36 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{pddContent}</pre>
             </div>
+            {insights && (
+              <div className="px-6 py-4 space-y-3" style={{ borderTop: '1px solid var(--border-primary)' }}>
+                <p className="text-xs font-semibold text-indigo-300 mb-1">🔍 AI 전략 인사이트</p>
+                <p className="text-xs text-slate-400 leading-relaxed">{insights.summary}</p>
+                {insights.inefficiencies.length > 0 && (
+                  <div><p className="text-[11px] font-medium text-amber-400 mb-1">⚠ 비효율 구간</p>
+                    {insights.inefficiencies.map((i, idx) => <p key={idx} className="text-xs text-slate-300">· <span className="font-medium">{i.step}</span> — {i.issue} <span className={`text-[10px] ${impactColor(i.impact)}`}>[{i.impact}]</span></p>)}
+                  </div>
+                )}
+                {insights.digitalWorker.length > 0 && (
+                  <div><p className="text-[11px] font-medium text-blue-400 mb-1">🤖 Digital Worker 전환 후보</p>
+                    {insights.digitalWorker.map((i, idx) => <p key={idx} className="text-xs text-slate-300">· <span className="font-medium">{i.step}</span> ({i.type}) — {i.reason}</p>)}
+                  </div>
+                )}
+                {insights.sscCandidates.length > 0 && (
+                  <div><p className="text-[11px] font-medium text-emerald-400 mb-1">🏢 SSC 이관 후보</p>
+                    {insights.sscCandidates.map((i, idx) => <p key={idx} className="text-xs text-slate-300">· <span className="font-medium">{i.step}</span> — {i.reason}</p>)}
+                  </div>
+                )}
+                {insights.redesign.length > 0 && (
+                  <div><p className="text-[11px] font-medium text-violet-400 mb-1">♻ Process Redesign</p>
+                    {insights.redesign.map((i, idx) => <p key={idx} className="text-xs text-slate-300">· {i.suggestion} <span className="text-slate-500">→ {i.benefit}</span></p>)}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex gap-2 px-6 py-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
+              <button onClick={generateInsights} disabled={insightsLoading} className="px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30 disabled:opacity-40 whitespace-nowrap">
+                {insightsLoading ? '분석 중...' : '🔍 AI 인사이트'}
+              </button>
               <button onClick={() => { navigator.clipboard.writeText(pddContent); alert('클립보드에 복사되었습니다.'); }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-slate-700/30 border border-slate-600/40 text-slate-300">📋 복사</button>
               <button onClick={() => { const b = new Blob([pddContent], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `PDD-${ctx?.processName || 'process'}.md`; a.click(); }}
                 className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-green-600/20 border border-green-500/30 text-green-300">💾 MD 다운로드</button>

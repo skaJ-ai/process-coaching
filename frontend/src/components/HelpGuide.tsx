@@ -24,7 +24,6 @@ const content: Record<string, { title: string; desc: string }[]> = {
     { title: '분류 색상', desc: '셰이프 우클릭 → 분류 색상. As-Is / Digital Worker / SSC 이관 / 삭제 대상 / 신규 추가.' },
     { title: 'L7 자동 검증', desc: '노드 추가/수정 후 3초 뒤 자동 검증 시작. 상단 품질 대시보드에서 현황 확인.' },
     { title: '셀프 루프', desc: '셰이프에서 같은 셰이프로 연결하면 루프 화살표 자동 표시.' },
-    { title: '인터뷰 모드', desc: '🎙️ 인터뷰 모드: AI가 질문을 주도하면 대화만으로 플로우가 자동 생성됩니다.' },
     { title: 'PDD 생성', desc: '관리자 모드(Ctrl+Shift+A)에서 📄 PDD 버튼으로 프로세스 정의서 자동 생성.' },
     { title: '다중 선택', desc: 'Shift + 클릭으로 여러 셰이프 선택. 파란 글로우 효과.' },
     { title: '가져오기/내보내기', desc: '📤 내보내기(JSON). 셋업 화면에서 📂 JSON 가져오기.' },
