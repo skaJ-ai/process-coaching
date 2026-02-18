@@ -80,10 +80,12 @@ export default function OnboardingPreview() {
   const [srcIndex, setSrcIndex] = React.useState<number>(0);
   const [retryToken, setRetryToken] = React.useState<number>(0);
   const [demoLoadFailed, setDemoLoadFailed] = React.useState<boolean>(false);
+  const [demoLoading, setDemoLoading] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     if (!show) return;
     setDemoLoadFailed(false);
+    setDemoLoading(true);
     setSrcIndex(0);
     setRetryToken((v) => v + 1);
   }, [show, selectedDemoId]);
@@ -93,6 +95,7 @@ export default function OnboardingPreview() {
     const t = window.setTimeout(() => {
       // server reconnect 후 자동 복구 시도
       setDemoLoadFailed(false);
+      setDemoLoading(true);
       setSrcIndex(0);
       setRetryToken((v) => v + 1);
     }, 2500);
@@ -173,7 +176,7 @@ export default function OnboardingPreview() {
             ))}
           </div>
 
-          <div className="mt-2 rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
+          <div className="mt-2 rounded-lg border overflow-hidden relative" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
             {!demoLoadFailed ? (
               <>
                 <img
@@ -181,17 +184,30 @@ export default function OnboardingPreview() {
                   src={demoSrc}
                   alt={`${selectedDemo.label} 데모`}
                   className="w-full h-[182px] object-contain bg-slate-950/60"
-                  onLoad={() => setDemoLoadFailed(false)}
+                  onLoad={() => {
+                    setDemoLoading(false);
+                    setDemoLoadFailed(false);
+                  }}
                   onError={() => {
                     // /flowchart 경로 실패 시 /onboarding 루트 경로 재시도
                     if (srcIndex < candidates.length - 1) {
+                      setDemoLoading(true);
                       setSrcIndex((v) => v + 1);
                       setRetryToken((v) => v + 1);
                       return;
                     }
+                    setDemoLoading(false);
                     setDemoLoadFailed(true);
                   }}
                 />
+                {demoLoading && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center text-xs text-slate-200 bg-slate-950/45"
+                    style={{ backdropFilter: 'blur(1px)' }}
+                  >
+                    GIF 불러오는 중...
+                  </div>
+                )}
                 <div className="px-3 py-2.5 border-t text-xs" style={{ borderColor: 'rgba(148,163,184,0.2)', background: 'rgba(2,6,23,0.65)' }}>
                   <div className="text-cyan-200 font-semibold">핵심 동작: {selectedDemo.action}</div>
                   <div className="text-slate-300 mt-1">{selectedDemo.hint}</div>
@@ -205,6 +221,7 @@ export default function OnboardingPreview() {
                 <button
                   onClick={() => {
                     setDemoLoadFailed(false);
+                    setDemoLoading(true);
                     setSrcIndex(0);
                     setRetryToken((v) => v + 1);
                   }}
