@@ -5,13 +5,39 @@ type DemoItem = {
   id: string;
   label: string;
   file: string;
+  hint: string;
+  action: string;
 };
 
 const DEMOS: DemoItem[] = [
-  { id: 'add', label: '노드 추가', file: '01-add-node.gif' },
-  { id: 'connect', label: '연결하기', file: '02-connect-nodes.gif' },
-  { id: 'label', label: '분기 라벨', file: '03-decision-label.gif' },
-  { id: 'save', label: '저장하기', file: '04-save-flow.gif' }
+  {
+    id: 'add',
+    label: '노드 추가',
+    file: '01-add-node.gif',
+    hint: '캔버스 빈 공간에서 우클릭 후 Process/Decision 중 하나를 선택하세요.',
+    action: '우클릭 -> 노드 타입 선택'
+  },
+  {
+    id: 'connect',
+    label: '연결하기',
+    file: '02-connect-nodes.gif',
+    hint: '노드의 파란 핸들을 누른 채 다른 노드로 드래그하면 연결선이 생성됩니다.',
+    action: '파란 점 드래그 -> 대상 노드에 드롭'
+  },
+  {
+    id: 'label',
+    label: '분기 라벨',
+    file: '03-decision-label.gif',
+    hint: 'Decision 노드를 선택한 뒤 연결선에 예/아니오 같은 라벨을 넣어 분기를 명확히 하세요.',
+    action: 'Decision 선택 -> 엣지 라벨 입력'
+  },
+  {
+    id: 'save',
+    label: '저장하기',
+    file: '04-save-flow.gif',
+    hint: '작업 후 Ctrl+S를 눌러 저장하고, 상단 상태가 저장됨으로 바뀌는지 확인하세요.',
+    action: 'Ctrl+S -> 저장 상태 확인'
+  }
 ];
 
 function Item({ done, title, desc }: { done: boolean; title: string; desc: string }) {
@@ -117,7 +143,7 @@ export default function OnboardingPreview() {
   return (
     <div className="absolute top-20 right-4 z-[1200] pointer-events-none">
       <div
-        className="w-[390px] rounded-2xl border shadow-2xl pointer-events-auto"
+        className="w-[430px] rounded-2xl border shadow-2xl pointer-events-auto"
         style={{
           borderColor: 'rgba(148,163,184,0.35)',
           background:
@@ -149,24 +175,30 @@ export default function OnboardingPreview() {
 
           <div className="mt-2 rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
             {!demoLoadFailed ? (
-              <img
-                key={`${demoSrc}-${retryToken}`}
-                src={demoSrc}
-                alt={`${selectedDemo.label} 데모`}
-                className="w-full h-[128px] object-cover"
-                onLoad={() => setDemoLoadFailed(false)}
-                onError={() => {
-                  // /flowchart 경로 실패 시 /onboarding 루트 경로 재시도
-                  if (srcIndex < candidates.length - 1) {
-                    setSrcIndex((v) => v + 1);
-                    setRetryToken((v) => v + 1);
-                    return;
-                  }
-                  setDemoLoadFailed(true);
-                }}
-              />
+              <>
+                <img
+                  key={`${demoSrc}-${retryToken}`}
+                  src={demoSrc}
+                  alt={`${selectedDemo.label} 데모`}
+                  className="w-full h-[182px] object-contain bg-slate-950/60"
+                  onLoad={() => setDemoLoadFailed(false)}
+                  onError={() => {
+                    // /flowchart 경로 실패 시 /onboarding 루트 경로 재시도
+                    if (srcIndex < candidates.length - 1) {
+                      setSrcIndex((v) => v + 1);
+                      setRetryToken((v) => v + 1);
+                      return;
+                    }
+                    setDemoLoadFailed(true);
+                  }}
+                />
+                <div className="px-3 py-2.5 border-t text-xs" style={{ borderColor: 'rgba(148,163,184,0.2)', background: 'rgba(2,6,23,0.65)' }}>
+                  <div className="text-cyan-200 font-semibold">핵심 동작: {selectedDemo.action}</div>
+                  <div className="text-slate-300 mt-1">{selectedDemo.hint}</div>
+                </div>
+              </>
             ) : (
-              <div className="h-[128px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
+              <div className="h-[182px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
                 <div className="font-semibold text-slate-200">GIF 로딩 실패</div>
                 <div className="mt-1 break-all text-slate-400">시도 경로: {demoSrc}</div>
                 <div className="mt-1 text-slate-400">서버가 내려갔을 때 발생할 수 있습니다. 아래 버튼으로 즉시 재시도하세요.</div>
@@ -232,4 +264,3 @@ export default function OnboardingPreview() {
     </div>
   );
 }
-
