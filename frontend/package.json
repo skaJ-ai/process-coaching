@@ -6,7 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:goldenset": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/goldenset",
+    "sync:check": "node scripts/check-rules-sync.cjs",
+    "test:guard": "npm run sync:check && npm run test:goldenset",
+    "test:e2e": "playwright test tests/e2e/core-flows.spec.ts",
+    "test:e2e:ui": "playwright test tests/e2e/core-flows.spec.ts --ui",
+    "refactor:gate": "npm run test:guard && echo 'E2E는 dev 서버 실행 후 npm run test:e2e 별도 실행'"
   },
   "dependencies": {
     "clsx": "^2.1.0",
@@ -20,12 +27,16 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/dagre": "^0.7.52",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.3.3",
     "vite": "^5.0.8"
   }

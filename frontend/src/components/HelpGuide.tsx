@@ -75,8 +75,8 @@ export default function HelpGuide({ onClose }: Props) {
           ))}
         </div>
         <div className="px-6 py-3 text-center" style={{ borderTop: '1px solid var(--border-primary)' }}>
-          <label className="flex items-center justify-center gap-2 text-xs text-slate-500 cursor-pointer">
-            <input type="checkbox" onChange={e => { if (e.target.checked) localStorage.setItem('pm-v4-onboarding-dismissed', '1'); }} className="rounded" />
+          <label htmlFor="help-hide-on-start" className="flex items-center justify-center gap-2 text-xs text-slate-500 cursor-pointer">
+            <input id="help-hide-on-start" name="help_hide_on_start" type="checkbox" onChange={e => { if (e.target.checked) localStorage.setItem('pm-v4-onboarding-dismissed', '1'); }} className="rounded" />
             시작 시 자동 표시하지 않기
           </label>
         </div>

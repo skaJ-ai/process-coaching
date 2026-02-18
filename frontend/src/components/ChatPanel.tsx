@@ -11,8 +11,6 @@ export default function ChatPanel() {
   const messages = useStore(s => s.messages);
   const ls = useStore(s => s.loadingState);
   const sendChat = useStore(s => s.sendChat);
-  const requestReview = useStore(s => s.requestReview);
-  const validateAll = useStore(s => s.validateAllNodes);
   const ctx = useStore(s => s.processContext);
   const exportFlow = useStore(s => s.exportFlow);
   const submitComplete = useStore(s => s.submitComplete);
@@ -50,8 +48,9 @@ export default function ChatPanel() {
         <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />Process Coaching AI</h2>
         {ctx && <p className="text-xs text-slate-500 mb-2">{ctx.l4} → {ctx.l5} → {ctx.processName}</p>}
         <div className="flex gap-1.5 flex-wrap">
-          <button onClick={validateAll} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600/30 disabled:opacity-40">✓ L7 검증</button>
-          <button onClick={requestReview} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 플로우 분석</button>
+          <button onClick={() => quickSend('현재 프로세스를 리뷰해줘')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 프로세스 리뷰</button>
+          <button onClick={() => quickSend('개선 방향을 제안해줘')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/30 disabled:opacity-40">💡 개선 제안</button>
+          <button onClick={() => quickSend('다음 단계로 무엇을 하면 좋을까?')} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 disabled:opacity-40">➡ 다음 단계</button>
 
           {adminMode && <button onClick={() => setShowPDD(true)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">📄 PDD</button>}
         </div>
@@ -95,7 +94,8 @@ export default function ChatPanel() {
       </div>
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
         <div className="flex gap-2 mb-2">
-          <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          <label htmlFor="chat-input" className="sr-only">채팅 입력</label>
+          <textarea id="chat-input" name="chat_input" aria-label="채팅 입력" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder={'질문하거나 아이디어를 요청하세요...'}
             disabled={ls.active} rows={3}

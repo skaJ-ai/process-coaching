@@ -1,627 +1,26 @@
 """HR Process Mining Tool - Backend (v5)"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Optional
-from pathlib import Path
-import httpx, json, os, logging, time, asyncio
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = FastAPI(title="HR Process Mining v5")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+try:
+    from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
+    from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
+    from .chat_orchestrator import orchestrate_chat, get_chain_status
+    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS
+    from .flow_services import describe_flow, mock_review, mock_validate
+except ImportError:
+    from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
+    from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
+    from chat_orchestrator import orchestrate_chat, get_chain_status
+    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS
+    from flow_services import describe_flow, mock_review, mock_validate
 
-def _parse_env_file(path: Path) -> dict[str, str]:
-    parsed: dict[str, str] = {}
-    try:
-        for raw_line in path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.lower().startswith("export "):
-                line = line[7:].strip()
-            if "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key:
-                parsed[key] = value
-    except Exception as e:
-        logger.warning(f"환경 설정 파일 로딩 실패 ({path}): {e}")
-    return parsed
-
-
-def _load_local_env_files() -> None:
-    backend_dir = Path(__file__).resolve().parent
-    candidates = [
-        backend_dir / ".env",
-        backend_dir / "environment.txt",
-        backend_dir.parent / ".env",
-        backend_dir.parent / "environment.txt",
-    ]
-    for env_path in candidates:
-        if not env_path.exists():
-            continue
-        loaded = _parse_env_file(env_path)
-        for key, value in loaded.items():
-            # 셸 환경변수로 이미 지정된 값이 있으면 우선합니다.
-            os.environ.setdefault(key, value)
-        logger.info(f"환경 설정 파일 로드 완료: {env_path}")
-
-
-_load_local_env_files()
-
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
-USE_MOCK = os.getenv("USE_MOCK", "auto")
-
-# LLM 연결 풀 및 캐시 관리
-_http_client: Optional[httpx.AsyncClient] = None
-_llm_available: Optional[bool] = None
-_llm_check_time: float = 0
-_llm_cache_ttl: float = 300  # 5분마다 재확인
-_llm_lock = asyncio.Lock()
-
-class FlowNode(BaseModel):
-    id: str; type: str; label: str; position: dict = Field(default_factory=lambda:{"x":0,"y":0})
-    inputLabel: Optional[str] = None; outputLabel: Optional[str] = None; systemName: Optional[str] = None
-    duration: Optional[str] = None; category: Optional[str] = None; swimLaneId: Optional[str] = None
-class FlowEdge(BaseModel):
-    id: str; source: str; target: str; label: Optional[str] = None
-    sourceHandle: Optional[str] = None; targetHandle: Optional[str] = None
-class ReviewRequest(BaseModel):
-    currentNodes: list[FlowNode]; currentEdges: list[FlowEdge]; userMessage: str = ""; context: dict
-class ChatRequest(BaseModel):
-    message: str; context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
-class ValidateL7Request(BaseModel):
-    nodeId: str; label: str; nodeType: str; context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
-
-class ContextualSuggestRequest(BaseModel):
-    context: dict; currentNodes: list[FlowNode] = []; currentEdges: list[FlowEdge] = []
-
-# Collaborative Coaching Tone Guidelines
-COACHING_TONE = """
-[어조 원칙]
-- 제안형 표현 사용: "고려해 보세요", "~하면 어떨까요?", "~할 수 있어요"
-- 절대적 표현 회피: "반드시", "금지", "must" 대신 "권장합니다", "더 명확할 수 있습니다"
-- 공감 표현 포함: "이해합니다", "복잡할 수 있습니다"
-- 이유 설명: 모든 제안에 "왜 중요한지", "어떤 이점이 있는지" 포함
-- 조건형 언어: "~할 수 있습니다", "~일 수 있습니다"
-- 질문형 제안: 가능한 경우 "~하는 것은 어떨까요?"
-"""
-
-L7_GUIDE = """[L7 작성 원칙]
-제3자가 이해할 수 있도록:
-- 명확한 주어와 목적어 포함을 권장합니다
-- 하나의 화면 내 연속 동작은 1개 L7로 표현하면 좋습니다
-- 판단 시 명확한 기준값을 포함하면 의사결정이 명확해집니다
-
-[권장 동사]
-조회한다, 입력한다, 수정한다, 저장한다, 추출한다, 비교한다, 집계한다,
-기록한다, 첨부한다, 판정한다, 승인한다, 반려한다, 결정한다,
-예외로 처리한다, 요청한다, 재요청한다, 안내한다, 공지한다, 에스컬레이션한다
-
-[구체화가 필요한 동사]
-처리한다, 진행한다, 관리한다, 대응한다, 지원한다, 개선한다, 최적화한다,
-검토한다, 확인한다, 정리한다, 공유한다, 조율한다, 협의한다, 반영한다
-→ 이러한 동사는 구체적인 행위로 바꾸면 더 명확해질 수 있습니다
-
-참고: 시스템명은 라벨이 아닌 노드 메타데이터로 관리하면 깔끔합니다."""
-
-def describe_flow(nodes, edges):
-    if not nodes: return "플로우 비어있음."
-
-    # ─── Flow Statistics ───
-    node_types = {"start": 0, "end": 0, "process": 0, "decision": 0, "subprocess": 0}
-    for n in nodes:
-        if hasattr(n, 'data'):
-            node_types[n.data.get('nodeType', 'process')] += 1
-        elif hasattr(n, 'nodeType'):
-            node_types[getattr(n, 'nodeType', 'process')] += 1
-        else:
-            node_types['process'] += 1
-
-    total_nodes = len(nodes)
-    total_edges = len(edges)
-    has_swim_lanes = any(getattr(n, 'swimLaneId', None) or (hasattr(n, 'data') and n.data.get('swimLaneId')) for n in nodes)
-
-    # ─── Phase Detection ───
-    if total_nodes <= 2:
-        phase = "초기 단계"
-    elif total_nodes <= 5 or not any(n_id for n_id, e in [(e['source'], e) for e in edges]
-                                      for tgt in [e['target'] for e in edges]
-                                      if node_types.get('end', 0) == 0):
-        phase = "진행 중"
-    else:
-        phase = "완성 단계"
-
-    # ─── Structural Analysis ───
-    all_node_ids = {n.id if hasattr(n, 'id') else getattr(n, 'id', None) for n in nodes}
-    source_ids = {e['source'] if isinstance(e, dict) else e.source for e in edges}
-    target_ids = {e['target'] if isinstance(e, dict) else e.target for e in edges}
-
-    orphan_count = len(all_node_ids - source_ids - target_ids)
-    orphan_nodes = list(all_node_ids - source_ids - target_ids)
-
-    has_start = node_types.get('start', 0) > 0
-    has_end = node_types.get('end', 0) > 0
-    start_connected = any(e.get('source') if isinstance(e, dict) else e.source
-                         for n in nodes
-                         if (getattr(n, 'nodeType', None) or (hasattr(n, 'data') and n.data.get('nodeType'))) == 'start'
-                         for e in edges)
-
-    disconnected_ends = [(n.id if hasattr(n, 'id') else None) for n in nodes
-                         if (getattr(n, 'nodeType', None) or (hasattr(n, 'data') and n.data.get('nodeType'))) == 'end'
-                         and (n.id if hasattr(n, 'id') else None) not in target_ids]
-
-    # ─── HR Process Checkpoints ───
-    hr_keywords = {'승인': 0, '결재': 0, '예외': 0, '검토': 0, '판정': 0, '요청': 0}
-    for n in nodes:
-        label = getattr(n, 'label', '') or (n.data.get('label', '') if hasattr(n, 'data') else '')
-        for kw in hr_keywords:
-            if kw in label:
-                hr_keywords[kw] += 1
-
-    has_hr_checkpoints = any(v > 0 for v in hr_keywords.values())
-    hr_coverage = ", ".join([f"{kw}({v}건)" for kw, v in hr_keywords.items() if v > 0]) or "없음"
-
-    # ─── Generate Rich Description ───
-    lines = [
-        f"[플로우 통계] 총 {total_nodes}개 노드, {total_edges}개 연결",
-        f"  구성: 시작({node_types['start']}) > 태스크({node_types['process']}) / 분기({node_types['decision']}) / L6 프로세스({node_types['subprocess']}) > 종료({node_types['end']})",
-        f"  수영레인: {'사용 중' if has_swim_lanes else '미사용'}",
-        f"[진행도] {phase}",
-        f"[구조 상태] 시작({has_start}), 종료({has_end}), 고아({orphan_count}), 연결율({100*total_edges//max(total_nodes-1,1)}%)",
-    ]
-
-    if orphan_count > 0:
-        lines.append(f"  ⚠ {orphan_count}개 연결안됨: {orphan_nodes}")
-    if not has_end:
-        lines.append(f"  ⚠ 종료 노드 없음")
-    if disconnected_ends:
-        lines.append(f"  ⚠ {len(disconnected_ends)}개 종료 노드 연결 안됨")
-
-    lines.append(f"[HR 프로세스 요소] {hr_coverage}")
-    lines.append("")
-    lines.append("노드 목록:")
-
-    for n in nodes:
-        node_id = n.id if hasattr(n, 'id') else getattr(n, 'id', '?')
-        node_type = getattr(n, 'nodeType', None) or (n.data.get('nodeType') if hasattr(n, 'data') else 'process')
-        label = getattr(n, 'label', '') or (n.data.get('label', '') if hasattr(n, 'data') else '')
-        t = {"process":"태스크","decision":"분기","subprocess":"L6 프로세스","start":"시작","end":"종료"}.get(node_type, node_type)
-
-        meta = ""
-        if hasattr(n, 'systemName') and n.systemName:
-            meta += f" [SYS:{n.systemName}]"
-        elif hasattr(n, 'data') and n.data.get('systemName'):
-            meta += f" [SYS:{n.data.get('systemName')}]"
-
-        if hasattr(n, 'duration') and n.duration:
-            meta += f" [⏱{n.duration}]"
-        elif hasattr(n, 'data') and n.data.get('duration'):
-            meta += f" [⏱{n.data.get('duration')}]"
-
-        category = getattr(n, 'category', None) or (n.data.get('category') if hasattr(n, 'data') else None)
-        if category and category != "as_is":
-            meta += f" <{category}>"
-
-        swimlane = getattr(n, 'swimLaneId', None) or (n.data.get('swimLaneId') if hasattr(n, 'data') else None)
-        if swimlane:
-            meta += f" [레인:{swimlane}]"
-
-        lines.append(f"  [{node_id}] ({t}) {label}{meta}")
-
-    lines.append("연결 구조:")
-    for e in edges:
-        source = e['source'] if isinstance(e, dict) else e.source
-        target = e['target'] if isinstance(e, dict) else e.target
-        label = e.get('label', '') if isinstance(e, dict) else (e.label if hasattr(e, 'label') else '')
-        lines.append(f"  {source} → {target}{f' [{label}]' if label else ''}")
-
-    return "\n".join(lines)
-
-async def get_http_client() -> httpx.AsyncClient:
-    global _http_client
-    if _http_client is None:
-        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0))
-    return _http_client
-
-async def check_llm():
-    """LLM 연결 상태 확인 (캐시 + 5분 TTL + 재시도)"""
-    global _llm_available, _llm_check_time
-
-    if USE_MOCK == "true": return False
-    if USE_MOCK == "false": return True
-
-    async with _llm_lock:
-        now = time.time()
-        # 캐시가 유효하면 기존 값 반환
-        if _llm_available is not None and (now - _llm_check_time) < _llm_cache_ttl:
-            return _llm_available
-
-        # 캐시 만료 또는 처음 확인: LLM 상태 체크
-        for attempt in range(3):
-            try:
-                client = await get_http_client()
-                r = await client.get(f"{LLM_BASE_URL}/models", timeout=5.0)
-                if r.status_code == 200:
-                    _llm_available = True
-                    _llm_check_time = now
-                    logger.info("LLM 연결 성공")
-                    return True
-                else:
-                    logger.warning(f"LLM 상태 확인 실패: {r.status_code}")
-            except Exception as e:
-                wait_time = 2 ** attempt  # 1s, 2s, 4s
-                logger.warning(f"LLM 연결 시도 {attempt + 1}/3 실패: {e}. {wait_time}초 후 재시도...")
-                if attempt < 2:
-                    await asyncio.sleep(wait_time)
-
-        _llm_available = False
-        _llm_check_time = now
-        logger.error("LLM 연결 불가 (3회 재시도 모두 실패)")
-        return False
-
-async def call_llm(system_prompt, user_message):
-    """LLM 호출 (재시도 로직 포함)"""
-    if not await check_llm():
-        return None
-
-    client = await get_http_client()
-    payload = {
-        "model": LLM_MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 2000
-    }
-
-    for attempt in range(3):
-        try:
-            start_time = time.time()
-            r = await client.post(f"{LLM_BASE_URL}/chat/completions", json=payload, timeout=60.0)
-            r.raise_for_status()
-            content = r.json()["choices"][0]["message"]["content"]
-            elapsed = time.time() - start_time
-            logger.info(f"LLM 응답 시간: {elapsed:.2f}초")
-
-            if "<think>" in content:
-                content = content.split("</think>")[-1]
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-
-            try:
-                return json.loads(content.strip())
-            except json.JSONDecodeError:
-                import re
-                match = re.search(r'\{.*\}', content, re.DOTALL)
-                if match:
-                    return json.loads(match.group())
-                raise
-        except asyncio.TimeoutError:
-            wait_time = 2 ** attempt
-            logger.warning(f"LLM 타임아웃 (시도 {attempt + 1}/3). {wait_time}초 후 재시도...")
-            if attempt < 2:
-                await asyncio.sleep(wait_time)
-        except httpx.HTTPStatusError as e:
-            logger.error(f"LLM HTTP 오류: {e.status_code} {e.response.text}")
-            return None
-        except Exception as e:
-            wait_time = 2 ** attempt
-            logger.warning(f"LLM 요청 실패 (시도 {attempt + 1}/3): {e}. {wait_time}초 후 재시도...")
-            if attempt < 2:
-                await asyncio.sleep(wait_time)
-
-    logger.error("LLM 호출 실패 (3회 재시도 모두 실패)")
-    return None
-
-REVIEW_SYSTEM = f"""당신은 HR 프로세스 설계를 돕는 협력적 코치입니다.
-
-{COACHING_TONE}
-{L7_GUIDE}
-
-역할: 플로우를 분석하고 개선 아이디어를 제안합니다. 명령이 아닌 제안으로 표현하세요.
-
-응답 형식 (JSON):
-{{
-  "speech": "분석 결과를 친근하게 요약 (예: '분석 결과를 공유드릴게요. 몇 가지 고려사항이 있어요.')",
-  "suggestions": [
-    {{
-      "action": "ADD|MODIFY|DELETE",
-      "summary": "제안 설명(사용자 안내용)",
-      "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)",
-      "reason": "왜 이것이 도움이 되는지 구체적 이유. '~하면 더 명확해질 수 있습니다' 형태",
-      "confidence": "high|medium|low",
-      ...
-    }}
-  ],
-  "quickQueries": ["후속 질문1", "후속 질문2"]
-}}
-
-중요: 모든 제안은 제안형 어조로 작성하세요 (예: "추가하면 좋을 것 같아요", "고려해 보시겠어요?").
-- summary(설명)와 labelSuggestion(셰이프 라벨)을 반드시 분리하세요.
-- labelSuggestion은 반드시 단일 동작으로 작성하세요. "~하고, ~한다" 같은 복합문 금지.
-"""
-
-COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 코치입니다.
-
-{COACHING_TONE}
-{L7_GUIDE}
-
-역할: 사용자 질문에 공감하며 답변하고, 구체적 개선 방향을 제안합니다.
-
-응답 형식 (JSON):
-{{
-  "speech": "공감하며 답변 (예: '그 부분은 이렇게 접근해볼 수 있어요.')",
-  "suggestions": [
-    {{
-      "action": "ADD|MODIFY|DELETE",
-      "summary": "제안 설명(사용자 안내용)",
-      "labelSuggestion": "셰이프에 넣을 라벨(ADD일 때 필수, L7 형식의 단일 동작)"
-    }}
-  ],
-  "quickQueries": ["다음으로 확인할 질문2~3개"]
-}}
-
-중요:
-- 모든 문장을 제안형으로 ("~하면 어떨까요?", "~를 고려해보세요")
-- 부정적 표현 회피 ("문제", "틀렸다" 대신 "개선 기회", "더 나은 방법")
-- summary(설명)와 labelSuggestion(셰이프 라벨)을 반드시 분리하세요.
-- labelSuggestion은 반드시 단일 동작으로 작성하세요. "~하고, ~한다" 같은 복합문 금지.
-"""
-
-L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
-
-{COACHING_TONE}
-{L7_GUIDE}
-
-역할: L7 라벨을 검토하고 개선 방향을 제안합니다. 비판이 아닌 코칭으로 접근하세요.
-
-[검증 규칙]
-R-01: 길이 부족 (4자 미만)
-R-02: 길이 초과 (100자 초과)
-R-03: 구체화 권장 (모호 동사)
-R-04: 시스템명 분리 (괄호/시스템명 혼입)
-R-05: 복수 동작 (한 라벨에 2개 이상의 동작)
-R-08: 기준값 누락 (decision 노드 판단 기준)
-R-15: 표준 형식 (process는 "~한다", decision은 "~인가?" 또는 "~여부")
-
-[판정 기준]
-- R-05가 있으면 pass=false
-- 나머지는 warning 중심, pass=true 유지 가능
-- score 권장: 이슈 0개=95, 1개=80, 2개=65, 3개 이상=50
-
-응답 형식 (JSON):
-{{
-  "pass": true/false,
-  "score": 0-100,
-  "confidence": "high|medium|low",
-  "issues": [
-    {{
-      "ruleId": "R-XX",
-      "severity": "warning|suggestion",
-      "friendlyTag": "간단한 태그 (예: '구체화 권장')",
-      "message": "제안형 메시지 (예: '더 구체적인 동사를 사용하면 명확해질 수 있어요')",
-      "suggestion": "개선 방향",
-      "reasoning": "왜 이 개선이 도움되는지"
-    }}
-  ],
-  "rewriteSuggestion": "개선된 라벨 제안 (반말로: 예시: '첨부파일을 첨부한다', '요청서를 승인한다')",
-  "encouragement": "긍정적 피드백 (예: '좋은 방향입니다! 조금만 더 구체화하면 완벽해요')"
-}}
-
-중요:
-- "금지", "틀렸다" 같은 부정 표현 금지. 항상 개선의 이유와 이점 설명.
-- rewriteSuggestion은 반드시 반말(~한다)로만 작성. 존댓말 절대 금지.
-- rewriteSuggestion은 단일 동작만 작성. 복합문("~하고, ~한다") 금지.
-- ruleId는 위 정의된 코드만 사용하세요.
-"""
-
-CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 조용히 지켜보다가 필요한 순간 한마디 건네는 사려깊은 코치입니다.
-
-{COACHING_TONE}
-{L7_GUIDE}
-
-역할: 현재 플로우를 보고 빠진 단계나 예외를 짧고 부드럽게 짚어줍니다.
-
-응답 형식 (JSON만):
-{{
-  "guidance": "한 줄 제안 (예: '예외 처리 단계를 추가하면 더 완벽해질 것 같아요')",
-  "tone": "gentle",
-  "quickQueries": ["궁금할만한 질문1", "질문2"]
-}}
-
-중요: 너무 빈번하거나 강압적이지 않게. 작업 중단을 최소화.
-"""
-
-FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는 사용자를 환영하고 격려하는 친절한 코치입니다.
-
-{COACHING_TONE}
-
-역할: 첫 번째 프로세스 단계를 추가한 사용자에게:
-1. 따뜻한 환영 인사
-2. 해당 프로세스의 일반적인 흐름을 제시
-3. 고려할 사항(예: 예외 처리, 승인 분기)
-4. 다음 단계에 대한 포괄적인 제안
-
-응답 형식 (JSON):
-{{
-  "greeting": "환영 인사 (예: '첫 단계가 추가되었네요! 함께 프로세스를 완성해보겠습니다.')",
-  "processFlowExample": "일반적인 프로세스 흐름 (→로 단계를 연결)",
-  "guidanceText": "이 프로세스에서 고려할 점들을 포함한 친절한 설명 (2-3문장)",
-  "quickQueries": ["후속 질문1", "후속 질문2", "후속 질문3"]
-}}
-
-중요: 모든 표현을 제안형 어조로 작성하세요.
-"""
-
-PDD_ANALYSIS = """당신은 HR 프로세스 자동화 전문가입니다. 각 태스크를 분석하여 카테고리를 추천하세요.\n응답(JSON만): {"recommendations":[{"nodeId":"...","nodeLabel":"...","suggestedCategory":"...","reason":"...","confidence":"high|medium|low"}],"summary":"전체 요약"}"""
-
-
-def mock_validate(label, node_type="process", llm_failed=False):
-    """Rule-based L7 validation - used when LLM fails or for backup verification"""
-    issues = []
-
-    # R-01: Length validation
-    if len(label.strip()) < 4:
-        issues.append({
-            "ruleId": "R-01",
-            "severity": "warning",
-            "friendlyTag": "길이 부족",
-            "message": "라벨이 너무 짧아서 내용을 충분히 표현하지 못할 수 있어요",
-            "suggestion": "좀 더 자세하게 표현해보세요",
-            "reasoning": "명확한 라벨은 제3자가 정확히 이해할 수 있도록 도와줍니다"
-        })
-
-    if len(label.strip()) > 100:
-        issues.append({
-            "ruleId": "R-02",
-            "severity": "warning",
-            "friendlyTag": "길이 초과",
-            "message": "라벨이 너무 길면 핵심이 흐릿해질 수 있어요",
-            "suggestion": "핵심만 간결하게 표현해보세요",
-            "reasoning": "간결한 표현이 플로우 전체의 가독성을 높입니다"
-        })
-
-    # R-03: Vague verb check
-    vague_verbs = ["처리한다","진행한다","관리한다","확인한다","검토한다","대응한다","지원한다"]
-    for v in vague_verbs:
-        if v in label:
-            issues.append({
-                "ruleId": "R-03",
-                "severity": "warning",
-                "friendlyTag": "구체화 권장",
-                "message": f"'{v}' 대신 더 구체적인 동사를 사용하면 명확해질 수 있어요",
-                "suggestion": "예: 조회한다, 입력한다, 저장한다, 승인한다, 반려한다 등",
-                "reasoning": "구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다"
-            })
-            break
-
-    # R-04: Parentheses/System name in label
-    if "(" in label or ")" in label or "[" in label or "]" in label:
-        issues.append({
-            "ruleId": "R-04",
-            "severity": "warning",
-            "friendlyTag": "시스템명 분리",
-            "message": "시스템명은 라벨이 아닌 노드 메타데이터로 관리하면 더 깔끔합니다",
-            "suggestion": "라벨: '송금 요청하다', 메타: 시스템명 '회계시스템'",
-            "reasoning": "라벨과 시스템명을 분리하면 프로세스 로직이 명확해집니다"
-        })
-
-    # R-15: Formal ending check (반말 형식)
-    normalized = label.strip()
-    decision_like = normalized.endswith("?") or "여부" in normalized
-    needs_process_ending = node_type != "decision"
-    if (needs_process_ending and not normalized.endswith("다") and not normalized.endswith("다.")) or (not needs_process_ending and not decision_like and not normalized.endswith("다") and not normalized.endswith("다.")):
-        issues.append({
-            "ruleId": "R-15",
-            "severity": "warning",
-            "friendlyTag": "표준 형식",
-            "message": "'~한다' 형태로 마무리하면 일관성이 좋아집니다",
-            "suggestion": "동사형 어미 사용을 권장드려요",
-            "reasoning": "표준 형식은 플로우 전체의 가독성을 높입니다"
-        })
-
-    has_critical = len([i for i in issues if i["severity"] == "reject"]) == 0
-    score = 90 if has_critical and not issues else 70 if has_critical else 50
-    encouragement = "잘 작성하셨어요!" if not issues else "방향이 잘 잡혔어요. 조금만 더 다듬어 볼까요?"
-
-    result = {
-        "pass": has_critical,
-        "score": score,
-        "confidence": "low" if llm_failed else "medium",
-        "issues": issues,
-        "rewriteSuggestion": None,
-        "encouragement": encouragement
-    }
-
-    if llm_failed:
-        result["llm_failed"] = True
-        result["warning"] = "⚠️ AI 분석이 불가능해 표준 가이드라인으로 검증했습니다. 정확한 검토를 위해 다시 시도해보세요."
-
-    return result
-
-def mock_quick_queries(nodes, edges):
-    """Generate follow-up questions in suggestive tone"""
-    qs = []
-    pn = [n for n in nodes if n.type=="process"]
-    dn = [n for n in nodes if n.type=="decision"]
-
-    if not any(n.type=="end" for n in nodes) and len(pn)>=2:
-        qs.append("어떤 상황에서 이 프로세스가 완료되나요?")
-
-    if not dn and len(pn)>=3:
-        qs.append("중간에 판단이나 승인이 필요한 지점이 있을까요?")
-
-    if len(pn)>=2:
-        qs.append("예외적으로 처리해야 하는 상황은 어떤 것들이 있을까요?")
-
-    if any(n.systemName for n in nodes):
-        qs.append("시스템 간 데이터 연계는 어떻게 이루어지나요?")
-
-    return qs[:3]
-
-def mock_review(nodes, edges):
-    """Mock flow review with encouraging, suggestive tone"""
-    suggestions = []
-    end_nodes = [n for n in nodes if n.type == 'end']
-
-    if not end_nodes:
-        suggestions.append({
-            "action": "ADD",
-            "type": "END",
-            "summary": "종료 노드 추가",
-            "labelSuggestion": "종료",
-            "reason": "플로우의 끝을 명확히 표시하면 완결성이 높아집니다",
-            "reasoning": "프로세스의 시작과 끝이 명확하면 제3자가 전체 범위를 이해하기 쉬워집니다. HR 프로세스에서는 특히 완료 조건(예: 결과 저장, 알림)을 명시하는 것이 중요합니다.",
-            "confidence": "high",
-            "newLabel": "종료"
-        })
-
-    orphans = [n for n in nodes if n.type not in ('start','end') and not any(e.source == n.id or e.target == n.id for e in edges)]
-    if orphans:
-        suggestions.append({
-            "action": "MODIFY",
-            "summary": f"연결되지 않은 노드 {len(orphans)}개 발견",
-            "reason": "모든 단계를 연결하면 플로우가 더 명확해집니다",
-            "reasoning": f"독립적으로 떠있는 노드는 실행 순서가 불명확합니다. 어느 단계 이후에 수행되는지, 또는 병렬로 진행되는지를 표현하면 운영 효율성이 높아집니다.",
-            "confidence": "high"
-        })
-
-    decisions = [n for n in nodes if n.type == 'decision']
-    if not decisions and len(nodes) > 5:
-        suggestions.append({
-            "action": "ADD",
-            "type": "DECISION",
-            "summary": "분기점 추가 고려",
-            "labelSuggestion": "승인 여부를 판단한다",
-            "reason": "승인/반려 같은 판단 지점을 추가하면 실제 프로세스에 더 가까워집니다",
-            "reasoning": "HR 프로세스는 대부분 조건부 분기를 포함합니다(예: 조건 검토 → 승인/반려 결정). 5개 이상의 단계가 있는데 분기가 없다면, 예외 처리나 검토 프로세스를 추가하는 것이 좋습니다.",
-            "confidence": "medium"
-        })
-
-    # Positive framing
-    tone = "긍정적" if len(suggestions) < 2 else "건설적"
-    speech = "좋은 구조예요! " if len(nodes) > 2 else "프로세스 설계를 시작해볼게요. "
-
-    if suggestions:
-        speech += f"{len(suggestions)}가지 개선 아이디어를 공유드릴게요."
-    else:
-        speech += "구조적으로 탄탄합니다. 세부 내용을 다듬어가시면 됩니다!"
-
-    return {
-        "speech": speech,
-        "suggestions": suggestions,
-        "quickQueries": mock_quick_queries(nodes, edges),
-        "tone": tone
-    }
 
 @app.post("/api/review")
 async def review_flow(req: ReviewRequest):
@@ -629,27 +28,45 @@ async def review_flow(req: ReviewRequest):
     r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
     return r or mock_review(req.currentNodes, req.currentEdges)
 
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    fd = describe_flow(req.currentNodes, req.currentEdges)
-    r = await call_llm(COACH_TEMPLATE, f"컨텍스트: {req.context}\n플로우:\n{fd}\n질문: {req.message}")
-    return r or {"speech":"AI 연결 상태가 원활하지 않아 답변을 드릴 수 없습니다. 관리자에게 문의하거나 잠시 후 다시 시도해주세요.","suggestions":[],"quickQueries":[]}
+    try:
+        fd = describe_flow(req.currentNodes, req.currentEdges)
+        history_lines = []
+        for t in req.recentTurns[-4:]:
+            role = "사용자" if t.get("role") == "user" else "코치"
+            content = str(t.get("content", "")).strip()
+            if content:
+                history_lines.append(f"- {role}: {content}")
+        history_block = "\n".join(history_lines) if history_lines else "(없음)"
+        summary = req.conversationSummary or "(없음)"
+        prompt = (
+            f"컨텍스트: {req.context}\n"
+            f"플로우:\n{fd}\n"
+            f"대화 요약: {summary}\n"
+            f"최근 대화 4턴:\n{history_block}\n"
+            f"질문: {req.message}"
+        )
+        return await orchestrate_chat(COACH_TEMPLATE, prompt, req.message, req.currentNodes, req.currentEdges)
+    except Exception:
+        logger.exception("/api/chat 처리 중 예외 발생")
+        return {"speech": "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "suggestions": [], "quickQueries": []}
+
 
 @app.post("/api/validate-l7")
 async def validate_l7(req: ValidateL7Request):
-    r = await call_llm(L7_VALIDATE, f"노드: [{req.nodeId}] {req.nodeType}\nL7: \"{req.label}\"\n컨텍스트: {req.context}")
-    if r:
-        return r
-    logger.warning(f"LLM validation failed for node {req.nodeId}: {req.label}, using rule-based validation")
-    return mock_validate(req.label, req.nodeType, llm_failed=True)
-
+    # Phase 1: 실시간 L7 판정은 프론트 룰 엔진에서 처리.
+    # 백엔드 validate-l7는 저장/배치/호환 용도로 룰 기반 결과만 반환.
+    return mock_validate(req.label, req.nodeType, llm_failed=False)
 
 
 @app.post("/api/contextual-suggest")
 async def contextual_suggest(req: ContextualSuggestRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    return r or {"guidance":"","quickQueries":[]}
+    return r or {"guidance": "", "quickQueries": []}
+
 
 @app.post("/api/first-shape-welcome")
 async def first_shape_welcome(req: ContextualSuggestRequest):
@@ -660,43 +77,54 @@ async def first_shape_welcome(req: ContextualSuggestRequest):
     if r:
         return {
             "text": f"👋 {r.get('greeting', '')}\n\n{r.get('processFlowExample', '')}\n\n{r.get('guidanceText', '')}",
-            "quickQueries": r.get('quickQueries', [])
+            "quickQueries": r.get("quickQueries", []),
         }
     return {
         "text": f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요.",
-        "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"]
+        "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"],
     }
+
 
 @app.post("/api/analyze-pdd")
 async def analyze_pdd(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
     r = await call_llm(PDD_ANALYSIS, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    if r: return r
+    if r:
+        return r
     recs = []
     for n in req.currentNodes:
-        if n.type in ('start','end'): continue
-        cat = 'as_is'
-        if any(k in n.label for k in ['조회','입력','추출','집계']): cat = 'digital_worker'
-        elif any(k in n.label for k in ['통보','안내','발송']): cat = 'ssc_transfer'
-        recs.append({"nodeId":n.id,"nodeLabel":n.label,"suggestedCategory":cat,"reason":"규칙 기반","confidence":"low"})
-    return {"recommendations":recs,"summary":"규칙 기반 자동 분류입니다."}
+        if n.type in ("start", "end"):
+            continue
+        cat = "as_is"
+        if any(k in n.label for k in ["조회", "입력", "추출", "집계"]):
+            cat = "digital_worker"
+        elif any(k in n.label for k in ["통보", "안내", "발송"]):
+            cat = "ssc_transfer"
+        recs.append({"nodeId": n.id, "nodeLabel": n.label, "suggestedCategory": cat, "reason": "규칙 기반", "confidence": "low"})
+    return {"recommendations": recs, "summary": "규칙 기반 자동 분류입니다."}
+
 
 @app.get("/api/health")
 async def health():
     llm = await check_llm()
-    return {"status":"ok","version":"5.0","llm_connected":llm,"mode":"live" if llm else "mock"}
+    return {
+        "status": "ok",
+        "version": "5.0",
+        "llm_connected": llm,
+        "mode": "live" if llm else "mock",
+        "llm_debug": get_llm_debug_status(),
+        "chat_chain": get_chain_status(),
+    }
+
 
 @app.on_event("shutdown")
 async def shutdown():
-    """앱 종료 시 HTTP 클라이언트 정리"""
-    global _http_client
-    if _http_client:
-        await _http_client.aclose()
-        _http_client = None
-        logger.info("HTTP 클라이언트 종료")
+    await close_http_client()
+
 
 if __name__ == "__main__":
     import uvicorn
+
     try:
         uvicorn.run(app, host="0.0.0.0", port=8000)
     except SystemExit:

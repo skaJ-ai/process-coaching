@@ -52,7 +52,7 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               {!editing ? (
                 <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.newLabel || suggestion.summary}</div>
               ) : (
-                <input value={editText} onChange={e => setEditText(e.target.value)} autoFocus
+                <input name="suggestion_edit_modify" aria-label="수정 제안 편집" value={editText} onChange={e => setEditText(e.target.value)} autoFocus
                   className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-amber-500/50"
                   onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
               )}
@@ -67,7 +67,7 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               )}
             </>
           ) : (
-            <input value={editText} onChange={e => setEditText(e.target.value)} autoFocus
+            <input name="suggestion_edit_add" aria-label="추가 제안 편집" value={editText} onChange={e => setEditText(e.target.value)} autoFocus
               className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
               onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
           )}

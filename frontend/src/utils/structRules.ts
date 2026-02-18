@@ -1,0 +1,188 @@
+import { Edge, Node } from 'reactflow';
+import { FlowNodeData } from '../types';
+
+export type StructRuleId =
+  | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05'
+  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11';
+
+export interface StructIssue {
+  ruleId: StructRuleId;
+  severity: 'warning';
+  message: string;
+  nodeIds?: string[];
+  edgeIds?: string[];
+}
+
+export interface StructAnalysisResult {
+  issues: StructIssue[];
+}
+
+const DEFAULT_LABELS = ['새 태스크', '새 판단', '새 서브프로세스', 'New Task'];
+
+export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): StructAnalysisResult {
+  const issues: StructIssue[] = [];
+  const flowNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
+
+  // ── S-01: 종료 노드 필수 ──
+  const hasEnd = nodes.some((n) => n.data.nodeType === 'end');
+  if (!hasEnd) {
+    issues.push({
+      ruleId: 'S-01',
+      severity: 'warning',
+      message: '종료 노드가 없으면 프로세스 범위가 불명확할 수 있어요.',
+    });
+  }
+
+  // ── S-02: 빈 라벨 방치 ──
+  const defaultLabelIds = flowNodes
+    .filter((n) => {
+      const label = (n.data.label || '').trim();
+      return !label || DEFAULT_LABELS.includes(label);
+    })
+    .map((n) => n.id);
+  if (defaultLabelIds.length > 0) {
+    issues.push({
+      ruleId: 'S-02',
+      severity: 'warning',
+      message: `기본 라벨이 그대로인 단계가 ${defaultLabelIds.length}개 있어요. 구체적인 라벨로 바꿔주세요.`,
+      nodeIds: defaultLabelIds,
+    });
+  }
+
+  // ── S-03: 고아 노드 (연결 없는 노드) ──
+  const connected = new Set<string>();
+  for (const e of edges) {
+    connected.add(e.source);
+    connected.add(e.target);
+  }
+  const orphanIds = flowNodes.filter((n) => !connected.has(n.id)).map((n) => n.id);
+  if (orphanIds.length > 0) {
+    issues.push({
+      ruleId: 'S-03',
+      severity: 'warning',
+      message: `연결되지 않은 단계 ${orphanIds.length}개가 있습니다.`,
+      nodeIds: orphanIds,
+    });
+  }
+
+  // ── S-04: 흐름 끊김 (process/decision에 나가는 연결 없음) ──
+  const noOutgoingIds = flowNodes
+    .filter((n) => ['process', 'decision', 'subprocess'].includes(n.data.nodeType))
+    .filter((n) => connected.has(n.id)) // 고아가 아닌 노드만 (고아는 S-03에서 처리)
+    .filter((n) => !edges.some((e) => e.source === n.id))
+    .map((n) => n.id);
+  if (noOutgoingIds.length > 0) {
+    issues.push({
+      ruleId: 'S-04',
+      severity: 'warning',
+      message: `나가는 연결이 없는 단계 ${noOutgoingIds.length}개가 있어요. 흐름이 끊길 수 있습니다.`,
+      nodeIds: noOutgoingIds,
+    });
+  }
+
+  // ── S-05: 암묵적 분기 (process 노드에서 다중 outgoing) ──
+  const implicitBranchIds = nodes
+    .filter((n) => n.data.nodeType === 'process' || n.data.nodeType === 'subprocess')
+    .filter((n) => edges.filter((e) => e.source === n.id).length > 1)
+    .map((n) => n.id);
+  if (implicitBranchIds.length > 0) {
+    issues.push({
+      ruleId: 'S-05',
+      severity: 'warning',
+      message: `프로세스 노드에서 2개 이상 분기하는 곳이 ${implicitBranchIds.length}개 있어요. 판단 노드로 분기 조건을 명시하면 더 명확해집니다.`,
+      nodeIds: implicitBranchIds,
+    });
+  }
+
+  // ── S-06: 중복 연결 (동일 source→target 2개 이상) ──
+  const edgeKeys = new Map<string, string[]>();
+  for (const e of edges) {
+    const key = `${e.source}->${e.target}`;
+    const arr = edgeKeys.get(key) || [];
+    arr.push(e.id);
+    edgeKeys.set(key, arr);
+  }
+  const duplicateEdgeIds: string[] = [];
+  for (const [, ids] of edgeKeys) {
+    if (ids.length > 1) {
+      duplicateEdgeIds.push(...ids.slice(1)); // 첫 번째는 유지, 나머지 중복
+    }
+  }
+  if (duplicateEdgeIds.length > 0) {
+    issues.push({
+      ruleId: 'S-06',
+      severity: 'warning',
+      message: `동일한 방향의 중복 연결이 ${duplicateEdgeIds.length}개 있어요.`,
+      edgeIds: duplicateEdgeIds,
+    });
+  }
+
+  // ── S-07: 무의미 판단 (decision에 outgoing 1개만) ──
+  const decisionNodes = nodes.filter((n) => n.data.nodeType === 'decision');
+  const trivialDecisionIds = decisionNodes
+    .filter((n) => edges.filter((e) => e.source === n.id).length === 1)
+    .map((n) => n.id);
+  if (trivialDecisionIds.length > 0) {
+    issues.push({
+      ruleId: 'S-07',
+      severity: 'warning',
+      message: `분기 경로가 1개뿐인 판단 노드 ${trivialDecisionIds.length}개가 있어요. 분기가 불필요하다면 프로세스 노드로 변경해보세요.`,
+      nodeIds: trivialDecisionIds,
+    });
+  }
+
+  // ── S-08: 조건 라벨 누락 (decision outgoing에 라벨 없음) ──
+  const unlabeledDecisionEdgeIds: string[] = [];
+  for (const dn of decisionNodes) {
+    const outEdges = edges.filter((e) => e.source === dn.id);
+    if (outEdges.length >= 2) {
+      const unlabeled = outEdges.filter((e) => !e.label || (typeof e.label === 'string' && !e.label.trim()));
+      if (unlabeled.length > 0) {
+        unlabeledDecisionEdgeIds.push(...unlabeled.map((e) => e.id));
+      }
+    }
+  }
+  if (unlabeledDecisionEdgeIds.length > 0) {
+    issues.push({
+      ruleId: 'S-08',
+      severity: 'warning',
+      message: `판단 노드의 분기 연결 ${unlabeledDecisionEdgeIds.length}개에 조건 라벨이 없어요. 'Yes/No' 또는 구체적 조건을 적어주세요.`,
+      edgeIds: unlabeledDecisionEdgeIds,
+    });
+  }
+
+  // ── S-09: 다중 시작 확인 ──
+  const startNodes = nodes.filter((n) => n.data.nodeType === 'start');
+  if (startNodes.length > 1) {
+    issues.push({
+      ruleId: 'S-09',
+      severity: 'warning',
+      message: `시작 노드가 ${startNodes.length}개 있어요. 의도된 구조인지 확인해주세요. 일반적으로 프로세스는 시작점이 1개입니다.`,
+      nodeIds: startNodes.map((n) => n.id),
+    });
+  }
+
+  // ── S-10: 과다 분기 (decision outgoing 4개 이상) ──
+  const excessiveBranchIds = decisionNodes
+    .filter((n) => edges.filter((e) => e.source === n.id).length >= 4)
+    .map((n) => n.id);
+  if (excessiveBranchIds.length > 0) {
+    issues.push({
+      ruleId: 'S-10',
+      severity: 'warning',
+      message: `분기가 4개 이상인 판단 노드 ${excessiveBranchIds.length}개가 있어요. 중첩 판단으로 분해하면 가독성이 좋아집니다.`,
+      nodeIds: excessiveBranchIds,
+    });
+  }
+
+  // ── S-11: 모델 복잡도 (총 노드 50개 초과) ──
+  if (flowNodes.length > 50) {
+    issues.push({
+      ruleId: 'S-11',
+      severity: 'warning',
+      message: `전체 노드가 ${flowNodes.length}개로, 50개를 초과했어요. 서브프로세스로 분해하면 관리가 쉬워집니다.`,
+    });
+  }
+
+  return { issues };
+}

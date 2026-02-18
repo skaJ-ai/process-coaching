@@ -52,7 +52,7 @@ export default function NodeDetailPanel() {
           ) : (
             <>
               <div className="flex-1">
-                <input value={editRewriteText} onChange={e => setEditRewriteText(e.target.value)} className="w-full text-xs bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1.5 text-slate-200 focus:outline-none focus:border-green-500/50 mb-2" />
+                <input id={`node-rewrite-${node.id}`} name={`node_rewrite_${node.id}`} aria-label="노드 추천 문구 수정" value={editRewriteText} onChange={e => setEditRewriteText(e.target.value)} className="w-full text-xs bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1.5 text-slate-200 focus:outline-none focus:border-green-500/50 mb-2" />
                 <div className="flex gap-1">
                   <button onClick={() => { updateLabel(node.id, editRewriteText, 'user'); applyRewrite(node.id); setEditingRewrite(false); }} className="px-2 py-1 rounded text-[10px] font-semibold bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
                   <button onClick={() => setEditingRewrite(false)} className="px-2 py-1 rounded text-[10px] text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">취소</button>

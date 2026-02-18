@@ -1,0 +1,6 @@
+# Copy this file to backend/environment.txt and edit values for your environment.
+# You can also use backend/.env, project-root/.env, or project-root/environment.txt.
+
+LLM_BASE_URL=http://10.240.248.157:8533/v1
+LLM_MODEL=Qwen3-Next
+USE_MOCK=auto

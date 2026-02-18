@@ -94,22 +94,22 @@ export default function SetupModal() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">L4 모듈</label>
-            <select value={l4} onChange={e => { setL4(e.target.value); setL5(''); setL6(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
+            <label htmlFor="setup-l4" className="block text-xs font-medium text-slate-400 mb-1.5">L4 모듈</label>
+            <select id="setup-l4" name="l4" value={l4} onChange={e => { setL4(e.target.value); setL5(''); setL6(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
               <option value="">모듈 선택...</option>
               {hrModules.map(m => <option key={m.l4} value={m.l4}>{m.l4}</option>)}
             </select>
           </div>
           {l4 && mod && <div className="animate-fade-in">
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">L5 단위업무</label>
-            <select value={l5} onChange={e => { setL5(e.target.value); setL6(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
+            <label htmlFor="setup-l5" className="block text-xs font-medium text-slate-400 mb-1.5">L5 단위업무</label>
+            <select id="setup-l5" name="l5" value={l5} onChange={e => { setL5(e.target.value); setL6(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
               <option value="">선택...</option>
               {mod.tasks.map(t => <option key={t.l5} value={t.l5}>{t.l5}</option>)}
             </select>
           </div>}
           {l5 && task && <div className="animate-fade-in">
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">L6 상세활동</label>
-            <select value={l6} onChange={e => setL6(e.target.value)} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
+            <label htmlFor="setup-l6" className="block text-xs font-medium text-slate-400 mb-1.5">L6 상세활동</label>
+            <select id="setup-l6" name="l6" value={l6} onChange={e => setL6(e.target.value)} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
               <option value="">선택...</option>
               {task.l6_activities.map(a => <option key={a} value={a}>{a}</option>)}
             </select>

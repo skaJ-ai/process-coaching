@@ -1,0 +1,198 @@
+# L7 Label Golden Set
+# 각 샘플은 규칙 검증의 정확도를 측정하는 데 사용됩니다.
+
+good_labels:
+  # 표준을 잘 따르는 라벨들
+  - label: "지원서를 접수한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "적격 여부를 판정한다"
+    nodeType: "decision"
+    expected_issues: []
+
+  - label: "승인 요청서를 제출한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "면접 일정을 조율한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "합격 여부를 통보한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "예산이 충분한가?"
+    nodeType: "decision"
+    expected_issues: []
+
+  - label: "결재 금액이 기준을 초과하는가?"
+    nodeType: "decision"
+    expected_issues: []
+
+  - label: "인사 정보를 조회한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "퇴직금을 계산한다"
+    nodeType: "process"
+    expected_issues: []
+
+  - label: "근태 기록을 저장한다"
+    nodeType: "process"
+    expected_issues: []
+
+bad_labels_r01:
+  # R-01: 길이 부족 (4자 미만)
+  # 짧은 라벨은 R-15(표준 형식)도 동시에 위반
+  - label: "접수"
+    nodeType: "process"
+    expected_issues: ["R-01", "R-15"]
+
+  - label: "조회"
+    nodeType: "process"
+    expected_issues: ["R-01", "R-15"]
+
+  - label: "판정"
+    nodeType: "decision"
+    expected_issues: ["R-01", "R-08", "R-15"]
+
+bad_labels_r02:
+  # R-02: 길이 초과 (100자 초과)
+  - label: "지원자의 인사 정보를 조회하고 해당 정보를 기반으로 적격 여부를 판정한 후 승인 요청서를 작성하여 결재자에게 제출하고 승인 결과를 지원자에게 통보하며 필요시 예외 처리 절차를 진행한다"
+    nodeType: "process"
+    expected_issues: ["R-02", "R-05"]
+
+bad_labels_r03:
+  # R-03: 모호 동사
+  - label: "지원서를 처리한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+
+  - label: "정보를 확인한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+
+  - label: "요청을 진행한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+
+  - label: "데이터를 관리한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+
+  - label: "결과를 검토한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+
+bad_labels_r04:
+  # R-04: 시스템명 괄호 혼입
+  # 끝에 괄호가 있으면 R-15(표준 형식)도 동시에 위반
+  - label: "인사정보를 조회한다(SAP)"
+    nodeType: "process"
+    expected_issues: ["R-04", "R-15"]
+
+  - label: "[HR시스템] 지원서를 등록한다"
+    nodeType: "process"
+    expected_issues: ["R-04"]
+
+  - label: "급여를 계산한다 (급여시스템)"
+    nodeType: "process"
+    expected_issues: ["R-04", "R-15"]
+
+bad_labels_r05:
+  # R-05: 복수 동작
+  - label: "지원서를 접수하고 적격 여부를 판정한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+
+  - label: "정보를 조회하며 결과를 저장한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+
+  - label: "데이터를 입력한 후 승인을 요청한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+
+  - label: "요청서를 작성한다, 결재를 요청한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+
+r05_false_positives:
+  # R-05 오탐 케이스 (복수 동작이 아님)
+  - label: "검토하고자 한다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+    note: "~하고자 한다는 의도 표현, R-05 아님. R-03(검토) 경고는 정상"
+
+  - label: "승인하고자 합니다"
+    nodeType: "process"
+    expected_issues: []
+    note: "~하고자 합니다도 의도 표현, 복수 동작 아님"
+
+  - label: "빨리 처리하고 싶다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+    note: "~하고 싶다는 희망 표현, R-05 아님. R-03(처리) 경고는 정상"
+
+  - label: "승인하고 나서 통보한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+    note: "이건 실제로 복수 동작임"
+
+  - label: "데이터를 확인하고 싶었다"
+    nodeType: "process"
+    expected_issues: ["R-03"]
+    note: "~하고 싶었다는 과거 희망 표현, R-05 아님. R-03(확인) 경고는 정상"
+
+bad_labels_r08:
+  # R-08: decision 노드에 기준값 누락
+  - label: "판정한다"
+    nodeType: "decision"
+    expected_issues: ["R-08"]
+
+  - label: "검토한다"
+    nodeType: "decision"
+    expected_issues: ["R-03", "R-08"]
+
+  - label: "결정한다"
+    nodeType: "decision"
+    expected_issues: ["R-08"]
+
+bad_labels_r15:
+  # R-15: 표준 형식 위반
+  - label: "지원서 접수"
+    nodeType: "process"
+    expected_issues: ["R-15"]
+
+  - label: "승인 요청"
+    nodeType: "process"
+    expected_issues: ["R-15"]
+
+  - label: "적격 여부 판정"
+    nodeType: "decision"
+    expected_issues: []
+    note: "decision 노드는 '여부' 패턴 허용"
+
+edge_cases:
+  # 엣지 케이스
+  - label: ""
+    nodeType: "process"
+    expected_issues: ["R-01", "R-15"]
+    note: "빈 라벨"
+
+  - label: "   "
+    nodeType: "process"
+    expected_issues: ["R-01", "R-15"]
+    note: "공백만"
+
+  - label: "지원서를 접수한다."
+    nodeType: "process"
+    expected_issues: []
+    note: "마침표는 허용"
+
+  - label: "지원서를 접수하고, 검토하고, 승인한다"
+    nodeType: "process"
+    expected_issues: ["R-05"]
+    note: "3개 이상 복수 동작"

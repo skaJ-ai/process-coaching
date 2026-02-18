@@ -39,7 +39,7 @@ export interface Suggestion {
 // ─── L7 Validation ───
 export interface L7Issue {
   ruleId: string;
-  severity: 'reject' | 'warning';
+  severity: 'reject' | 'warning' | 'suggestion';
   message: string;
   suggestion?: string;
   friendlyTag?: string;

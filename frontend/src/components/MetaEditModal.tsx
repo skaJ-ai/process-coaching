@@ -38,26 +38,26 @@ export default function MetaEditModal({ nodeId, initial, onSave, onClose }: Prop
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-cyan-400 mb-1 font-medium">인풋 (Input)</label>
-            <input value={input} onChange={e => setInput(e.target.value)} autoFocus
+            <label htmlFor="meta-input" className="block text-xs text-cyan-400 mb-1 font-medium">인풋 (Input)</label>
+            <input id="meta-input" name="meta_input" value={input} onChange={e => setInput(e.target.value)} autoFocus
               placeholder="예: 면접 일정표, 지원자 이력서"
               className="w-full px-3 py-2 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-cyan-800/40 focus:outline-none focus:border-cyan-500/50 placeholder-slate-600" />
           </div>
           <div>
-            <label className="block text-xs text-amber-400 mb-1 font-medium">아웃풋 (Output)</label>
-            <input value={output} onChange={e => setOutput(e.target.value)}
+            <label htmlFor="meta-output" className="block text-xs text-amber-400 mb-1 font-medium">아웃풋 (Output)</label>
+            <input id="meta-output" name="meta_output" value={output} onChange={e => setOutput(e.target.value)}
               placeholder="예: 면접 결과 보고서, 합격 통보 메일"
               className="w-full px-3 py-2 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-amber-800/40 focus:outline-none focus:border-amber-500/50 placeholder-slate-600" />
           </div>
           <div>
-            <label className="block text-xs text-purple-400 mb-1 font-medium">시스템</label>
-            <input value={system} onChange={e => setSystem(e.target.value)}
+            <label htmlFor="meta-system" className="block text-xs text-purple-400 mb-1 font-medium">시스템</label>
+            <input id="meta-system" name="meta_system" value={system} onChange={e => setSystem(e.target.value)}
               placeholder="예: SAP SuccessFactors, 채용관리시스템"
               className="w-full px-3 py-2 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-purple-800/40 focus:outline-none focus:border-purple-500/50 placeholder-slate-600" />
           </div>
           <div>
-            <label className="block text-xs text-green-400 mb-1 font-medium">소요시간</label>
-            <input value={duration} onChange={e => setDuration(e.target.value)}
+            <label htmlFor="meta-duration" className="block text-xs text-green-400 mb-1 font-medium">소요시간</label>
+            <input id="meta-duration" name="meta_duration" value={duration} onChange={e => setDuration(e.target.value)}
               placeholder="예: 5분, 30분, 1시간"
               className="w-full px-3 py-2 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-green-800/40 focus:outline-none focus:border-green-500/50 placeholder-slate-600" />
           </div>

@@ -48,7 +48,7 @@ const CircleHandle = ({ pos, id, color, size = 14, isConnectableStart, isConnect
 export const StartNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const ie = useInlineEdit(id, data.label);
   return (<div className="relative flex items-center justify-center w-[60px] h-[60px] rounded-full" style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }} onDoubleClick={ie.startEdit}>
-    {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
+    {ie.editing ? <textarea id={`start-label-${id}`} name={`start_label_${id}`} aria-label="시작 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
     {[Position.Bottom, Position.Right, Position.Left, Position.Top].map(p => <Handle key={p} type="source" position={p} id={p.toLowerCase() + '-source'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#4ade80', border: '2px solid #0f1729', borderRadius: '50%', opacity: 0.5 }} />)}
   </div>);
@@ -58,7 +58,7 @@ StartNode.displayName = 'StartNode';
 export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const ie = useInlineEdit(id, data.label);
   return (<div className="relative flex items-center justify-center w-[60px] h-[60px] rounded-full" style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }} onDoubleClick={ie.startEdit}>
-    {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
+    {ie.editing ? <textarea id={`end-label-${id}`} name={`end_label_${id}`} aria-label="종료 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-[56px] bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
     {[Position.Top, Position.Bottom, Position.Left, Position.Right].map(p => <Handle key={p} type="target" position={p} id={p.toLowerCase() + '-target'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#f87171', border: '2px solid #0f1729', borderRadius: '50%' }} />)}
   </div>);
@@ -75,7 +75,7 @@ export const ProcessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>
     {data.inputLabel && <div className="absolute -top-5 left-2 text-[9px] text-cyan-400 bg-cyan-900/30 px-1.5 py-0.5 rounded border border-cyan-800/40">IN: {data.inputLabel}</div>}
     {data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
     <div className="flex items-center px-4 py-3" onDoubleClick={ie.startEdit}>
-      {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="flex-1 bg-transparent text-slate-200 text-sm font-medium leading-snug outline-none resize-none border-b border-blue-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
+      {ie.editing ? <textarea id={`process-label-${id}`} name={`process_label_${id}`} aria-label="프로세스 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="flex-1 bg-transparent text-slate-200 text-sm font-medium leading-snug outline-none resize-none border-b border-blue-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
         : <span className="text-slate-200 text-sm font-medium leading-snug flex-1" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>{data.label}</span>}
       {data.systemName && <span className="text-[9px] text-purple-300 bg-purple-900/30 px-1 py-0.5 rounded ml-1 flex-shrink-0">{data.systemName}</span>}
       {sc && badge && <div className="flex-shrink-0 ml-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style={{ background: `${sc}22`, border: `1.5px solid ${sc}`, color: sc }}>{badge}</div>}
@@ -114,7 +114,7 @@ export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeDa
     <div style={{ position: 'absolute', right: 14, top: 6, bottom: 6, width: 2, background: borderColor, opacity: 0.5, borderRadius: 1 }} />
     {data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
     <div className="flex-1 px-7 py-3" onDoubleClick={ie.startEdit}>
-      {ie.editing ? <textarea ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-full bg-transparent text-teal-100 text-sm font-medium leading-snug outline-none resize-none border-b border-teal-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
+      {ie.editing ? <textarea id={`subprocess-label-${id}`} name={`subprocess_label_${id}`} aria-label="서브프로세스 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-full bg-transparent text-teal-100 text-sm font-medium leading-snug outline-none resize-none border-b border-teal-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
         : <span className="text-teal-100 text-sm font-medium leading-snug" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
     </div>
   </div>);

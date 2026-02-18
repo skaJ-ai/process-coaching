@@ -131,6 +131,9 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
               <input
                 autoFocus
                 type="text"
+                id={`swimlane-label-${laneIdx}`}
+                name={`swimlane_label_${laneIdx}`}
+                aria-label={`스윔레인 ${laneIdx + 1} 라벨`}
                 value={tempLabel}
                 onChange={(e) => setTempLabel(e.target.value)}
                 onBlur={() => { handleLabelChange(laneIdx, tempLabel); setEditingIdx(null); }}

@@ -1,0 +1,81 @@
+# L7 Rule Definitions — Minimal POC
+# 범위: R-03 / R-05 / R-08 (가장 오탐/운용 이슈가 많은 3개만)
+# 다른 규칙(R-01/02/04/15 등)은 l7Rules.ts에 하드코딩 유지
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 단일 소스 원칙 (Single Source of Truth)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 이 파일 = 사람이 읽는 정의 문서 (규칙 의도, 배경 기술)
+# rulesLoader.ts = 프론트엔드 런타임 소스 (이 파일의 TS 미러)
+#
+# 수정 순서:
+#   1. 이 YAML 파일을 먼저 수정
+#   2. rulesLoader.ts를 YAML과 동일하게 업데이트
+#   3. `npm run test:guard` 실행 (sync:check + goldenset)
+#   4. 3가지 모두 통과해야 커밋 허용
+#
+# 검증 명령어:
+#   npm run sync:check   → YAML ↔ TS 불일치 감지
+#   npm run test:guard   → 전체 게이트 (sync + goldenset)
+#
+# 보류 규칙: R-04 (정책 미확정), S-04 (별도 Phase)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+rules:
+  R-03:
+    id: R-03
+    name: 구체화 권장
+    severity: warning
+    description: 모호한 동사 사용 시 경고
+    vague_verbs:
+      - 처리한다
+      - 진행한다
+      - 관리한다
+      - 확인한다
+      - 검토한다
+      - 대응한다
+      - 지원한다
+    message: "'{verb}' 대신 구체 동사를 쓰면 더 명확해질 수 있어요"
+    suggestion: "조회한다, 입력한다, 저장한다, 승인한다 같은 동사로 바꿔보세요."
+
+  R-05:
+    id: R-05
+    name: 복수 동작
+    severity: warning
+    description: 한 라벨에 동작이 2개 이상 포함된 경우 경고
+    # 복수 동작으로 감지할 패턴 (regex string)
+    compound_patterns:
+      - "(.+?하고),?\\s*(.+?한다)"
+      - "(.+?하며),?\\s*(.+?한다)"
+      - "(.+?한)\\s+후\\s*(.+?한다)"
+      - "(.+?한다),\\s*(.+?한다)"
+    # 복수 동작에서 제외할 의도/희망 표현 (먼저 체크)
+    intent_exclude_patterns:
+      - "하고자\\s*(한다|합니다|했다|했습니다)"
+      - "하고\\s*싶다"
+      - "하고\\s*싶었다"
+    message: "한 라벨에 동작이 2개 이상 포함되어 있어요"
+    suggestion: "첫 동작과 다음 동작을 별도 단계로 분리해보세요."
+
+  R-08:
+    id: R-08
+    name: 기준값 누락
+    severity: warning
+    applies_to:
+      - decision
+    description: decision 노드에 판단 기준이 드러나지 않을 때 경고
+    decision_hints:
+      - 여부
+      - "?"
+      - 인가
+      - 인지
+      - 이상
+      - 이하
+      - 초과
+      - 미만
+      - 승인
+      - 반려
+      - 가능
+      - 불가
+    message: "분기 기준이 드러나지 않아 의사결정 조건이 모호할 수 있어요"
+    suggestion: "'~여부', '~인가?' 또는 기준값(예: 1억원 초과)을 라벨에 포함해보세요."

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Connection } from 'reactflow';
 import { useStore } from '../store';
 
 type DemoItem = {
@@ -14,28 +15,28 @@ const DEMOS: DemoItem[] = [
     id: 'add',
     label: '노드 추가',
     file: '01-add-node.gif',
-    hint: '캔버스 빈 공간에서 우클릭 후 Process/Decision 중 하나를 선택하세요.',
+    hint: '캔버스 빈 공간을 우클릭하고 Process 또는 Decision을 선택합니다.',
     action: '우클릭 -> 노드 타입 선택'
   },
   {
     id: 'connect',
-    label: '연결하기',
+    label: '연결 만들기',
     file: '02-connect-nodes.gif',
-    hint: '노드의 파란 핸들을 누른 채 다른 노드로 드래그하면 연결선이 생성됩니다.',
-    action: '파란 점 드래그 -> 대상 노드에 드롭'
+    hint: '노드 오른쪽 핸들을 드래그해서 다음 노드에 연결합니다.',
+    action: '핸들 드래그 -> 다음 노드'
   },
   {
     id: 'label',
     label: '분기 라벨',
     file: '03-decision-label.gif',
-    hint: 'Decision 노드를 선택한 뒤 연결선에 예/아니오 같은 라벨을 넣어 분기를 명확히 하세요.',
-    action: 'Decision 선택 -> 엣지 라벨 입력'
+    hint: 'Decision에서 나가는 선에 예/아니오 같은 조건 라벨을 달아주세요.',
+    action: 'Decision 선택 -> 선 라벨 입력'
   },
   {
     id: 'save',
-    label: '저장하기',
+    label: '저장',
     file: '04-save-flow.gif',
-    hint: '작업 후 Ctrl+S를 눌러 저장하고, 상단 상태가 저장됨으로 바뀌는지 확인하세요.',
+    hint: 'Ctrl+S로 저장 후 상단 상태가 변경되는지 확인합니다.',
     action: 'Ctrl+S -> 저장 상태 확인'
   }
 ];
@@ -75,6 +76,10 @@ export default function OnboardingPreview() {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const saveStatus = useStore((s) => s.saveStatus);
+  const addShape = useStore((s) => s.addShape);
+  const addShapeAfter = useStore((s) => s.addShapeAfter);
+  const onConnect = useStore((s) => s.onConnect);
+  const setSelectedNodeId = useStore((s) => s.setSelectedNodeId);
 
   const [selectedDemoId, setSelectedDemoId] = React.useState<string>(DEMOS[0].id);
   const [srcIndex, setSrcIndex] = React.useState<number>(0);
@@ -93,7 +98,6 @@ export default function OnboardingPreview() {
   React.useEffect(() => {
     if (!show || !demoLoadFailed) return;
     const t = window.setTimeout(() => {
-      // server reconnect 후 자동 복구 시도
       setDemoLoadFailed(false);
       setDemoLoading(true);
       setSrcIndex(0);
@@ -108,45 +112,117 @@ export default function OnboardingPreview() {
   const candidates = [`/flowchart/onboarding/${selectedDemo.file}`, `/onboarding/${selectedDemo.file}`];
   const demoSrc = candidates[Math.min(srcIndex, candidates.length - 1)];
 
+  const startNode = nodes.find((n) => n.data.nodeType === 'start');
+  const endNode = nodes.find((n) => n.data.nodeType === 'end');
   const nonStartNodes = nodes.filter((n) => n.data.nodeType !== 'start');
+  const workNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
   const decisions = nodes.filter((n) => n.data.nodeType === 'decision');
   const hasLabeledDecision = decisions.some((d) => edges.some((e) => e.source === d.id && !!e.label));
 
+  const connectIfMissing = (source: string, target: string) => {
+    const exists = edges.some((e) => e.source === source && e.target === target);
+    if (exists) return;
+    const conn: Connection = { source, target, sourceHandle: null, targetHandle: null };
+    onConnect(conn);
+  };
+
+  const handleQuickStart = () => {
+    if (!startNode || workNodes.length > 0) return;
+
+    const first = addShape('process', '요청 접수', {
+      x: startNode.position.x + 260,
+      y: startNode.position.y + 20
+    });
+    const decision = addShape('decision', '정보가 충분한가?', {
+      x: startNode.position.x + 560,
+      y: startNode.position.y + 20
+    });
+    const branchNo = addShape('process', '보완 요청 전달', {
+      x: startNode.position.x + 860,
+      y: startNode.position.y - 80
+    });
+    const branchYes = addShape('process', '처리 완료', {
+      x: startNode.position.x + 860,
+      y: startNode.position.y + 120
+    });
+
+    connectIfMissing(startNode.id, first);
+    connectIfMissing(first, decision);
+    connectIfMissing(decision, branchNo);
+    connectIfMissing(decision, branchYes);
+    if (endNode) connectIfMissing(branchYes, endNode.id);
+
+    setSelectedNodeId(first);
+  };
+
+  const handleAddNextStep = () => {
+    const stepsOnly = nodes.filter((n) => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
+
+    if (stepsOnly.length === 0) {
+      const ref = startNode?.position || { x: 220, y: 220 };
+      const first = addShape('process', '첫 업무 단계', { x: ref.x + 260, y: ref.y + 20 });
+      if (startNode) connectIfMissing(startNode.id, first);
+      setSelectedNodeId(first);
+      return;
+    }
+
+    const anchor = [...stepsOnly].sort((a, b) => {
+      if ((a.data.stepNumber || 0) !== (b.data.stepNumber || 0)) {
+        return (a.data.stepNumber || 0) - (b.data.stepNumber || 0);
+      }
+      return a.position.y - b.position.y;
+    })[stepsOnly.length - 1];
+
+    const newNodeId = addShapeAfter('process', '다음 업무 단계', anchor.id);
+    setSelectedNodeId(newNodeId);
+  };
+
   const steps = [
     {
-      done: nonStartNodes.length >= 1,
-      title: '1. 노드 1개 추가',
-      desc: '빈 캔버스 우클릭으로 첫 프로세스 노드를 추가하세요.'
+      done: workNodes.length >= 1,
+      title: '1. 첫 노드 추가',
+      desc: '프로세스 단계를 1개 이상 만들어 시작점을 확보하세요.'
     },
     {
-      done: nonStartNodes.length >= 2,
-      title: '2. 노드 하나 더 추가',
-      desc: '흐름 연결을 위해 노드를 1개 더 만들어 주세요.'
+      done: workNodes.length >= 2,
+      title: '2. 두 번째 단계 만들기',
+      desc: '후속 단계를 이어서 만들면 흐름이 보이기 시작합니다.'
     },
     {
       done: edges.length >= 1,
       title: '3. 노드 연결',
-      desc: '노드 핸들을 드래그해 연결선(엣지)을 1개 생성하세요.'
+      desc: '단계 간 선을 연결해 전후 관계를 명확히 하세요.'
     },
     {
-      done: decisions.length === 0 ? false : hasLabeledDecision,
-      title: '4. 분기 라벨 입력',
-      desc: 'Decision을 사용했다면 연결선 라벨(예/아니오 등)을 입력하세요.'
+      done: decisions.length > 0 && hasLabeledDecision,
+      title: '4. 분기 라벨 작성',
+      desc: 'Decision을 썼다면 분기 조건 라벨을 반드시 입력하세요.'
     },
     {
       done: saveStatus !== 'unsaved',
-      title: '5. 저장 실행',
-      desc: 'Ctrl+S를 눌러 저장 동작을 확인하세요.'
+      title: '5. 저장 완료',
+      desc: 'Ctrl+S로 저장해 작업 상태를 고정하세요.'
     }
   ];
 
   const doneCount = steps.filter((s) => s.done).length;
   const progress = Math.round((doneCount / steps.length) * 100);
 
+  const nextAction =
+    workNodes.length === 0
+      ? '빠른 시작 자동 생성으로 30초 안에 기본 흐름을 만든 뒤, 실제 업무명으로 라벨만 바꿔보세요.'
+      : edges.length === 0
+        ? '이제 노드 간 선을 1개만 연결해 보세요. 연결 1회가 온보딩 이탈을 크게 줄입니다.'
+        : decisions.length > 0 && !hasLabeledDecision
+          ? 'Decision 분기선 라벨(예/아니오)을 먼저 채우면 리뷰 품질이 바로 좋아집니다.'
+          : saveStatus === 'unsaved'
+            ? '현재 변경사항이 저장 전입니다. Ctrl+S로 한 번 저장해 세션을 고정하세요.'
+            : '좋습니다. 기본 온보딩 목표를 달성했습니다. 다음은 L7 검증 또는 리뷰 요청입니다.';
+
   return (
     <div className="absolute top-20 right-4 z-[1200] pointer-events-none">
       <div
-        className="w-[430px] rounded-2xl border shadow-2xl pointer-events-auto"
+        className="w-[440px] rounded-2xl border shadow-2xl pointer-events-auto"
         style={{
           borderColor: 'rgba(148,163,184,0.35)',
           background:
@@ -154,9 +230,34 @@ export default function OnboardingPreview() {
         }}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
-          <div className="text-[11px] tracking-[0.16em] text-cyan-300">온보딩 미리보기</div>
-          <h3 className="text-lg font-bold text-slate-100 mt-1">툴 사용법 연습</h3>
-          <p className="text-xs text-slate-300 mt-1">짧은 GIF 데모로 조작 순서를 먼저 보고 바로 따라할 수 있습니다.</p>
+          <div className="text-[11px] tracking-[0.16em] text-cyan-300">ONBOARDING</div>
+          <h3 className="text-lg font-bold text-slate-100 mt-1">첫 3분 세션 가이드</h3>
+          <p className="text-xs text-slate-300 mt-1">
+            설명만 보는 방식 대신, 바로 실행해서 결과를 만드는 흐름으로 바꿨습니다.
+          </p>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              onClick={handleQuickStart}
+              disabled={!startNode || workNodes.length > 0}
+              className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(90deg,#0ea5e9,#2563eb)' }}
+              title="노드가 없는 상태에서만 실행됩니다"
+            >
+              빠른 시작 자동 생성
+            </button>
+            <button
+              onClick={handleAddNextStep}
+              className="px-3 py-2 rounded-lg text-xs border text-slate-200 hover:bg-slate-700/45"
+              style={{ borderColor: 'rgba(148,163,184,0.45)' }}
+            >
+              다음 단계 추가
+            </button>
+          </div>
+
+          <div className="mt-2 rounded-lg border px-3 py-2 text-xs text-cyan-100" style={{ borderColor: 'rgba(34,211,238,0.35)', background: 'rgba(2,132,199,0.12)' }}>
+            {nextAction}
+          </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {DEMOS.map((demo) => (
@@ -189,7 +290,6 @@ export default function OnboardingPreview() {
                     setDemoLoadFailed(false);
                   }}
                   onError={() => {
-                    // /flowchart 경로 실패 시 /onboarding 루트 경로 재시도
                     if (srcIndex < candidates.length - 1) {
                       setDemoLoading(true);
                       setSrcIndex((v) => v + 1);
@@ -217,7 +317,7 @@ export default function OnboardingPreview() {
               <div className="h-[182px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
                 <div className="font-semibold text-slate-200">GIF 로딩 실패</div>
                 <div className="mt-1 break-all text-slate-400">시도 경로: {demoSrc}</div>
-                <div className="mt-1 text-slate-400">서버가 내려갔을 때 발생할 수 있습니다. 아래 버튼으로 즉시 재시도하세요.</div>
+                <div className="mt-1 text-slate-400">정적 파일 경로를 확인한 뒤 다시 시도해 주세요.</div>
                 <button
                   onClick={() => {
                     setDemoLoadFailed(false);
@@ -259,7 +359,7 @@ export default function OnboardingPreview() {
           className="px-5 py-3 border-t flex items-center justify-between"
           style={{ borderColor: 'rgba(148,163,184,0.25)' }}
         >
-          <div className="text-xs text-slate-400">도움말은 F1에서 열 수 있습니다.</div>
+          <div className="text-xs text-slate-400">F1 도움말에서도 온보딩 핵심을 확인할 수 있습니다.</div>
           <div className="flex items-center gap-2">
             <button
               onClick={hide}

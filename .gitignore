@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 frontend/node_modules/
 backend/__pycache__/
@@ -36,6 +36,9 @@ QA_ARTIFACTS/
 .chrome-pw-profile/
 .tmp-gif-frames/
 onboarding-*.png
+frontend/test-results/
+frontend/playwright-report/
+frontend/tests/**/results.json
 
 # Claude Code
 .claude/

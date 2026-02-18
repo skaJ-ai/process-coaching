@@ -2,6 +2,8 @@
  * L7 라벨 유틸리티 함수들
  */
 
+import { COMPOUND_PATTERNS, INTENT_EXCLUDE_PATTERNS } from '../config/rulesLoader';
+
 export interface CompoundActionDetection {
   isCompound: boolean;
   parts: string[];
@@ -14,17 +16,13 @@ export interface CompoundActionDetection {
 export function detectCompoundAction(label: string): CompoundActionDetection {
   if (!label) return { isCompound: false, parts: [label] };
 
-  // 복합문 패턴들
-  const patterns = [
-    // "~하고 ~한다" / "~하고, ~한다"
-    { regex: /(.+?하고),?\s*(.+?한다)/, name: '그리고' },
-    // "~하며 ~한다" / "~하며, ~한다"
-    { regex: /(.+?하며),?\s*(.+?한다)/, name: '그리고' },
-    // "~한 후 ~한다"
-    { regex: /(.+?한)\s+후\s*(.+?한다)/, name: '그 후' },
-    // "~한다, ~한다" (쉼표로 연결된 2개 이상의 동작)
-    { regex: /(.+?한다),\s*(.+?한다)/, name: '그리고' },
-  ];
+  // 의도/희망 표현 제외 — 복수 동작이 아님 (rulesLoader의 INTENT_EXCLUDE_PATTERNS)
+  if (INTENT_EXCLUDE_PATTERNS.some(p => p.test(label))) {
+    return { isCompound: false, parts: [label] };
+  }
+
+  // 복합문 패턴들 (rulesLoader의 COMPOUND_PATTERNS)
+  const patterns = COMPOUND_PATTERNS.map(regex => ({ regex, name: '그리고' }));
 
   for (const { regex, name } of patterns) {
     const match = label.match(regex);

@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import { Node, Edge, Connection, addEdge, MarkerType, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from 'reactflow';
+import { Node, Edge, Connection, addEdge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from 'reactflow';
 import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult } from './types';
 import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutEngine';
-import { API_BASE_URL, SWIMLANE_COLORS, NODE_DIMENSIONS } from './constants';
+import { API_BASE_URL, SWIMLANE_COLORS } from './constants';
 import { detectCompoundAction } from './utils/labelUtils';
+import { validateL7Label } from './utils/l7Rules';
+import { makeInitialNodes, makeEdge, serialize, buildRecentTurns, buildConversationSummary, assignSwimLanes } from './store/helpers';
 
 function isDebugEnabled(): boolean {
   try {
@@ -20,62 +22,20 @@ function debugTrace(event: string, payload?: Record<string, any>) {
   console.debug(`[pm-v5][${now}] ${event}`, payload || {});
 }
 
-function makeInitialNodes(): Node<FlowNodeData>[] {
-  return [
-    { id: 'start', type: 'start', position: { x: 300, y: 40 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
-  ];
-}
-
 interface HistoryEntry { nodes: Node<FlowNodeData>[]; edges: Edge[]; }
 
-function makeEdge(source: string, target: string, label?: string, color?: string, sourceHandle?: string, targetHandle?: string): Edge {
-  const c = color || '#475569';
-  return {
-    id: `edge-${source}-${target}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    source, target, sourceHandle: sourceHandle || undefined, targetHandle: targetHandle || undefined,
-    type: source === target ? 'selfLoop' : 'step',
-    label: label || undefined,
-    labelStyle: label ? { fill: '#e2e8f0', fontWeight: 500, fontSize: 12 } : undefined,
-    labelBgStyle: label ? { fill: '#1e293b', fillOpacity: 0.9 } : undefined,
-    labelBgPadding: label ? [6, 4] as [number, number] : undefined,
-    style: { stroke: c }, markerEnd: { type: MarkerType.ArrowClosed, color: c },
-  };
-}
-
-function serialize(nodes: Node<FlowNodeData>[], edges: Edge[]) {
-  return {
-    nodes: nodes.map(n => ({
-      id: n.id, type: n.data.nodeType, label: n.data.label, position: n.position,
-      inputLabel: n.data.inputLabel, outputLabel: n.data.outputLabel, systemName: n.data.systemName,
-      duration: n.data.duration, category: n.data.category || 'as_is', swimLaneId: n.data.swimLaneId || null,
-    })),
-    edges: edges.map(e => ({
-      id: e.id, source: e.source, target: e.target, label: (e.label as string) || null,
-      sourceHandle: e.sourceHandle || null, targetHandle: e.targetHandle || null,
-    })),
-  };
-}
-
-// v5.2: assign swim lane (multi-lane: up to 4 lanes) by Y position
-function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerYs: number[], labels: string[]): Node<FlowNodeData>[] {
-  if (dividerYs.length === 0 || labels.length === 0) return nodes.map(n => ({ ...n, data: { ...n.data, swimLaneId: undefined } }));
-
-  const sortedDividers = [...dividerYs].sort((a, b) => a - b);
-
-  return nodes.map(n => {
-    const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
-    const centerY = n.position.y + dims.height / 2;
-
-    let laneIndex = 0;
-    for (let i = 0; i < sortedDividers.length; i++) {
-      if (centerY >= sortedDividers[i]) {
-        laneIndex = i + 1;
-      }
-    }
-    laneIndex = Math.min(laneIndex, labels.length - 1);
-
-    return { ...n, data: { ...n.data, swimLaneId: labels[laneIndex] } };
-  });
+function extractBotText(d: any): string {
+  const direct = [d?.speech, d?.message, d?.guidance, d?.text, d?.content, d?.answer].find(v => typeof v === 'string' && v.trim());
+  if (direct) return String(direct).trim();
+  const nested = d?.choices?.[0]?.message?.content;
+  if (typeof nested === 'string' && nested.trim()) return nested.trim();
+  if (d && typeof d === 'object') {
+    try {
+      const compact = JSON.stringify(d);
+      if (compact && compact !== '{}') return compact;
+    } catch {}
+  }
+  return '응답 실패.';
 }
 
 interface AppStore {
@@ -277,7 +237,13 @@ export const useStore = create<AppStore>((set, get) => ({
     let afterId = s.insertAfterNodeId;
     const { nodes, edges } = get();
     if (afterId && !nodes.find(n => n.id === afterId)) { const e = edges.find(e => e.target === 'end'); afterId = e?.source || 'start'; }
-    const st: ShapeType = s.type === 'DECISION' ? 'decision' : s.type === 'SUBPROCESS' ? 'subprocess' : 'process';
+    const suggestionType = String((s as any).type || '').toUpperCase();
+    const st: ShapeType =
+      suggestionType === 'START' ? 'start'
+      : suggestionType === 'END' ? 'end'
+      : suggestionType === 'DECISION' ? 'decision'
+      : suggestionType === 'SUBPROCESS' ? 'subprocess'
+      : 'process';
     const label = s.labelSuggestion || s.newLabel || s.summary;
     const compound = detectCompoundAction(label);
     const primaryLabel = compound.isCompound ? compound.parts[0] : label;
@@ -306,7 +272,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   validateNode: async (id) => {
-    const { nodes, edges, processContext } = get();
+    const { nodes, edges } = get();
     const node = nodes.find(n => n.id === id);
     if (!node || ['start', 'end', 'subprocess'].includes(node.data.nodeType)) return null;
     // Skip validation for self-loops (rework/looping tasks)
@@ -314,9 +280,8 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: 'checking' as L7Status } } : n) });
     try {
       debugTrace('validateNode:start', { id, label: node.data.label, type: node.data.nodeType });
-      const { nodes: sn, edges: se } = serialize(nodes, edges);
-      const res = await fetch(`${API_BASE_URL}/validate-l7`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: id, label: node.data.label, nodeType: node.data.nodeType, context: processContext || {}, currentNodes: sn, currentEdges: se }) });
-      const data = await res.json();
+      const hasSwimLane = get().dividerYs.length > 0;
+      const data = validateL7Label(node.data.label || '', node.data.nodeType, hasSwimLane);
       debugTrace('validateNode:success', { id, pass: !!data.pass, score: data.score ?? null, issues: (data.issues || []).length });
       set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, l7Status: (data.pass ? (data.issues?.some((i: any) => i.severity === 'warning') ? 'warning' : 'pass') : 'reject') as L7Status, l7Score: data.score ?? 0, l7Issues: (data.issues || []).map((i: any) => ({ ...i, friendlyTag: i.friendlyTag || friendlyTag(i.ruleId) })), l7Rewrite: data.rewriteSuggestion || undefined } } : n) });
       return data;
@@ -416,12 +381,22 @@ export const useStore = create<AppStore>((set, get) => ({
     try {
       debugTrace('chat:start', { messageLength: msg.length, nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
-      const r = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se }) });
+      const recentTurns = buildRecentTurns(get().messages);
+      const conversationSummary = buildConversationSummary(get().messages);
+      const r = await fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, context: ctx || {}, currentNodes: sn, currentEdges: se, recentTurns, conversationSummary })
+      });
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status} ${r.statusText} ${errText.slice(0, 300)}`);
+      }
       const d = await r.json();
       const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
       debugTrace('chat:success', { hasText: !!(d.speech || d.message || d.guidance), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
       addMessage({
-        id: generateId('msg'), role: 'bot', text: d.speech || d.message || d.guidance || '응답 실패.',
+        id: generateId('msg'), role: 'bot', text: extractBotText(d),
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
         quickQueries: d.quickQueries || [],
         timestamp: Date.now(),
@@ -449,11 +424,15 @@ export const useStore = create<AppStore>((set, get) => ({
       debugTrace('review:start', { nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);
       const r = await fetch(`${API_BASE_URL}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentNodes: sn, currentEdges: se, userMessage: '프로세스 분석 + 제안', context: ctx || {} }) });
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status} ${r.statusText} ${errText.slice(0, 300)}`);
+      }
       const d = await r.json();
       const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
       debugTrace('review:success', { hasText: !!(d.speech || d.message), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
       addMessage({
-        id: generateId('msg'), role: 'bot', text: d.speech || d.message || '리뷰 완료',
+        id: generateId('msg'), role: 'bot', text: extractBotText(d) || '리뷰 완료',
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),
         quickQueries: d.quickQueries || [],
         timestamp: Date.now(),
@@ -776,11 +755,11 @@ export const useStore = create<AppStore>((set, get) => ({
 
 function friendlyTag(ruleId: string): string {
   const m: Record<string, string> = {
-    'R-01': '길이 부족', 'R-02': '길이 초과', 'R-03': '구체화 권장', 'R-04': '시스템명 분리',
-    'R-05': '복수 동작', 'R-06': '주어 누락', 'R-07': '목적어 누락',
-    'R-08': '기준값 누락', 'R-09': '어미 불일치', 'R-10': '맥락 부족', 'R-11': '복합문 감지',
-    'R-12': '판단 기준 없음', 'R-13': '기준값 누락', 'R-14': '결과값 누락',
-    'R-15': '표준 형식', 'R-16': '구체화 권장', 'R-17': '동사 치환 가능',
+    'R-01': '길이 부족', 'R-02': '길이 초과',
+    'R-03a': '금지 동사', 'R-03b': '구체화 권장', 'R-03': '구체화 권장',
+    'R-04': '시스템명 분리', 'R-05': '복수 동작',
+    'R-06': '주어 누락', 'R-07': '목적어 누락', 'R-08': '기준값 누락',
+    'R-15': '표준 형식',
   };
   return m[ruleId] || ruleId;
 }
