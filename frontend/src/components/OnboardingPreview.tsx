@@ -51,14 +51,34 @@ export default function OnboardingPreview() {
   const saveStatus = useStore((s) => s.saveStatus);
 
   const [selectedDemoId, setSelectedDemoId] = React.useState<string>(DEMOS[0].id);
+  const [srcIndex, setSrcIndex] = React.useState<number>(0);
+  const [retryToken, setRetryToken] = React.useState<number>(0);
   const [demoLoadFailed, setDemoLoadFailed] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!show) return;
+    setDemoLoadFailed(false);
+    setSrcIndex(0);
+    setRetryToken((v) => v + 1);
+  }, [show, selectedDemoId]);
+
+  React.useEffect(() => {
+    if (!show || !demoLoadFailed) return;
+    const t = window.setTimeout(() => {
+      // server reconnect 후 자동 복구 시도
+      setDemoLoadFailed(false);
+      setSrcIndex(0);
+      setRetryToken((v) => v + 1);
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [show, demoLoadFailed]);
 
   if (!show) return null;
 
   const selectedDemo = DEMOS.find((d) => d.id === selectedDemoId) || DEMOS[0];
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
-  const basePrefix = path.startsWith('/flowchart') ? '/flowchart/' : '/';
-  const demoSrc = `${basePrefix}onboarding/${selectedDemo.file}`;
+  const candidates = [`/flowchart/onboarding/${selectedDemo.file}`, `/onboarding/${selectedDemo.file}`];
+  const demoSrc = candidates[Math.min(srcIndex, candidates.length - 1)];
+
   const nonStartNodes = nodes.filter((n) => n.data.nodeType !== 'start');
   const decisions = nodes.filter((n) => n.data.nodeType === 'decision');
   const hasLabeledDecision = decisions.some((d) => edges.some((e) => e.source === d.id && !!e.label));
@@ -115,7 +135,6 @@ export default function OnboardingPreview() {
                 key={demo.id}
                 onClick={() => {
                   setSelectedDemoId(demo.id);
-                  setDemoLoadFailed(false);
                 }}
                 className={`px-2 py-1 text-[11px] rounded-md border ${
                   selectedDemo.id === demo.id
@@ -131,17 +150,36 @@ export default function OnboardingPreview() {
           <div className="mt-2 rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(148,163,184,0.25)' }}>
             {!demoLoadFailed ? (
               <img
-                key={demoSrc}
+                key={`${demoSrc}-${retryToken}`}
                 src={demoSrc}
                 alt={`${selectedDemo.label} 데모`}
                 className="w-full h-[128px] object-cover"
-                onError={() => setDemoLoadFailed(true)}
+                onLoad={() => setDemoLoadFailed(false)}
+                onError={() => {
+                  // /flowchart 경로 실패 시 /onboarding 루트 경로 재시도
+                  if (srcIndex < candidates.length - 1) {
+                    setSrcIndex((v) => v + 1);
+                    setRetryToken((v) => v + 1);
+                    return;
+                  }
+                  setDemoLoadFailed(true);
+                }}
               />
             ) : (
               <div className="h-[128px] px-3 py-2 text-xs text-slate-300 bg-slate-900/50">
-                <div className="font-semibold text-slate-200">GIF 파일을 찾지 못했습니다.</div>
-                <div className="mt-1 break-all text-slate-400">경로: {demoSrc}</div>
-                <div className="mt-1 text-slate-400">`frontend/public/onboarding/` 아래에 GIF를 넣으면 바로 표시됩니다.</div>
+                <div className="font-semibold text-slate-200">GIF 로딩 실패</div>
+                <div className="mt-1 break-all text-slate-400">시도 경로: {demoSrc}</div>
+                <div className="mt-1 text-slate-400">서버가 내려갔을 때 발생할 수 있습니다. 아래 버튼으로 즉시 재시도하세요.</div>
+                <button
+                  onClick={() => {
+                    setDemoLoadFailed(false);
+                    setSrcIndex(0);
+                    setRetryToken((v) => v + 1);
+                  }}
+                  className="mt-2 px-2 py-1 rounded text-[11px] border border-slate-500/40 text-slate-200 hover:bg-slate-700/40"
+                >
+                  다시 시도
+                </button>
               </div>
             )}
           </div>
@@ -194,3 +232,4 @@ export default function OnboardingPreview() {
     </div>
   );
 }
+
