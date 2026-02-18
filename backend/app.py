@@ -110,6 +110,20 @@ L7_GUIDE = """[L7 작성 원칙]
 
 참고: 시스템명은 라벨이 아닌 노드 메타데이터로 관리하면 깔끔합니다."""
 
+def _get_edge_source(e):
+    """Extract source from edge (handle both dict and FlowEdge)"""
+    return e['source'] if isinstance(e, dict) else e.source
+
+def _get_edge_target(e):
+    """Extract target from edge (handle both dict and FlowEdge)"""
+    return e['target'] if isinstance(e, dict) else e.target
+
+def _get_edge_label(e):
+    """Extract label from edge (handle both dict and FlowEdge)"""
+    if isinstance(e, dict):
+        return e.get('label', '')
+    return e.label if hasattr(e, 'label') else ''
+
 def describe_flow(nodes, edges):
     if not nodes: return "플로우 비어있음."
 
@@ -130,24 +144,22 @@ def describe_flow(nodes, edges):
     # ─── Phase Detection ───
     if total_nodes <= 2:
         phase = "초기 단계"
-    elif total_nodes <= 5 or not any(n_id for n_id, e in [(e['source'], e) for e in edges]
-                                      for tgt in [e['target'] for e in edges]
-                                      if node_types.get('end', 0) == 0):
+    elif total_nodes <= 5 or (not any(_get_edge_source(e) for e in edges) if node_types.get('end', 0) == 0 else False):
         phase = "진행 중"
     else:
         phase = "완성 단계"
 
     # ─── Structural Analysis ───
     all_node_ids = {n.id if hasattr(n, 'id') else getattr(n, 'id', None) for n in nodes}
-    source_ids = {e['source'] if isinstance(e, dict) else e.source for e in edges}
-    target_ids = {e['target'] if isinstance(e, dict) else e.target for e in edges}
+    source_ids = {_get_edge_source(e) for e in edges}
+    target_ids = {_get_edge_target(e) for e in edges}
 
     orphan_count = len(all_node_ids - source_ids - target_ids)
     orphan_nodes = list(all_node_ids - source_ids - target_ids)
 
     has_start = node_types.get('start', 0) > 0
     has_end = node_types.get('end', 0) > 0
-    start_connected = any(e.get('source') if isinstance(e, dict) else e.source
+    start_connected = any(_get_edge_source(e)
                          for n in nodes
                          if (getattr(n, 'nodeType', None) or (hasattr(n, 'data') and n.data.get('nodeType'))) == 'start'
                          for e in edges)
@@ -216,9 +228,9 @@ def describe_flow(nodes, edges):
 
     lines.append("연결 구조:")
     for e in edges:
-        source = e['source'] if isinstance(e, dict) else e.source
-        target = e['target'] if isinstance(e, dict) else e.target
-        label = e.get('label', '') if isinstance(e, dict) else (e.label if hasattr(e, 'label') else '')
+        source = _get_edge_source(e)
+        target = _get_edge_target(e)
+        label = _get_edge_label(e)
         lines.append(f"  {source} → {target}{f' [{label}]' if label else ''}")
 
     return "\n".join(lines)
@@ -585,7 +597,9 @@ def mock_review(nodes, edges):
             "newLabel": "종료"
         })
 
-    orphans = [n for n in nodes if n.type not in ('start','end') and not any(e.source == n.id or e.target == n.id for e in edges)]
+    orphans = [n for n in nodes if n.type not in ('start','end') and not any(
+        _get_edge_source(e) == n.id or _get_edge_target(e) == n.id
+        for e in edges)]
     if orphans:
         suggestions.append({
             "action": "MODIFY",
