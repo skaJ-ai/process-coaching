@@ -5,7 +5,6 @@ import { analyzeStructure } from '../utils/structRules';
 export default function QualityDashboard() {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
-  const addShape = useStore(s => s.addShape);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const validateAllNodes = useStore(s => s.validateAllNodes);
 
@@ -21,11 +20,11 @@ export default function QualityDashboard() {
   const reject = processNodes.filter(n => n.data.l7Status === 'reject').length;
   const unchecked = processNodes.filter(n => !n.data.l7Status || n.data.l7Status === 'none').length;
   const struct = analyzeStructure(nodes, edges);
-  // S-01: 종료 노드 없음 → 노드 3개 미만이면 억제
+  // S-01(종료 노드 없음) → 완료하기/전체 흐름 검토 시점에만 안내, 대시보드에서는 억제
   // S-03(고아) → 종료 노드 없는 작업 중엔 억제
   // S-04(나가는 연결 없음) → 연결이 하나라도 있으면 OK 정책이므로 항상 억제
   const structIssues = struct.issues.filter(i => {
-    if (i.ruleId === 'S-01' && total < 3) return false;
+    if (i.ruleId === 'S-01') return false;
     if (i.ruleId === 'S-03' && !hasEnd) return false;
     if (i.ruleId === 'S-04') return false;
     return true;
@@ -33,11 +32,6 @@ export default function QualityDashboard() {
 
   const pct = total > 0 ? Math.round(((pass + warn) / total) * 100) : 0;
   const barColor = reject > 0 ? '#f97316' : unchecked > 0 ? '#64748b' : '#22c55e';
-  const addEndNode = () => {
-    if (hasEnd) return;
-    const maxY = nodes.reduce((acc, n) => Math.max(acc, n.position.y), 0);
-    addShape('end', '종료', { x: 300, y: maxY + 180 });
-  };
 
   return (
     <div className="px-4 py-3" style={{ background: 'rgba(15,23,41,0.5)', borderBottom: '1px solid var(--border-primary)' }}>
@@ -73,10 +67,7 @@ export default function QualityDashboard() {
             return (
               <div key={issue.ruleId} className="flex items-center gap-2 text-[10px]">
                 <span className="text-amber-300">⚠ {issue.message}</span>
-                {issue.ruleId === 'S-01' && (
-                  <button onClick={addEndNode} className="px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/20">종료 노드 추가</button>
-                )}
-                {issue.ruleId !== 'S-01' && ids.length > 0 && (
+                {ids.length > 0 && (
                   <button onClick={focusNode} className="px-2 py-0.5 rounded border border-blue-500/30 text-blue-300 hover:bg-blue-600/20">
                     해당 노드 보기{ids.length > 1 ? ` (${(currentIdx % ids.length) + 1}/${ids.length})` : ''}
                   </button>
