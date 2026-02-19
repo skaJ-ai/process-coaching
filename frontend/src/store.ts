@@ -157,6 +157,9 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   onConnect: (conn) => {
     if (!conn.source || !conn.target) return;
+    // 동일 source→target 중복 연결 방지
+    const already = get().edges.some(e => e.source === conn.source && e.target === conn.target);
+    if (already) return;
     debugTrace('onConnect', { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle || null, targetHandle: conn.targetHandle || null });
     get().pushHistory();
     get().updateUserActivity();
