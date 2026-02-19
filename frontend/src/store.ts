@@ -244,7 +244,26 @@ export const useStore = create<AppStore>((set, get) => ({
     }
     let afterId = s.insertAfterNodeId;
     const { nodes, edges } = get();
-    if (afterId && !nodes.find(n => n.id === afterId)) { const e = edges.find(e => e.target === 'end'); afterId = e?.source || 'start'; }
+    // 유효하지 않은 ID면 초기화
+    if (afterId && !nodes.find(n => n.id === afterId)) afterId = undefined;
+    // afterId 없으면 스마트 폴백: 종료 노드 직전 → 마지막 프로세스 노드 → start 노드 순
+    if (!afterId) {
+      const endNode = nodes.find(n => n.data.nodeType === 'end');
+      if (endNode) {
+        const edgeToEnd = edges.find(e => e.target === endNode.id);
+        afterId = edgeToEnd?.source;
+      }
+      if (!afterId) {
+        const processNodes = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType));
+        if (processNodes.length > 0) {
+          afterId = processNodes.reduce((a, b) => a.position.y >= b.position.y ? a : b).id;
+        }
+      }
+      if (!afterId) {
+        const startNode = nodes.find(n => n.data.nodeType === 'start');
+        afterId = startNode?.id;
+      }
+    }
     const suggestionType = String((s as any).type || '').toUpperCase();
     const labelText = (s.labelSuggestion || s.newLabel || s.summary || '').toLowerCase();
     const st: ShapeType =

@@ -71,17 +71,13 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
               onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
           )}
-          {suggestion.confidence && (
+          {suggestion.confidence && suggestion.confidence !== 'high' && (
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                suggestion.confidence === 'high' ? 'bg-green-900/30 text-green-300 border border-green-700/40' :
                 suggestion.confidence === 'medium' ? 'bg-blue-900/30 text-blue-300 border border-blue-700/40' :
                 'bg-slate-800/50 text-slate-400 border border-slate-700/40'
               }`}>
-                {suggestion.confidence === 'high' && '⚡'}
-                {suggestion.confidence === 'medium' && '💡'}
-                {suggestion.confidence === 'low' && '💭'}
-                {suggestion.confidence === 'high' ? '높음' : suggestion.confidence === 'medium' ? '중간' : '낮음'}
+                {suggestion.confidence === 'medium' ? '검토 후 적용' : '참고용'}
               </span>
             </div>
           )}

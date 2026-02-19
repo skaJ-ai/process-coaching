@@ -58,6 +58,14 @@ def describe_flow(nodes, edges):
 
     lines.append(f"[HR 프로세스 요소] {hr_coverage}")
     lines.append("")
+    lines.append("노드 ID 참조표 (insertAfterNodeId/targetNodeId 지정 시 아래 ID를 사용하세요):")
+    for n in nodes:
+        ref_id = getattr(n, "id", "?")
+        ref_label = getattr(n, "label", "") or (n.data.get("label", "") if hasattr(n, "data") else "")
+        ref_type = getattr(n, "type", None) or getattr(n, "nodeType", None) or "process"
+        type_kr = {"process": "태스크", "decision": "분기", "subprocess": "서브", "start": "시작", "end": "종료"}.get(ref_type, ref_type)
+        lines.append(f"  {ref_id} → \"{ref_label}\" ({type_kr})")
+    lines.append("")
     lines.append("노드 목록:")
 
     for n in nodes:
