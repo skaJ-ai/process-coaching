@@ -4,12 +4,8 @@ def describe_flow(nodes, edges):
 
     node_types = {"start": 0, "end": 0, "process": 0, "decision": 0, "subprocess": 0}
     for n in nodes:
-        if hasattr(n, "data"):
-            node_types[n.data.get("nodeType", "process")] += 1
-        elif hasattr(n, "nodeType"):
-            node_types[getattr(n, "nodeType", "process")] += 1
-        else:
-            node_types["process"] += 1
+        nt = getattr(n, "type", None) or getattr(n, "nodeType", None) or (n.data.get("nodeType") if hasattr(n, "data") else None) or "process"
+        node_types[nt] = node_types.get(nt, 0) + 1
 
     total_nodes = len(nodes)
     total_edges = len(edges)
@@ -17,9 +13,7 @@ def describe_flow(nodes, edges):
 
     if total_nodes <= 2:
         phase = "초기 단계"
-    elif total_nodes <= 5 or not any(
-        n_id for n_id, e in [(e["source"], e) for e in edges] for tgt in [e["target"] for e in edges] if node_types.get("end", 0) == 0
-    ):
+    elif total_nodes <= 5 or node_types.get("end", 0) == 0:
         phase = "진행 중"
     else:
         phase = "완성 단계"
@@ -36,7 +30,7 @@ def describe_flow(nodes, edges):
     disconnected_ends = [
         (n.id if hasattr(n, "id") else None)
         for n in nodes
-        if (getattr(n, "nodeType", None) or (hasattr(n, "data") and n.data.get("nodeType"))) == "end"
+        if (getattr(n, "type", None) or getattr(n, "nodeType", None) or (hasattr(n, "data") and n.data.get("nodeType"))) == "end"
         and (n.id if hasattr(n, "id") else None) not in target_ids
     ]
 
@@ -67,20 +61,18 @@ def describe_flow(nodes, edges):
     lines.append("노드 목록:")
 
     for n in nodes:
-        node_id = n.id if hasattr(n, "id") else getattr(n, "id", "?")
-        node_type = getattr(n, "nodeType", None) or (n.data.get("nodeType") if hasattr(n, "data") else "process")
+        node_id = getattr(n, "id", "?")
+        node_type = getattr(n, "type", None) or getattr(n, "nodeType", None) or (n.data.get("nodeType") if hasattr(n, "data") else None) or "process"
         label = getattr(n, "label", "") or (n.data.get("label", "") if hasattr(n, "data") else "")
         t = {"process": "태스크", "decision": "분기", "subprocess": "L6 프로세스", "start": "시작", "end": "종료"}.get(node_type, node_type)
 
         meta = ""
-        if hasattr(n, "systemName") and n.systemName:
-            meta += f" [SYS:{n.systemName}]"
-        elif hasattr(n, "data") and n.data.get("systemName"):
-            meta += f" [SYS:{n.data.get('systemName')}]"
-        if hasattr(n, "duration") and n.duration:
-            meta += f" [⏱{n.duration}]"
-        elif hasattr(n, "data") and n.data.get("duration"):
-            meta += f" [⏱{n.data.get('duration')}]"
+        system_name = getattr(n, "systemName", None) or (n.data.get("systemName") if hasattr(n, "data") else None)
+        if system_name:
+            meta += f" [SYS:{system_name}]"
+        duration = getattr(n, "duration", None) or (n.data.get("duration") if hasattr(n, "data") else None)
+        if duration:
+            meta += f" [⏱{duration}]"
         category = getattr(n, "category", None) or (n.data.get("category") if hasattr(n, "data") else None)
         if category and category != "as_is":
             meta += f" <{category}>"
