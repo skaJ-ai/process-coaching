@@ -324,13 +324,15 @@ export const useStore = create<AppStore>((set, get) => ({
           const r = res.value;
           const item = { nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement };
           items.push(item);
-          addMessage({
-            id: generateId('msg'),
-            role: 'bot',
-            text: `🔎 "${t.data.label}" 검증 결과가 도착했어요.`,
-            l7Report: [item],
-            timestamp: Date.now()
-          });
+          if (item.issues.length > 0) {
+            addMessage({
+              id: generateId('msg'),
+              role: 'bot',
+              text: `🔎 "${t.data.label}" 검증 결과가 도착했어요.`,
+              l7Report: [item],
+              timestamp: Date.now()
+            });
+          }
         }
       });
     }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
 import { analyzeStructure } from '../utils/structRules';
 
@@ -8,6 +8,8 @@ export default function QualityDashboard() {
   const addShape = useStore(s => s.addShape);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const validateAllNodes = useStore(s => s.validateAllNodes);
+
+  const [nodeNavIndex, setNodeNavIndex] = useState<Record<string, number>>({});
 
   const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
   const total = processNodes.length || 0;
@@ -58,9 +60,13 @@ export default function QualityDashboard() {
           <div className="text-[10px] text-green-400">구조(S): 주요 이상 없음</div>
         ) : (
           structIssues.map((issue) => {
-            const focusFirst = () => {
-              const id = issue.nodeIds?.[0];
-              if (id) setFocusNodeId(id);
+            const ids = issue.nodeIds || [];
+            const currentIdx = nodeNavIndex[issue.ruleId] ?? 0;
+            const focusNode = () => {
+              if (!ids.length) return;
+              const idx = currentIdx % ids.length;
+              setFocusNodeId(ids[idx]);
+              setNodeNavIndex((prev) => ({ ...prev, [issue.ruleId]: (idx + 1) % ids.length }));
             };
             return (
               <div key={issue.ruleId} className="flex items-center gap-2 text-[10px]">
@@ -68,9 +74,11 @@ export default function QualityDashboard() {
                 {issue.ruleId === 'S-01' && (
                   <button onClick={addEndNode} className="px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/20">종료 노드 추가</button>
                 )}
-                {issue.ruleId !== 'S-01' && issue.nodeIds?.length ? (
-                  <button onClick={focusFirst} className="px-2 py-0.5 rounded border border-blue-500/30 text-blue-300 hover:bg-blue-600/20">해당 노드 보기</button>
-                ) : null}
+                {issue.ruleId !== 'S-01' && ids.length > 0 && (
+                  <button onClick={focusNode} className="px-2 py-0.5 rounded border border-blue-500/30 text-blue-300 hover:bg-blue-600/20">
+                    해당 노드 보기{ids.length > 1 ? ` (${(currentIdx % ids.length) + 1}/${ids.length})` : ''}
+                  </button>
+                )}
               </div>
             );
           })

@@ -109,11 +109,15 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
     }
   }
   if (duplicateEdgeIds.length > 0) {
+    const dupSourceNodeIds = [...new Set(
+      duplicateEdgeIds.map((eid) => edges.find((e) => e.id === eid)?.source).filter(Boolean),
+    )] as string[];
     issues.push({
       ruleId: 'S-06',
       severity: 'warning',
       message: `동일한 방향의 중복 연결이 ${duplicateEdgeIds.length}개 있어요.`,
       edgeIds: duplicateEdgeIds,
+      nodeIds: dupSourceNodeIds,
     });
   }
 
@@ -133,12 +137,14 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
 
   // ── S-08: 조건 라벨 누락 (decision outgoing에 라벨 없음) ──
   const unlabeledDecisionEdgeIds: string[] = [];
+  const unlabeledDecisionNodeIds: string[] = [];
   for (const dn of decisionNodes) {
     const outEdges = edges.filter((e) => e.source === dn.id);
     if (outEdges.length >= 2) {
       const unlabeled = outEdges.filter((e) => !e.label || (typeof e.label === 'string' && !e.label.trim()));
       if (unlabeled.length > 0) {
         unlabeledDecisionEdgeIds.push(...unlabeled.map((e) => e.id));
+        unlabeledDecisionNodeIds.push(dn.id);
       }
     }
   }
@@ -148,6 +154,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
       severity: 'warning',
       message: `판단 노드의 분기 연결 ${unlabeledDecisionEdgeIds.length}개에 조건 라벨이 없어요. 'Yes/No' 또는 구체적 조건을 적어주세요.`,
       edgeIds: unlabeledDecisionEdgeIds,
+      nodeIds: unlabeledDecisionNodeIds,
     });
   }
 
