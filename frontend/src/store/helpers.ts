@@ -8,14 +8,19 @@ export function makeInitialNodes(): Node<FlowNodeData>[] {
   ];
 }
 
+const BARE_POSITIONS = new Set(['top', 'bottom', 'left', 'right']);
+
 export function makeEdge(source: string, target: string, label?: string, color?: string, sourceHandle?: string, targetHandle?: string): Edge {
+  // Normalize legacy handle IDs: "bottom" → "bottom-source", "top" → "top-target" etc.
+  const sh = sourceHandle && BARE_POSITIONS.has(sourceHandle) ? `${sourceHandle}-source` : sourceHandle;
+  const th = targetHandle && BARE_POSITIONS.has(targetHandle) ? `${targetHandle}-target` : targetHandle;
   const c = color || '#475569';
   return {
     id: `edge-${source}-${target}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     source,
     target,
-    sourceHandle: sourceHandle || undefined,
-    targetHandle: targetHandle || undefined,
+    sourceHandle: sh || undefined,
+    targetHandle: th || undefined,
     type: source === target ? 'selfLoop' : 'step',
     label: label || undefined,
     labelStyle: label ? { fill: '#e2e8f0', fontWeight: 500, fontSize: 12 } : undefined,
