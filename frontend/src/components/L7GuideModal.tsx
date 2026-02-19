@@ -60,7 +60,7 @@ export default function L7GuideModal({ onClose }: Props) {
                   <div className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-1.5">금지 동사 — 사용 불가</div>
                   <p className="text-slate-400 mb-2">어떤 맥락에서도 구체적 의미가 없어 제3자가 수행할 수 없는 동사입니다.</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {['처리한다', '진행한다', '관리한다', '대응한다', '지원한다', '파악한다', '준비한다', '고도화한다', '리드한다'].map(v => (
+                    {['처리한다', '진행한다', '관리한다', '대응한다', '지원한다', '파악한다', '준비한다', '고도화한다', '리드한다', '수행한다', '대화한다', '진단한다', '컨설팅한다'].map(v => (
                       <span key={v} className="px-2 py-0.5 rounded text-[11px] bg-red-500/10 text-red-300 border border-red-500/20">{v}</span>
                     ))}
                   </div>
@@ -82,6 +82,10 @@ export default function L7GuideModal({ onClose }: Props) {
                         ['담당한다', '조회한다, 입력한다, 구체 동작으로 교체'],
                         ['보조한다', '안내한다, 요청한다, 구체 동작으로 교체'],
                         ['피드백한다', '안내한다, 공지한다, 요청한다'],
+                        ['검수한다', '검증한다, 확인한다, 비교한다'],
+                        ['상신한다', '제출한다, 요청한다'],
+                        ['결재한다', '승인한다, 반려한다'],
+                        ['산출한다', '집계한다, 추출한다'],
                       ].map(([v, alt]) => (
                         <tr key={v}><td className="py-1 text-amber-300/80">{v}</td><td className="py-1 text-slate-400">{alt}</td></tr>
                       ))}
@@ -130,10 +134,10 @@ export default function L7GuideModal({ onClose }: Props) {
               <p className="text-slate-500 text-[11px] mb-3">L7 라벨에 권장되는 표준 동사 목록입니다. 이 동사들은 제3자가 즉시 이해하고 수행할 수 있는 구체적 행위를 나타냅니다.</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { cat: '조회/입력/수정', verbs: ['조회한다', '입력한다', '수정한다', '저장한다', '추출한다', '확인한다'] },
+                  { cat: '조회/입력/수정', verbs: ['조회한다', '입력한다', '수정한다', '저장한다', '추출한다', '확인한다', '분류한다'] },
                   { cat: '비교/집계/기록', verbs: ['비교한다', '집계한다', '기록한다', '첨부한다', '체크한다'] },
-                  { cat: '승인/판정/전달', verbs: ['판정한다', '승인한다', '반려한다', '결정한다', '전송한다', '배포한다', '제공한다'] },
-                  { cat: '요청/안내/공지', verbs: ['요청한다', '재요청한다', '안내한다', '공지한다', '에스컬레이션한다'] },
+                  { cat: '승인/판정/전달', verbs: ['판정한다', '승인한다', '반려한다', '결정한다', '전송한다', '발송한다', '배포한다', '제공한다'] },
+                  { cat: '요청/안내/공지', verbs: ['요청한다', '안내한다', '공지한다'] },
                 ].map(({ cat, verbs }) => (
                   <div key={cat} className="rounded-lg p-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                     <div className="text-[10px] font-semibold text-green-400 mb-2 uppercase tracking-wider">{cat}</div>
