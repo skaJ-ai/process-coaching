@@ -125,17 +125,59 @@ export function validateL7Label(
     ));
   }
 
-  // ── R-03b: 구체화 권장 동사 (warning) — 금지 동사가 아닌 경우만 ──
-  if (!bannedVerb) {
-    const refinableVerb = Object.keys(REFINABLE_VERBS).find((v) => text.includes(v));
-    if (refinableVerb) {
-      const alternatives = REFINABLE_VERBS[refinableVerb];
+  // ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-06/R-07) 스킵 ──
+  // 판단 조건은 "~여부", "~인가?" 형식으로 동사가 없는 게 정상.
+  // Process 노드에서만 아래 룰 적용.
+  if (nodeType !== 'decision') {
+    // ── R-03b: 구체화 권장 동사 (warning) — 금지 동사가 아닌 경우만 ──
+    if (!bannedVerb) {
+      const refinableVerb = Object.keys(REFINABLE_VERBS).find((v) => text.includes(v));
+      if (refinableVerb) {
+        const alternatives = REFINABLE_VERBS[refinableVerb];
+        issues.push(issue(
+          'R-03b', 'warning', '구체화 권장',
+          `'${refinableVerb}' 대신 구체 동사를 쓰면 더 명확해질 수 있어요`,
+          `대안: ${alternatives}`,
+          '구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다.',
+        ));
+      }
+    }
+
+    // ── R-05: 복수 동작 (reject) ──
+    const compound = detectCompoundAction(text);
+    if (compound.isCompound) {
       issues.push(issue(
-        'R-03b', 'warning', '구체화 권장',
-        `'${refinableVerb}' 대신 구체 동사를 쓰면 더 명확해질 수 있어요`,
-        `대안: ${alternatives}`,
-        '구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다.',
+        'R-05', 'reject', '복수 동작',
+        '한 라벨에 동작이 2개 이상 포함되어 있어요',
+        `각 동작을 별도 단계로 분리해보세요: "${compound.parts[0]}" / "${compound.parts[1]}"`,
+        '하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다.',
       ));
+    }
+
+    // ── R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크 ──
+    if (!hasSwimLane && text.length >= 4) {
+      const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
+      if (usedTransitive && hasObjectParticle(text) && !SUBJECT_PARTICLE_RE.test(text)) {
+        issues.push(issue(
+          'R-06', 'suggestion', '주어 누락',
+          '주체가 명시되지 않았어요',
+          '스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.',
+          '스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다.',
+        ));
+      }
+    }
+
+    // ── R-07: 목적어 누락 (reject) ──
+    if (text.length >= 4) {
+      const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
+      if (usedTransitive && !hasObjectParticle(text)) {
+        issues.push(issue(
+          'R-07', 'reject', '목적어 누락',
+          `'${usedTransitive}'는 타동사인데 목적어(을/를)가 없어요`,
+          `예: "급여를 ${usedTransitive}" 형태로 대상을 명시해보세요.`,
+          '목적어가 있으면 제3자가 무엇에 대한 동작인지 바로 알 수 있습니다.',
+        ));
+      }
     }
   }
 
@@ -148,43 +190,6 @@ export function validateL7Label(
       `라벨은 동작만 남기고 '${detectedSystemName}'은 시스템명 필드에 입력해보세요.`,
       '라벨과 시스템명을 분리하면 프로세스 로직이 명확해집니다.',
     ));
-  }
-
-  // ── R-05: 복수 동작 (reject) ──
-  const compound = detectCompoundAction(text);
-  if (compound.isCompound) {
-    issues.push(issue(
-      'R-05', 'reject', '복수 동작',
-      '한 라벨에 동작이 2개 이상 포함되어 있어요',
-      `각 동작을 별도 단계로 분리해보세요: "${compound.parts[0]}" / "${compound.parts[1]}"`,
-      '하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다.',
-    ));
-  }
-
-  // ── R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크 ──
-  if (!hasSwimLane && text.length >= 4) {
-    const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
-    if (usedTransitive && hasObjectParticle(text) && !SUBJECT_PARTICLE_RE.test(text)) {
-      issues.push(issue(
-        'R-06', 'suggestion', '주어 누락',
-        '주체가 명시되지 않았어요',
-        '스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.',
-        '스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다.',
-      ));
-    }
-  }
-
-  // ── R-07: 목적어 누락 (reject) ──
-  if (text.length >= 4) {
-    const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
-    if (usedTransitive && !hasObjectParticle(text)) {
-      issues.push(issue(
-        'R-07', 'reject', '목적어 누락',
-        `'${usedTransitive}'는 타동사인데 목적어(을/를)가 없어요`,
-        `예: "급여를 ${usedTransitive}" 형태로 대상을 명시해보세요.`,
-        '목적어가 있으면 제3자가 무엇에 대한 동작인지 바로 알 수 있습니다.',
-      ));
-    }
   }
 
   // ── R-08: 기준값 누락 (decision만) ──
