@@ -210,7 +210,6 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
 
   const workNodes = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType));
-  const hasEnd = nodes.some(n => n.data.nodeType === 'end');
 
   const handleQuickStart = () => {
     // Reuse existing start node — do NOT create a new one
@@ -301,17 +300,6 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
       <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10 animate-pulse">
         <div className="bg-indigo-600/15 border border-indigo-500/40 text-indigo-200 px-5 py-2 rounded-full text-sm font-medium shadow-lg">
           🔗 파란 핸들을 드래그해서 노드를 연결하세요
-        </div>
-      </div>
-    );
-  }
-
-  // Phase 2: connected but no end node
-  if (edges.length >= 1 && !hasEnd && workNodes.length >= 2) {
-    return (
-      <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10">
-        <div className="bg-red-900/15 border border-red-500/30 text-red-300 px-5 py-2 rounded-full text-sm font-medium shadow-lg">
-          ⬛ 우클릭 → 종료 노드를 추가해 흐름을 완성하세요
         </div>
       </div>
     );
