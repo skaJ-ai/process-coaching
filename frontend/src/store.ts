@@ -231,8 +231,9 @@ export const useStore = create<AppStore>((set, get) => ({
   deleteEdge: (eid) => { get().pushHistory(); set({ edges: get().edges.filter(e => e.id !== eid), saveStatus: 'unsaved' }); },
 
   applySuggestion: (s) => {
-    if (s.action === 'MODIFY' && s.targetNodeId && s.newLabel) {
-      get().updateNodeLabel(s.targetNodeId, s.newLabel, 'ai');
+    if (s.action === 'MODIFY' && s.targetNodeId) {
+      const modifyLabel = s.newLabel || s.labelSuggestion;
+      if (modifyLabel) { get().updateNodeLabel(s.targetNodeId, modifyLabel, 'ai'); }
       return;
     }
     if (s.action === 'DELETE' && s.targetNodeId) {

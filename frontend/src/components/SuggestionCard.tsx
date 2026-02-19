@@ -10,7 +10,10 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
   const nodes = useStore(s => s.nodes);
   const [applied, setApplied] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editText, setEditText] = useState(suggestion.newLabel || suggestion.summary);
+  const modifyLabel = suggestion.newLabel || suggestion.labelSuggestion;
+  const [editText, setEditText] = useState(
+    action === 'MODIFY' ? (modifyLabel || '') : (suggestion.labelSuggestion || '')
+  );
 
   const action = suggestion.action || 'ADD';
   const target = suggestion.targetNodeId ? nodes.find(n => n.id === suggestion.targetNodeId) : null;
@@ -55,25 +58,31 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
       <div className="flex items-start gap-2">
         <span className="text-lg leading-none mt-0.5 flex-shrink-0" style={{ color: cfg.text }}>{cfg.icon}</span>
         <div className="flex-1 min-w-0">
-          {action === 'MODIFY' && target ? (
+          {action === 'MODIFY' ? (
             <>
-              <div className="text-xs text-slate-500 line-through mb-1">{target.data.label}</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">라벨 수정</div>
+              {target && <div className="text-xs text-slate-500 line-through mb-1">{target.data.label}</div>}
               {!editing ? (
-                <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.newLabel || suggestion.summary}</div>
+                <div className="text-sm font-medium" style={{ color: cfg.text }}>
+                  {modifyLabel || <span className="text-slate-500 italic">라벨 없음 — 직접 입력 필요</span>}
+                </div>
               ) : (
                 <input name="suggestion_edit_modify" aria-label="수정 제안 편집" value={editText} onChange={e => setEditText(e.target.value)} autoFocus
                   className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-amber-500/50"
                   onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
               )}
+              {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
             </>
           ) : action === 'DELETE' && target ? (
             <div className="text-sm font-medium" style={{ color: cfg.text }}>"{target.data.label}" 삭제</div>
           ) : !editing ? (
             <>
-              <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.summary}</div>
-              {suggestion.labelSuggestion && (
-                <div className="text-xs text-slate-500 mt-1">셰이프 라벨: <span className="text-slate-300 font-medium">{suggestion.labelSuggestion}</span></div>
-              )}
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">단계 추가</div>
+              {suggestion.labelSuggestion
+                ? <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.labelSuggestion}</div>
+                : <div className="text-sm text-slate-400 italic">라벨 없음 — 직접 입력 필요</div>
+              }
+              {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
             </>
           ) : (
             <input name="suggestion_edit_add" aria-label="추가 제안 편집" value={editText} onChange={e => setEditText(e.target.value)} autoFocus
