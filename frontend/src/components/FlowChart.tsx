@@ -265,20 +265,20 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
         {/* CTA card */}
         <div className="flex flex-col items-start gap-2 pb-6" style={{ maxWidth: 240 }}>
           <p className="text-sm text-slate-400 leading-relaxed">
-            시작 노드 아래에 업무 단계를 하나씩 추가하세요<br />
-            <span className="text-slate-500 text-xs">한 칸 = 한 동작</span>
+            시작 노드 아래에 셰이프를 연결하거나<br />빠른 시작으로 예시 플로우를 만들어보세요<br />
+            <span className="text-slate-500 text-xs">셰이프 하나 = 한 동작</span>
           </p>
           <button
             onClick={handleQuickStart}
             className="pointer-events-auto mt-1 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105"
             style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)', boxShadow: '0 4px 20px rgba(79,70,229,0.35)' }}
           >
-            ⚡ 예시로 시작하기
+            ⚡ 빠른 시작
           </button>
           {/* 단축키 힌트 테이블 */}
           <div className="mt-2 rounded-lg overflow-hidden" style={{ border: '1px solid #1e293b', background: 'rgba(15,23,41,0.7)' }}>
             {[
-              ['우클릭', '단계 추가'],
+              ['우클릭', '셰이프 추가'],
               ['파란 점 드래그', '연결'],
               ['더블클릭', '이름 수정'],
               ['Ctrl+Z', '되돌리기'],
