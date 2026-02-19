@@ -6,6 +6,7 @@ import {
   TRANSITIVE_VERBS,
   SYSTEM_NAME_PATTERNS,
   DECISION_HINTS,
+  SUBJECT_PARTICLE_RE,
 } from '../config/rulesLoader';
 
 export interface L7ValidationResult {
@@ -158,6 +159,19 @@ export function validateL7Label(
       `각 동작을 별도 단계로 분리해보세요: "${compound.parts[0]}" / "${compound.parts[1]}"`,
       '하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다.',
     ));
+  }
+
+  // ── R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크 ──
+  if (!hasSwimLane && text.length >= 4) {
+    const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
+    if (usedTransitive && hasObjectParticle(text) && !SUBJECT_PARTICLE_RE.test(text)) {
+      issues.push(issue(
+        'R-06', 'suggestion', '주어 누락',
+        '주체가 명시되지 않았어요',
+        '스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.',
+        '스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다.',
+      ));
+    }
   }
 
   // ── R-07: 목적어 누락 (warning) ──

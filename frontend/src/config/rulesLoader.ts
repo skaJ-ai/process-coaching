@@ -41,6 +41,10 @@ export const TRANSITIVE_VERBS: string[] = [
   '집계한다', '기록한다', '첨부한다', '판정한다', '승인한다', '반려한다',
 ];
 
+// R-06: 주어 조사 패턴 — 한국어 명사 뒤 이/가/은/는
+// (한국어 자모 or 숫자) + 주어 조사 + (공백 or 문장 끝)
+export const SUBJECT_PARTICLE_RE = /[가-힣\d][이가은는](\s|$)/;
+
 // R-04: 시스템명 추출 패턴 — 괄호 내부 또는 "~에서" 앞 텍스트
 export const SYSTEM_NAME_PATTERNS: RegExp[] = [
   /[(\[（]([^)\]）]+)[)\]）]/,       // (시스템명) 또는 [시스템명]
