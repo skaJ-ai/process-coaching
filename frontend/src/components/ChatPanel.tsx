@@ -17,6 +17,7 @@ export default function ChatPanel() {
   const submitComplete = useStore(s => s.submitComplete);
   const forceComplete = useStore(s => s.forceComplete);
   const saveStatus = useStore(s => s.saveStatus);
+  const validateAllNodes = useStore(s => s.validateAllNodes);
 
   const adminMode = useStore(s => s.adminMode);
 
@@ -50,6 +51,7 @@ export default function ChatPanel() {
         {ctx && <p className="text-xs text-slate-500 mb-2">{ctx.l4} → {ctx.l5} → {ctx.processName}</p>}
         <div className="flex gap-1.5 flex-wrap">
           <button data-tour="review" onClick={() => requestReview()} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 전체 흐름 검토</button>
+          <button onClick={() => validateAllNodes()} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 disabled:opacity-40">⚙ L7 전체 검증</button>
 
           {adminMode && <button onClick={() => setShowPDD(true)} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">📄 PDD</button>}
         </div>

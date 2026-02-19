@@ -58,7 +58,7 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
               ))}
             </div>
           )}
-          {item.encouragement && (
+          {item.encouragement && item.issues.length === 0 && (
             <div className="px-2 py-1.5 rounded text-xs text-green-300" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
               ✨ {item.encouragement}
             </div>

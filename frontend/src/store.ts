@@ -340,7 +340,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
     const fail = items.filter(r => !r.pass).length;
-    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: ✓${ok} 준수 | 💡${warn} 개선 | ✏${fail} 추천`, l7Report: items, timestamp: Date.now() });
+    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: ✓${ok} 준수 | 💡${warn} 개선 | ✏${fail} 추천`, timestamp: Date.now() });
     // v5.2: celebrate if all pass
     setTimeout(() => get().celebrateL7Success(), 500);
   },

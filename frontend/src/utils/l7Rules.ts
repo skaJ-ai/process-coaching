@@ -36,20 +36,40 @@ function hasDecisionCriteria(label: string): boolean {
   return DECISION_HINTS.some((hint) => label.includes(hint));
 }
 
-function hasStandardEnding(label: string, nodeType: string): boolean {
-  const normalized = label.trim();
-  if (!normalized) return false;
-  if (nodeType === 'decision') {
-    return normalized.endsWith('?') || normalized.endsWith('인가?') || normalized.endsWith('여부') || hasDecisionCriteria(normalized);
-  }
-  return normalized.endsWith('한다') || normalized.endsWith('한다.');
+
+// 파일 형식·약어·일반 한국어 단어 — 시스템명이 아닌 것들
+const NON_SYSTEM_TERMS = new Set([
+  'PPT', 'PPTX', 'PDF', 'Excel', 'XLSX', 'XLS', 'Word', 'DOCX', 'DOC',
+  'HWP', 'CSV', 'JSON', 'XML', 'ZIP', 'TXT', 'JPG', 'PNG', 'MP4',
+  '피피티', '엑셀', '한글', '워드', '피디에프',
+]);
+
+// 한국어 시스템 키워드 (이 단어가 포함된 경우 시스템명으로 판정)
+const KO_SYSTEM_KEYWORDS = /시스템|플랫폼|솔루션|포털|앱|서버|클라우드|데이터베이스|DB|ERP|HR/;
+
+function isSystemCandidate(text: string): boolean {
+  if (NON_SYSTEM_TERMS.has(text)) return false;
+  // 순수 숫자·날짜이면 제외
+  if (/^[\d\s년월일.]+$/.test(text)) return false;
+  // 영문 대문자 포함 (SAP, Workday, HRIS 등) → 시스템명으로 판정
+  if (/[A-Z]/.test(text)) return true;
+  // 한국어 전용인 경우 → 시스템 키워드가 있어야만 판정
+  return KO_SYSTEM_KEYWORDS.test(text);
 }
 
-/** 시스템명 추출: 괄호 내부 또는 "~에서" 앞 텍스트 */
+/** 시스템명 추출: 괄호 내부 또는 "~에서" 앞 텍스트 (엄격 조건 적용) */
 function extractSystemName(label: string): string | undefined {
-  for (const pattern of SYSTEM_NAME_PATTERNS) {
-    const match = label.match(pattern);
-    if (match?.[1]) return match[1].trim();
+  // 패턴 1: (시스템명) 또는 [시스템명]
+  const parenMatch = label.match(/[(\[（]([^)\]）]+)[)\]）]/);
+  if (parenMatch?.[1]) {
+    const candidate = parenMatch[1].trim();
+    if (isSystemCandidate(candidate)) return candidate;
+  }
+  // 패턴 2: "SAP에서 조회한다" 형태 — 시스템 조건을 통과한 경우만
+  const eseMatch = label.match(/^(.{1,15}?)(에서)\s/);
+  if (eseMatch?.[1]) {
+    const candidate = eseMatch[1].trim();
+    if (isSystemCandidate(candidate)) return candidate;
   }
   return undefined;
 }
@@ -57,11 +77,6 @@ function extractSystemName(label: string): string | undefined {
 /** 목적어 조사(을/를/에/에서) 존재 여부 */
 function hasObjectParticle(label: string): boolean {
   return /[을를]/.test(label);
-}
-
-/** 주어 조사(이/가/은/는) 존재 여부 */
-function hasSubjectParticle(label: string): boolean {
-  return /[이가은는]/.test(label) && /[이가은는]\s/.test(label);
 }
 
 /**
@@ -132,13 +147,6 @@ export function validateL7Label(
       `라벨은 동작만 남기고 '${detectedSystemName}'은 시스템명 필드에 입력해보세요.`,
       '라벨과 시스템명을 분리하면 프로세스 로직이 명확해집니다.',
     ));
-  } else if (/[()\[\]（）]/.test(text)) {
-    // 괄호는 있지만 시스템명 추출 실패 — 일반 경고
-    issues.push(issue(
-      'R-04', 'warning', '시스템명 분리',
-      '괄호가 포함되어 있어요. 시스템명이라면 메타데이터로 분리하면 가독성이 좋아져요',
-      "라벨은 동작만 남기고 시스템명은 '시스템명' 필드에 입력해보세요.",
-    ));
   }
 
   // ── R-05: 복수 동작 (reject) ──
@@ -165,33 +173,12 @@ export function validateL7Label(
     }
   }
 
-  // ── R-06: 주어 누락 (suggestion, 스윔레인 미사용 시만) ──
-  if (!hasSwimLane && text.length >= 4 && hasObjectParticle(text) && !hasSubjectParticle(text)) {
-    issues.push(issue(
-      'R-06', 'suggestion', '주어 누락',
-      '주체가 명시되지 않았어요',
-      '스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.',
-      '원본 가이드라인: (주어) + 목적어 + 동사 — 괄호는 선택이지만 명시하면 더 명확합니다.',
-    ));
-  }
-
   // ── R-08: 기준값 누락 (decision만) ──
   if (nodeType === 'decision' && !hasDecisionCriteria(text)) {
     issues.push(issue(
       'R-08', 'warning', '기준값 누락',
       '분기 기준이 드러나지 않아 의사결정 조건이 모호할 수 있어요',
       "'~여부', '~인가?' 또는 기준값(예: 1억원 초과)을 라벨에 포함해보세요.",
-    ));
-  }
-
-  // ── R-15: 표준 형식 ──
-  if (text.length >= 4 && !hasStandardEnding(text, nodeType)) {
-    issues.push(issue(
-      'R-15', 'warning', '표준 형식',
-      '표준 어미를 맞추면 전체 플로우의 일관성이 좋아져요',
-      nodeType === 'decision'
-        ? "'~여부' 또는 '~인가?' 형태를 권장해요."
-        : "'~한다' 형태로 마무리해보세요.",
     ));
   }
 
