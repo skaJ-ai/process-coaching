@@ -41,6 +41,7 @@ export default function Toolbar() {
   };
 
   return (
+    <>
     <div
       className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5"
       style={{
@@ -98,7 +99,7 @@ export default function Toolbar() {
         title="L7 라벨 작성 가이드"
         className="px-2 py-1.5 rounded-lg text-xs font-semibold text-violet-300 hover:bg-violet-600/20 border border-violet-500/30"
       >
-        L7
+        L7 가이드
       </button>
       <button
         onClick={toggleGuide}
@@ -107,7 +108,8 @@ export default function Toolbar() {
       >
         ❓
       </button>
-      {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
     </div>
+    {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
+    </>
   );
 }
