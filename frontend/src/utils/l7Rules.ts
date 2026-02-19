@@ -174,12 +174,12 @@ export function validateL7Label(
     }
   }
 
-  // ── R-07: 목적어 누락 (warning) ──
+  // ── R-07: 목적어 누락 (reject) ──
   if (text.length >= 4) {
     const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
     if (usedTransitive && !hasObjectParticle(text)) {
       issues.push(issue(
-        'R-07', 'warning', '목적어 누락',
+        'R-07', 'reject', '목적어 누락',
         `'${usedTransitive}'는 타동사인데 목적어(을/를)가 없어요`,
         `예: "급여를 ${usedTransitive}" 형태로 대상을 명시해보세요.`,
         '목적어가 있으면 제3자가 무엇에 대한 동작인지 바로 알 수 있습니다.',

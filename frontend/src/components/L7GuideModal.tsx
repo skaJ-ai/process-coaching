@@ -60,7 +60,7 @@ export default function L7GuideModal({ onClose }: Props) {
                   <div className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-1.5">R-03a · 금지 동사 (사용 불가)</div>
                   <p className="text-slate-400 mb-2">어떤 맥락에서도 구체적 의미가 없어 제3자가 수행할 수 없는 동사입니다.</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {['처리한다', '진행한다', '관리한다', '대응한다', '지원한다'].map(v => (
+                    {['처리한다', '진행한다', '관리한다', '대응한다', '지원한다', '파악한다', '준비한다', '고도화한다', '리드한다'].map(v => (
                       <span key={v} className="px-2 py-0.5 rounded text-[11px] bg-red-500/10 text-red-300 border border-red-500/20">{v}</span>
                     ))}
                   </div>
@@ -72,12 +72,16 @@ export default function L7GuideModal({ onClose }: Props) {
                     <thead><tr className="text-slate-500"><th className="text-left pb-1">동사</th><th className="text-left pb-1">대안</th></tr></thead>
                     <tbody className="divide-y divide-slate-800/50">
                       {[
-                        ['확인한다', '조회한다, 비교한다, 검증한다'],
                         ['검토한다', '비교한다, 판정한다, 검증한다'],
                         ['개선한다', '수정한다, 재작성한다'],
                         ['정리한다', '분류한다, 집계한다, 삭제한다'],
                         ['공유한다', '안내한다, 발송한다, 공지한다'],
                         ['반영한다', '입력한다, 수정한다, 저장한다'],
+                        ['분석한다', '집계한다, 비교한다, 추출한다'],
+                        ['평가한다', '판정한다, 검증한다, 비교한다'],
+                        ['담당한다', '조회한다, 입력한다, 구체 동작으로 교체'],
+                        ['보조한다', '안내한다, 요청한다, 구체 동작으로 교체'],
+                        ['피드백한다', '안내한다, 공지한다, 요청한다'],
                       ].map(([v, alt]) => (
                         <tr key={v}><td className="py-1 text-amber-300/80">{v}</td><td className="py-1 text-slate-400">{alt}</td></tr>
                       ))}
@@ -89,7 +93,7 @@ export default function L7GuideModal({ onClose }: Props) {
                 <Row id="R-04" sev="warning" label="시스템명 혼입" desc="괄호/브라켓 내 시스템명은 메타데이터로 분리하세요. 예: '(SAP)' → systemName 필드" />
                 <Row id="R-05" sev="reject"  label="복수 동작" desc="~하고, ~하며, ~한 후 패턴은 별도 단계로 분리해야 합니다. 하나의 L7 = 하나의 동작" />
                 <Row id="R-06" sev="suggest" label="주어 누락" desc="스윔레인 미사용 시, 목적어(을/를)가 있는데 주어(이/가/은/는)가 없으면 안내합니다." />
-                <Row id="R-07" sev="warning" label="목적어 누락" desc="타동사(조회/입력/수정/저장 등)에는 을/를 조사가 있어야 합니다. 예: '급여를 조회한다'" />
+                <Row id="R-07" sev="reject"  label="목적어 누락" desc="타동사(조회/입력/수정/전송 등)에는 을/를 조사가 필수입니다. 예: '급여를 조회한다'" />
                 <Row id="R-08" sev="warning" label="기준값 누락 (판단 노드)" desc="판단 노드에 여부·인가·이상·이하 등 판단 기준이 없으면 조건이 모호합니다." />
               </Section>
               <div className="rounded-lg px-4 py-3 text-[11px] text-slate-400" style={{ background: 'rgba(148,163,184,0.05)', border: '1px solid rgba(148,163,184,0.1)' }}>
@@ -126,10 +130,10 @@ export default function L7GuideModal({ onClose }: Props) {
               <p className="text-slate-500 text-[11px] mb-3">L7 라벨에 권장되는 표준 동사 목록입니다. 이 동사들은 제3자가 즉시 이해하고 수행할 수 있는 구체적 행위를 나타냅니다.</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { cat: '조회/입력/수정', verbs: ['조회한다', '입력한다', '수정한다', '저장한다', '추출한다'] },
-                  { cat: '비교/분석', verbs: ['비교한다', '집계한다', '기록한다', '첨부한다'] },
-                  { cat: '승인/처리', verbs: ['판정한다', '승인한다', '반려한다', '결정한다'] },
-                  { cat: '요청/안내', verbs: ['요청한다', '재요청한다', '안내한다', '공지한다', '에스컬레이션한다'] },
+                  { cat: '조회/입력/수정', verbs: ['조회한다', '입력한다', '수정한다', '저장한다', '추출한다', '확인한다'] },
+                  { cat: '비교/집계/기록', verbs: ['비교한다', '집계한다', '기록한다', '첨부한다', '체크한다'] },
+                  { cat: '승인/판정/전달', verbs: ['판정한다', '승인한다', '반려한다', '결정한다', '전송한다', '배포한다', '제공한다'] },
+                  { cat: '요청/안내/공지', verbs: ['요청한다', '재요청한다', '안내한다', '공지한다', '에스컬레이션한다'] },
                 ].map(({ cat, verbs }) => (
                   <div key={cat} className="rounded-lg p-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                     <div className="text-[10px] font-semibold text-green-400 mb-2 uppercase tracking-wider">{cat}</div>
