@@ -226,14 +226,20 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
     const pNo  = addShape('process',  '보완을 요청한다',  { x: cx + 280, y: 530 });
     const eId  = addShape('end',      '종료',             { x: cx + 80,  y: 870 }); // end 60px wide → center 300
 
+    // 중복 방지 연결 헬퍼 — 동일 source→target 이미 존재하면 스킵
+    const safeConnect = (src: string, tgt: string, sh: string, th: string) => {
+      const exists = useStore.getState().edges.some(e => e.source === src && e.target === tgt);
+      if (!exists) onConnect({ source: src, target: tgt, sourceHandle: sh, targetHandle: th });
+    };
+
     setTimeout(() => {
-      onConnect({ source: sId,  target: p1,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
-      onConnect({ source: p1,   target: p2,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
-      onConnect({ source: p2,   target: d1,   sourceHandle: 'bottom-source', targetHandle: 'top-target' });
-      onConnect({ source: d1,   target: pYes, sourceHandle: 'bottom-source', targetHandle: 'top-target' });
-      onConnect({ source: d1,   target: pNo,  sourceHandle: 'right-source',  targetHandle: 'left-target' });
-      onConnect({ source: pYes, target: eId,  sourceHandle: 'bottom-source', targetHandle: 'top-target' });
-      onConnect({ source: pNo,  target: eId,  sourceHandle: 'bottom-source', targetHandle: 'top-target' });
+      safeConnect(sId,  p1,   'bottom-source', 'top-target');
+      safeConnect(p1,   p2,   'bottom-source', 'top-target');
+      safeConnect(p2,   d1,   'bottom-source', 'top-target');
+      safeConnect(d1,   pYes, 'bottom-source', 'top-target');
+      safeConnect(d1,   pNo,  'right-source',  'left-target');
+      safeConnect(pYes, eId,  'bottom-source', 'top-target');
+      safeConnect(pNo,  eId,  'bottom-source', 'top-target');
 
       // Attach 예/아니오 labels to decision branches
       setTimeout(() => {

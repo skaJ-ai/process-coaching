@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
+import L7GuideModal from './L7GuideModal';
 
 export default function Toolbar() {
+  const [showL7Guide, setShowL7Guide] = useState(false);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const hi = useStore((s) => s.historyIndex);
@@ -92,12 +94,20 @@ export default function Toolbar() {
       <div className="w-px h-5 bg-slate-700" />
 
       <button
+        onClick={() => setShowL7Guide(true)}
+        title="L7 라벨 작성 가이드"
+        className="px-2 py-1.5 rounded-lg text-xs font-semibold text-violet-300 hover:bg-violet-600/20 border border-violet-500/30"
+      >
+        L7
+      </button>
+      <button
         onClick={toggleGuide}
         title="도움말 (F1)"
         className="p-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20"
       >
         ❓
       </button>
+      {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
     </div>
   );
 }
