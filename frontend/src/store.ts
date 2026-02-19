@@ -231,15 +231,12 @@ export const useStore = create<AppStore>((set, get) => ({
   deleteEdge: (eid) => { get().pushHistory(); set({ edges: get().edges.filter(e => e.id !== eid), saveStatus: 'unsaved' }); },
 
   applySuggestion: (s) => {
-    const { addMessage } = get();
     if (s.action === 'MODIFY' && s.targetNodeId && s.newLabel) {
       get().updateNodeLabel(s.targetNodeId, s.newLabel, 'ai');
-      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${s.newLabel}" 로 수정되었습니다.` });
       return;
     }
     if (s.action === 'DELETE' && s.targetNodeId) {
       get().deleteNode(s.targetNodeId);
-      addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ 단계가 삭제되었습니다.` });
       return;
     }
     let afterId = s.insertAfterNodeId;
@@ -275,21 +272,12 @@ export const useStore = create<AppStore>((set, get) => ({
       : /시작|start|begin/.test(labelText) ? 'start'
       : /판단|결정|여부|분기|승인|반려/.test(labelText) ? 'decision'
       : 'process';
-    const label = s.labelSuggestion || s.newLabel || s.summary;
+    // labelSuggestion이 없으면 적용 불가 (summary는 설명 텍스트라 라벨로 사용 불가)
+    const label = s.labelSuggestion || s.newLabel;
+    if (!label) return;
     const compound = detectCompoundAction(label);
     const primaryLabel = compound.isCompound ? compound.parts[0] : label;
-    const secondaryLabel = compound.isCompound ? compound.parts[1] : '';
     if (afterId) get().addShapeAfter(st, primaryLabel, afterId); else get().addShape(st, primaryLabel, { x: 300, y: 300 });
-    addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `✅ "${primaryLabel}" 단계가 추가되었습니다.` });
-    if (compound.isCompound) {
-      addMessage({
-        id: generateId('msg'),
-        role: 'bot',
-        timestamp: Date.now(),
-        text: `💡 추천 문장에 동작이 2개 포함되어 있어 첫 번째 동작만 반영했어요.\n다음 셰이프를 추가해 "${secondaryLabel}"를 이어서 표현하면 L7 기준에 더 잘 맞습니다.`,
-        dismissible: true
-      });
-    }
   },
   applySuggestionWithEdit: (s, l) => {
     const m = { ...s };

@@ -30,9 +30,15 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
     </div>
   );
 
+  const hasLabel = !!(suggestion.labelSuggestion || suggestion.newLabel);
+
   const handleApply = () => {
-    if (suggestion.action === 'ADD') {
-      const label = suggestion.labelSuggestion || suggestion.summary;
+    if (suggestion.action === 'ADD' && !hasLabel) {
+      setEditing(true);
+      return;
+    }
+    if (suggestion.action === 'ADD' && hasLabel) {
+      const label = suggestion.labelSuggestion || suggestion.newLabel!;
       const detection = detectCompoundAction(label);
       if (detection.isCompound) {
         const msg = `이 추천에는 2개의 동작이 포함되어 있어요:\n• ${detection.parts[0]}\n• ${detection.parts[1]}\n\n셰이프를 나누어 추가하는 것을 권장합니다.`;
