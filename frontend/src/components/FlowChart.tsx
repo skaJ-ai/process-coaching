@@ -263,22 +263,32 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
           <GhostFlow />
         </div>
         {/* CTA card */}
-        <div className="flex flex-col items-start gap-2 pb-6">
+        <div className="flex flex-col items-start gap-2 pb-6" style={{ maxWidth: 240 }}>
           <p className="text-sm text-slate-400 leading-relaxed">
-            시작 노드 아래에 업무 단계를 연결하거나<br />빠른 시작으로 예시 플로우를 만들어보세요
+            시작 노드 아래에 업무 단계를 하나씩 추가하세요<br />
+            <span className="text-slate-500 text-xs">한 칸 = 한 동작</span>
           </p>
           <button
             onClick={handleQuickStart}
             className="pointer-events-auto mt-1 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105"
             style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)', boxShadow: '0 4px 20px rgba(79,70,229,0.35)' }}
           >
-            ⚡ 빠른 시작
+            ⚡ 예시로 시작하기
           </button>
-          <span className="text-xs text-slate-600">또는 캔버스 우클릭 → 직접 추가</span>
-          <div className="flex flex-col gap-1 mt-1 text-[11px] text-slate-600">
-            <span>🖱️ 우클릭 → 셰이프 추가</span>
-            <span>🔗 파란 점 드래그 → 연결</span>
-            <span>✏️ 더블클릭 → 이름 수정</span>
+          {/* 단축키 힌트 테이블 */}
+          <div className="mt-2 rounded-lg overflow-hidden" style={{ border: '1px solid #1e293b', background: 'rgba(15,23,41,0.7)' }}>
+            {[
+              ['우클릭', '단계 추가'],
+              ['파란 점 드래그', '연결'],
+              ['더블클릭', '이름 수정'],
+              ['Ctrl+Z', '되돌리기'],
+              ['Delete', '삭제'],
+            ].map(([key, desc]) => (
+              <div key={key} className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 border-b border-slate-800/60 last:border-0">
+                <kbd style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, padding: '1px 5px', fontSize: 10, color: '#94a3b8', fontFamily: 'inherit', lineHeight: 1.6 }}>{key}</kbd>
+                <span className="text-[11px] text-slate-500">{desc}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -367,7 +377,9 @@ function FlowCanvas() {
   const memoEdgeTypes = useMemo(() => edgeTypes, []);
 
   // Auto-spread: assign sibling indices so edges from the same handle fan out
+  // 판단 노드(decision)에서 출발하는 엣지는 isFromDecision=true → 점선 처리
   const edgesWithSpread = useMemo(() => {
+    const decisionNodeIds = new Set(nodes.filter(n => n.data?.nodeType === 'decision').map(n => n.id));
     const srcGroups: Record<string, string[]> = {};
     const tgtGroups: Record<string, string[]> = {};
     edges.forEach(e => {
@@ -381,7 +393,9 @@ function FlowCanvas() {
     });
     return edges.map(e => {
       const isSelfLoop = e.type === 'selfloop';
-      const edgeStyle = e.id === selectedEdgeId
+      const isSelected = e.id === selectedEdgeId;
+      const isDecision = decisionNodeIds.has(e.source);
+      const edgeStyle = isSelected
         ? { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' }
         : { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined };
       if (isSelfLoop) return { ...e, type: 'selfloop', style: edgeStyle };
@@ -399,10 +413,11 @@ function FlowCanvas() {
           sourceSiblingCount: sg.length,
           targetSiblingIndex: tg.indexOf(e.id),
           targetSiblingCount: tg.length,
+          isFromDecision: isDecision,
         },
       };
     });
-  }, [edges, selectedEdgeId]);
+  }, [edges, selectedEdgeId, nodes]);
 
   // v5.1: minimap node color with 2-lane swim lane awareness
   const minimapNodeColor = useCallback((n: any) => {

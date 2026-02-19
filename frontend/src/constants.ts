@@ -32,7 +32,7 @@ export const SWIMLANE_COLORS = [
 
 export const CATEGORY_COLORS: Record<NodeCategory | string, { bg: string; border: string; label: string; gradient: string }> = {
   as_is: { bg: '#1e3a5f', border: '#2a4a6b', label: 'As-Is 유지', gradient: 'linear-gradient(135deg, #1e3a5f, #1e293b)' },
-  digital_worker: { bg: '#3b1f6e', border: '#7c3aed', label: 'Digital Worker', gradient: 'linear-gradient(135deg, #3b1f6e, #2e1065)' },
+  digital_worker: { bg: '#3b1f6e', border: '#7c3aed', label: 'AI·자동화', gradient: 'linear-gradient(135deg, #3b1f6e, #2e1065)' },
   ssc_transfer: { bg: '#064e3b', border: '#10b981', label: 'SSC 이관', gradient: 'linear-gradient(135deg, #064e3b, #022c22)' },
   delete_target: { bg: '#7f1d1d', border: '#ef4444', label: '삭제 대상', gradient: 'linear-gradient(135deg, #7f1d1d, #450a0a)' },
   new_addition: { bg: '#713f12', border: '#eab308', label: '신규 추가', gradient: 'linear-gradient(135deg, #713f12, #422006)' },
