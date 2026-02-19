@@ -22,10 +22,12 @@ export default function QualityDashboard() {
   const unchecked = processNodes.filter(n => !n.data.l7Status || n.data.l7Status === 'none').length;
   const struct = analyzeStructure(nodes, edges);
   // S-01: 종료 노드 없음 → 노드 3개 미만이면 억제
-  // S-03(고아)·S-04(나가는 연결 없음) → 아직 종료 노드가 없는 작업 중엔 억제 (false positive 방지)
+  // S-03(고아) → 종료 노드 없는 작업 중엔 억제
+  // S-04(나가는 연결 없음) → 연결이 하나라도 있으면 OK 정책이므로 항상 억제
   const structIssues = struct.issues.filter(i => {
     if (i.ruleId === 'S-01' && total < 3) return false;
-    if ((i.ruleId === 'S-03' || i.ruleId === 'S-04') && !hasEnd) return false;
+    if (i.ruleId === 'S-03' && !hasEnd) return false;
+    if (i.ruleId === 'S-04') return false;
     return true;
   });
 
