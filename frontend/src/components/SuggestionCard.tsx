@@ -8,14 +8,13 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
   const applySuggestionWithEdit = useStore(s => s.applySuggestionWithEdit);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const nodes = useStore(s => s.nodes);
+  const action = suggestion.action || 'ADD';
   const [applied, setApplied] = useState(false);
   const [editing, setEditing] = useState(false);
   const modifyLabel = suggestion.newLabel || suggestion.labelSuggestion;
   const [editText, setEditText] = useState(
     action === 'MODIFY' ? (modifyLabel || '') : (suggestion.labelSuggestion || '')
   );
-
-  const action = suggestion.action || 'ADD';
   const target = suggestion.targetNodeId ? nodes.find(n => n.id === suggestion.targetNodeId) : null;
   const focusRefId = suggestion.targetNodeId || suggestion.insertAfterNodeId || null;
   const focusRefNode = focusRefId ? nodes.find(n => n.id === focusRefId) : null;

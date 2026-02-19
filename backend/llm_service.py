@@ -224,7 +224,8 @@ async def check_llm() -> bool:
         return False
 
 
-async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: bool = False):
+async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: bool = False,
+                   max_tokens: int = 2000, temperature: float = 0.7):
     global _last_llm_error
     available = await check_llm()
     if not available and USE_MOCK != "false":
@@ -237,8 +238,8 @@ async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: b
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
-        "temperature": 0.7,
-        "max_tokens": 2000,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
     }
     headers = _build_auth_headers()
 

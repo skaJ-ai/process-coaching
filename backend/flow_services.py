@@ -58,36 +58,26 @@ def describe_flow(nodes, edges):
 
     lines.append(f"[HR 프로세스 요소] {hr_coverage}")
     lines.append("")
-    lines.append("노드 ID 참조표 (insertAfterNodeId/targetNodeId 지정 시 아래 ID를 사용하세요):")
-    for n in nodes:
-        ref_id = getattr(n, "id", "?")
-        ref_label = getattr(n, "label", "") or (n.data.get("label", "") if hasattr(n, "data") else "")
-        ref_type = getattr(n, "type", None) or getattr(n, "nodeType", None) or "process"
-        type_kr = {"process": "태스크", "decision": "분기", "subprocess": "서브", "start": "시작", "end": "종료"}.get(ref_type, ref_type)
-        lines.append(f"  {ref_id} → \"{ref_label}\" ({type_kr})")
-    lines.append("")
-    lines.append("노드 목록:")
+    lines.append("노드 목록 (ID는 insertAfterNodeId/targetNodeId에 사용):")
 
     for n in nodes:
         node_id = getattr(n, "id", "?")
         node_type = getattr(n, "type", None) or getattr(n, "nodeType", None) or (n.data.get("nodeType") if hasattr(n, "data") else None) or "process"
         label = getattr(n, "label", "") or (n.data.get("label", "") if hasattr(n, "data") else "")
-        t = {"process": "태스크", "decision": "분기", "subprocess": "L6 프로세스", "start": "시작", "end": "종료"}.get(node_type, node_type)
+        t = {"process": "태스크", "decision": "분기", "subprocess": "서브", "start": "시작", "end": "종료"}.get(node_type, node_type)
 
         meta = ""
         system_name = getattr(n, "systemName", None) or (n.data.get("systemName") if hasattr(n, "data") else None)
         if system_name:
-            meta += f" [SYS:{system_name}]"
+            meta += f" SYS:{system_name}"
         duration = getattr(n, "duration", None) or (n.data.get("duration") if hasattr(n, "data") else None)
         if duration:
-            meta += f" [⏱{duration}]"
-        category = getattr(n, "category", None) or (n.data.get("category") if hasattr(n, "data") else None)
-        if category and category != "as_is":
-            meta += f" <{category}>"
+            meta += f" ⏱{duration}"
         swimlane = getattr(n, "swimLaneId", None) or (n.data.get("swimLaneId") if hasattr(n, "data") else None)
         if swimlane:
-            meta += f" [레인:{swimlane}]"
-        lines.append(f"  [{node_id}] ({t}) {label}{meta}")
+            meta += f" 레인:{swimlane}"
+        meta_str = f" ({meta.strip()})" if meta.strip() else ""
+        lines.append(f"  {node_id} | {t} | {label}{meta_str}")
 
     lines.append("연결 구조:")
     for e in edges:

@@ -25,7 +25,8 @@ except ImportError:
 @app.post("/api/review")
 async def review_flow(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
-    r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
+    r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}",
+                       max_tokens=1200, temperature=0.3)
     return r or mock_review(req.currentNodes, req.currentEdges)
 
 
