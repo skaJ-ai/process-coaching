@@ -6,6 +6,7 @@ import { detectCompoundAction } from '../utils/labelUtils';
 export default function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const applySuggestion = useStore(s => s.applySuggestion);
   const applySuggestionWithEdit = useStore(s => s.applySuggestionWithEdit);
+  const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const nodes = useStore(s => s.nodes);
   const [applied, setApplied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -13,6 +14,8 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
 
   const action = suggestion.action || 'ADD';
   const target = suggestion.targetNodeId ? nodes.find(n => n.id === suggestion.targetNodeId) : null;
+  const focusRefId = suggestion.targetNodeId || suggestion.insertAfterNodeId || null;
+  const focusRefNode = focusRefId ? nodes.find(n => n.id === focusRefId) : null;
 
   const cfg = {
     ADD: { icon: suggestion.type === 'DECISION' ? '◇' : '+', label: '추가', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', text: '#60a5fa' },
@@ -92,7 +95,16 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
         </div>
       </div>
       {/* Action buttons */}
-      <div className="flex gap-1.5 mt-2 ml-7">
+      <div className="flex gap-1.5 mt-2 ml-7 flex-wrap">
+        {focusRefNode && !applied && (
+          <button
+            onClick={() => setFocusNodeId(focusRefId)}
+            title={`"${focusRefNode.data.label}" 위치로 이동`}
+            className="px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-600/40 hover:bg-slate-700/30 hover:text-slate-200"
+          >
+            ⌖ 위치 보기
+          </button>
+        )}
         {!editing ? (
           <>
             <button onClick={handleApply} className="px-2.5 py-1 rounded text-[11px] font-medium transition-all" style={{ background: `${cfg.text}20`, color: cfg.text, border: `1px solid ${cfg.border}` }}>
