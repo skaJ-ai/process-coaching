@@ -73,7 +73,7 @@ def _normalize(payload: Any) -> dict:
 
 
 _KNOWLEDGE_KEYWORDS = [
-    "뭐야", "뭔가", "무엇", "무슨", "어떤", "왜", "어떻게",
+    "뭐야", "뭔가", "무엇", "무슨", "어떤", "왜", "어떻게", "언제",
     "의미", "차이", "종류", "개념", "정의", "설명", "알려",
     "L1", "L2", "L3", "L4", "L5", "L6", "L7",
     "BPMN", "bpmn", "스윔레인", "swim", "프로세스 맵",
@@ -84,7 +84,7 @@ _KNOWLEDGE_KEYWORDS = [
 _FLOW_ACTION_KEYWORDS = [
     "추가", "삭제", "수정", "변경", "넣어", "빼", "만들어",
     "다음", "next", "이어", "후속",
-    "누락", "빠진", "missing", "없어", "보강",
+    "누락", "빠진", "빠졌", "missing", "없어", "보강",
     "추천", "제안", "suggest",
 ]
 
@@ -96,13 +96,12 @@ def _classify_intent(message: str) -> str:
     has_knowledge_kw = any(k in q for k in _KNOWLEDGE_KEYWORDS)
     has_flow_action_kw = any(k in q for k in _FLOW_ACTION_KEYWORDS)
 
-    if has_knowledge_kw and not has_flow_action_kw:
-        return "knowledge"
-    if is_question and has_knowledge_kw:
-        return "knowledge"
-
+    # 혼합 의도: flow_action 키워드가 있으면 행동 요청 우선
     if has_flow_action_kw:
         return "flow_action"
+
+    if has_knowledge_kw:
+        return "knowledge"
 
     if any(k in q for k in ["검토", "개선", "리뷰", "review", "평가", "괜찮", "잘하고"]):
         return "coaching"
@@ -183,7 +182,12 @@ def _rule_coach(message: str, nodes, edges) -> dict:
     elif intent == "review":
         speech = "구조 점검 관점에서 시작/종료, orphan 노드, 분기 기준 명확성을 우선 검토하세요."
     else:
-        speech = "현재 구조 기준으로 다음 액션은 누락 노드 보완, 분기 기준 명확화, 종료 조건 확정입니다."
+        if s["node_count"] == 0:
+            speech = "아직 플로우가 비어 있어요. 캔버스에 우클릭해서 첫 번째 업무 단계를 추가해보세요!"
+        elif s["node_count"] <= 3:
+            speech = f"현재 {s['node_count']}개 노드가 있어요. 다음 업무 단계를 이어서 추가하거나, 궁금한 점을 질문해주세요."
+        else:
+            speech = f"현재 {s['node_count']}개 노드, {s['edge_count']}개 연결이 있어요. 구조를 점검하거나 다음 단계를 추가해볼까요?"
 
     if issues:
         speech += "\n\n점검 결과: " + " / ".join(issues)
