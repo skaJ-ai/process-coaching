@@ -384,7 +384,8 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, lastAutoValidateTime, loadingState, isUserActive } = get();
     // Skip if loading or user is actively editing (within 10s)
     if (loadingState.active || isUserActive() || now - lastAutoValidateTime < 5000) return;
-    const t = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && (!n.data.l7Status || n.data.l7Status === 'none'));
+    const PLACEHOLDER_LABELS = new Set(['새 태스크', '새 단계', '분기 조건?', '판단 조건', 'L6 프로세스', '하위 절차']);
+    const t = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType) && n.data.label.trim().length > 2 && !PLACEHOLDER_LABELS.has(n.data.label.trim()) && (!n.data.l7Status || n.data.l7Status === 'none'));
     if (!t.length) return;
     set({ lastAutoValidateTime: now });
     get().validateNode(t[0].id);

@@ -18,12 +18,18 @@ def describe_flow(nodes, edges):
     else:
         phase = "완성 단계"
 
-    all_node_ids = {n.id if hasattr(n, "id") else getattr(n, "id", None) for n in nodes}
+    # start/end 노드는 고아 판정에서 제외 (항상 연결 없어도 정상)
+    flow_node_ids = {
+        n.id if hasattr(n, "id") else getattr(n, "id", None)
+        for n in nodes
+        if (getattr(n, "type", None) or getattr(n, "nodeType", None) or
+            (hasattr(n, "data") and n.data.get("nodeType"))) not in ("start", "end")
+    }
     source_ids = {e["source"] if isinstance(e, dict) else e.source for e in edges}
     target_ids = {e["target"] if isinstance(e, dict) else e.target for e in edges}
 
-    orphan_count = len(all_node_ids - source_ids - target_ids)
-    orphan_nodes = list(all_node_ids - source_ids - target_ids)
+    orphan_count = len(flow_node_ids - source_ids - target_ids)
+    orphan_nodes = list(flow_node_ids - source_ids - target_ids)
 
     has_start = node_types.get("start", 0) > 0
     has_end = node_types.get("end", 0) > 0

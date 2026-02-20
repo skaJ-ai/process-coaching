@@ -193,36 +193,37 @@ cd frontend && npm run sync:check
 > 결정론적, 즉시 판정 — `frontend/src/utils/structRules.ts`
 > 출처: bpmnlint (Camunda), 7PMG (Mendling 2010)
 
-| Rule ID | 내용 | 수준 |
-| :--- | :--- | :--- |
-| S-01 | 종료 노드가 최소 1개 있어야 한다 | Warning |
-| S-02 | 기본값("새 태스크") 라벨을 구체화해야 한다 | Warning |
-| S-03 | 연결이 없는 고아 노드가 없어야 한다 | Warning |
-| S-05 | 프로세스 노드 직접 분기 시 판단 노드를 사용해야 한다 | Warning |
-| S-06 | 동일한 출발→도착 연결이 중복되면 안 된다 | Warning |
-| S-07 | 판단 노드에서 나가는 경로가 1개뿐이면 일반 노드로 변경해야 한다 | Warning |
-| S-08 | 판단 노드의 모든 분기에 조건 라벨이 있어야 한다 | Warning |
-| S-09 | 시작 노드가 2개 이상이면 의도적 구조인지 확인해야 한다 | Warning |
-| S-10 | 판단 노드에서 4개 이상 분기 시 2단계 판단 구조를 권장한다 | Warning |
-| S-11 | 총 노드 50개 초과 시 서브프로세스로 분해를 권장한다 | Warning |
+| Rule ID | 내용 | 수준 | 비고 |
+| :--- | :--- | :--- | :--- |
+| S-01 | 종료 노드가 최소 1개 있어야 한다 | Warning | 드로잉 중 품질 대시보드에서 억제 — 완료하기/전체 흐름 검토 시 안내 |
+| S-03 | 연결이 없는 고아 노드가 없어야 한다 | Warning | 종료 노드 없는 작업 중엔 억제 |
+| S-05 | 프로세스 노드 직접 분기 시 판단 노드를 사용해야 한다 | Warning | |
+| S-06 | 동일한 출발→도착 연결이 중복되면 안 된다 | Warning | |
+| S-07 | 판단 노드에서 나가는 경로가 1개뿐이면 일반 노드로 변경해야 한다 | Warning | |
+| S-08 | 판단 노드의 모든 분기에 조건 라벨이 있어야 한다 | Warning | |
+| S-09 | 시작 노드가 2개 이상이면 의도적 구조인지 확인해야 한다 | Warning | |
+| S-10 | 판단 노드에서 4개 이상 분기 시 2단계 판단 구조를 권장한다 | Warning | |
+| S-11 | 총 노드 50개 초과 시 서브프로세스로 분해를 권장한다 | Warning | |
 
 ---
 
 ### Tier 2 · 라벨 규칙 (R-Rules)
 
 > 결정론적, 즉시 판정 — `frontend/src/utils/l7Rules.ts`
+>
+> 기본 플레이스홀더 라벨(`새 태스크`, `분기 조건?` 등)은 검증 대상에서 제외 — 내용 입력 전 오판정 방지
 
-| Rule ID | 내용 | 실패 시 |
-| :--- | :--- | :--- |
-| R-01 | 라벨이 4자 이상이어야 한다 | Warning |
-| R-02 | 라벨이 100자 이하여야 한다 | Warning |
-| R-03a | 금지 동사를 포함하지 않아야 한다 | Reject |
-| R-03b | 구체화 권장 동사 사용 시 대안 동사를 안내한다 | Warning |
-| R-04 | 괄호/`~에서` 패턴의 시스템명은 메타데이터로 분리해야 한다 | Warning |
-| R-05 | `~하고/~하며/~한 후` 복수 동작이 없어야 한다 | Reject |
-| R-06 | 스윔레인 미사용 시, 타동사+목적어가 있으면 주어를 명시해야 한다 | Suggestion |
-| R-07 | 타동사 사용 시 목적어(을/를)가 있어야 한다 | Reject |
-| R-08 | 판단 노드에 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다 | Warning |
+| Rule ID | 내용 | 실패 시 | 적용 노드 |
+| :--- | :--- | :--- | :--- |
+| R-01 | 라벨이 4자 이상이어야 한다 | Warning | 전체 |
+| R-02 | 라벨이 100자 이하여야 한다 | Warning | 전체 |
+| R-03a | 금지 동사를 포함하지 않아야 한다 | Reject | 전체 |
+| R-03b | 구체화 권장 동사 사용 시 대안 동사를 안내한다 | Warning | Process만 |
+| R-04 | 괄호/`~에서` 패턴의 시스템명은 메타데이터로 분리해야 한다 | Warning | 전체 |
+| R-05 | `~하고/~하며/~한 후` 복수 동작이 없어야 한다 | Reject | Process만 |
+| R-06 | 스윔레인 미사용 시, 타동사+목적어가 있으면 주어를 명시해야 한다 | Suggestion | Process만 |
+| R-07 | 타동사 사용 시 목적어(을/를)가 있어야 한다 | Reject | Process만 |
+| R-08 | 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다 | Warning | Decision만 |
 
 ---
 
@@ -352,3 +353,18 @@ SAP가 인수한 글로벌 BPM 플랫폼의 UX 연구. "연결 끊김"(구조)�
 2. **보조한다·담당한다** — v1 금지 → v2 Warning 완화. 지원한다(Reject)와의 일관성 재검토 필요
 3. **수행 위치 처리** — 라벨 간결성 vs. 위치 명시 중 팀 우선순위 확인
 4. **구조 규칙 Reject 승격** — S-01~S-11 중 Warning을 Reject으로 격상할 규칙 있는가?
+
+---
+
+## 알려진 기술 부채
+
+코드 리뷰에서 발견된 항목. 기능 동작에는 문제없으나 장기적으로 개선 필요.
+
+| # | 심각도 | 위치 | 내용 |
+| :--- | :--- | :--- | :--- |
+| T-01 | 중 | `backend/flow_services.py` mock_validate() | R-05 판정 시 `INTENT_EXCLUDE_PATTERNS`(~하고자 한다 등) 미적용 → 의도 표현 오판정 가능 |
+| T-02 | 중 | `backend/flow_services.py` vs `frontend/l7Rules.ts` | Backend mock_validate과 Frontend 규칙 엔진 미동기화 (R-06 누락, R-15 불일치) |
+| T-03 | 중 | `backend/prompt_templates.py` REVIEW_SYSTEM | LLM 지시사항에서 "라벨명만" vs "ID 사용" 구분이 충분하지 않아 잘못된 노드 대상 제안 위험 |
+| T-04 | 낮음 | `frontend/src/store.ts` applySuggestion() | MODIFY action에 targetNodeId 없으면 조용히 실패 (사용자에게 피드백 없음) |
+| T-05 | 낮음 | `frontend/src/store.ts` validateAllNodes() | 배치 검증 중 사용자 편집 시 결과 혼동 가능 |
+| T-06 | 낮음 | `frontend/src/components/QualityDashboard.tsx` | 프로세스 노드 0개일 때 안내 메시지 없음 (null 반환) |
