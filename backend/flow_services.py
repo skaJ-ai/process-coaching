@@ -133,8 +133,8 @@ INTENT_EXCLUDE_RE = [
 ]
 
 
-def mock_validate(label, node_type="process", llm_failed=False):
-    """Rule-based L7 validation — v2 (2026-02-18 확정)"""
+def mock_validate(label, node_type="process", has_swim_lane=False, llm_failed=False):
+    """Rule-based L7 validation — v2 (2026-02-18 확정, T-02 동기화)"""
     issues = []
     text = label.strip()
 
@@ -151,14 +151,7 @@ def mock_validate(label, node_type="process", llm_failed=False):
     if banned_verb:
         issues.append({"ruleId": "R-03a", "severity": "reject", "friendlyTag": "금지 동사", "message": f"'{banned_verb}'는 L7 라벨로 사용할 수 없어요", "suggestion": "조회한다, 입력한다, 저장한다, 승인한다 같은 구체 동사로 바꿔주세요.", "reasoning": "이 동사는 어떤 맥락에서도 구체적 행위를 나타내지 않아 제3자가 수행할 수 없습니다."})
 
-    # R-03b: 구체화 권장 동사 (warning)
-    if not banned_verb:
-        refinable_verb = next((v for v in REFINABLE_VERBS if v in text), None)
-        if refinable_verb:
-            alternatives = REFINABLE_VERBS[refinable_verb]
-            issues.append({"ruleId": "R-03b", "severity": "warning", "friendlyTag": "구체화 권장", "message": f"'{refinable_verb}' 대신 구체 동사를 쓰면 더 명확해질 수 있어요", "suggestion": f"대안: {alternatives}", "reasoning": "구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다."})
-
-    # R-04: 시스템명 혼입 (warning + 추출)
+    # R-04: 시스템명 혼입 (warning + 추출) — 전체 노드 적용
     detected_system = None
     for pattern in SYSTEM_NAME_RE:
         m = pattern.search(text)
@@ -170,21 +163,37 @@ def mock_validate(label, node_type="process", llm_failed=False):
     elif re.search(r"[(\[\]）（）)]", text):
         issues.append({"ruleId": "R-04", "severity": "warning", "friendlyTag": "시스템명 분리", "message": "괄호가 포함되어 있어요. 시스템명이라면 메타데이터로 분리하면 가독성이 좋아져요", "suggestion": "라벨은 동작만 남기고 시스템명은 '시스템명' 필드에 입력해보세요."})
 
-    # R-05: 복수 동작 (reject) — 의도/희망 표현(~하고자 한다 등)은 제외
-    if not any(p.search(text) for p in INTENT_EXCLUDE_RE):
-        for pattern in COMPOUND_RE:
-            m = pattern.search(text)
-            if m and m.group(1) and m.group(2):
-                p1 = m.group(1) if m.group(1).endswith("다") else m.group(1) + "다"
-                p2 = m.group(2) if m.group(2).endswith("다") else m.group(2) + "다"
-                issues.append({"ruleId": "R-05", "severity": "reject", "friendlyTag": "복수 동작", "message": "한 라벨에 동작이 2개 이상 포함되어 있어요", "suggestion": f'각 동작을 별도 단계로 분리해보세요: "{p1}" / "{p2}"', "reasoning": "하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다."})
-                break
+    # ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-06/R-07) 스킵 ──
+    # 판단 조건은 "~여부", "~인가?" 형식으로 동사가 없는 게 정상. Process 노드에서만 아래 룰 적용.
+    if node_type != "decision":
+        # R-03b: 구체화 권장 동사 (warning) — 금지 동사가 아닌 경우만
+        if not banned_verb:
+            refinable_verb = next((v for v in REFINABLE_VERBS if v in text), None)
+            if refinable_verb:
+                alternatives = REFINABLE_VERBS[refinable_verb]
+                issues.append({"ruleId": "R-03b", "severity": "warning", "friendlyTag": "구체화 권장", "message": f"'{refinable_verb}' 대신 구체 동사를 쓰면 더 명확해질 수 있어요", "suggestion": f"대안: {alternatives}", "reasoning": "구체적 동사는 제3자가 정확히 이해할 수 있도록 도와줍니다."})
 
-    # R-07: 목적어 누락 (warning)
-    if len(text) >= 4:
-        used_transitive = next((v for v in TRANSITIVE_VERBS if v in text), None)
-        if used_transitive and not re.search(r"[을를]", text):
-            issues.append({"ruleId": "R-07", "severity": "warning", "friendlyTag": "목적어 누락", "message": f"'{used_transitive}'는 타동사인데 목적어(을/를)가 없어요", "suggestion": f'예: "급여를 {used_transitive}" 형태로 대상을 명시해보세요.', "reasoning": "목적어가 있으면 제3자가 무엇에 대한 동작인지 바로 알 수 있습니다."})
+        # R-05: 복수 동작 (reject) — 의도/희망 표현(~하고자 한다 등)은 제외
+        if not any(p.search(text) for p in INTENT_EXCLUDE_RE):
+            for pattern in COMPOUND_RE:
+                m = pattern.search(text)
+                if m and m.group(1) and m.group(2):
+                    p1 = m.group(1) if m.group(1).endswith("다") else m.group(1) + "다"
+                    p2 = m.group(2) if m.group(2).endswith("다") else m.group(2) + "다"
+                    issues.append({"ruleId": "R-05", "severity": "reject", "friendlyTag": "복수 동작", "message": "한 라벨에 동작이 2개 이상 포함되어 있어요", "suggestion": f'각 동작을 별도 단계로 분리해보세요: "{p1}" / "{p2}"', "reasoning": "하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다."})
+                    break
+
+        # R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크
+        if not has_swim_lane and len(text) >= 4:
+            used_transitive = next((v for v in TRANSITIVE_VERBS if v in text), None)
+            if used_transitive and re.search(r"[을를]", text) and not re.search(r"[이가은는]", text):
+                issues.append({"ruleId": "R-06", "severity": "suggestion", "friendlyTag": "주어 누락", "message": "주체가 명시되지 않았어요", "suggestion": "스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.", "reasoning": "스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다."})
+
+        # R-07: 목적어 누락 (reject) — 프론트와 동일하게 reject 처리
+        if len(text) >= 4:
+            used_transitive = next((v for v in TRANSITIVE_VERBS if v in text), None)
+            if used_transitive and not re.search(r"[을를]", text):
+                issues.append({"ruleId": "R-07", "severity": "reject", "friendlyTag": "목적어 누락", "message": f"'{used_transitive}'는 타동사인데 목적어(을/를)가 없어요", "suggestion": f'예: "급여를 {used_transitive}" 형태로 대상을 명시해보세요.', "reasoning": "목적어가 있으면 제3자가 무엇에 대한 동작인지 바로 알 수 있습니다."})
 
     # R-08: 기준값 누락 (decision만)
     if node_type == "decision":

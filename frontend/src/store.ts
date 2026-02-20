@@ -231,7 +231,12 @@ export const useStore = create<AppStore>((set, get) => ({
   deleteEdge: (eid) => { get().pushHistory(); set({ edges: get().edges.filter(e => e.id !== eid), saveStatus: 'unsaved' }); },
 
   applySuggestion: (s) => {
-    if (s.action === 'MODIFY' && s.targetNodeId) {
+    if (s.action === 'MODIFY') {
+      if (!s.targetNodeId) {
+        // T-04: targetNodeId 없으면 수정 대상 불명 → 사용자에게 안내
+        get().addMessage({ id: generateId('msg'), role: 'bot', text: '수정할 노드를 특정하지 못했어요. 노드를 직접 선택한 후 라벨을 편집해주세요.', timestamp: Date.now() });
+        return;
+      }
       const modifyLabel = s.newLabel || s.labelSuggestion;
       if (modifyLabel) { get().updateNodeLabel(s.targetNodeId, modifyLabel, 'ai'); }
       return;
@@ -334,15 +339,18 @@ export const useStore = create<AppStore>((set, get) => ({
 
       results.forEach((res, idx) => {
         if (res.status === 'fulfilled' && res.value) {
-          const t = batch[idx];
+          const nodeId = batch[idx].id;
+          // T-05: 검증 완료 시점의 최신 노드 상태 사용 (배치 캡처 스냅샷 대신)
+          const liveNode = get().nodes.find(n => n.id === nodeId);
+          if (!liveNode) return;
           const r = res.value;
-          const item = { nodeId: t.id, nodeLabel: t.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement };
+          const item = { nodeId: liveNode.id, nodeLabel: liveNode.data.label, pass: r.pass, score: r.score ?? 0, issues: (r.issues || []).map((x: any) => ({ ...x, friendlyTag: x.friendlyTag || friendlyTag(x.ruleId) })), rewriteSuggestion: r.rewriteSuggestion, encouragement: r.encouragement };
           items.push(item);
           if (item.issues.length > 0) {
             addMessage({
               id: generateId('msg'),
               role: 'bot',
-              text: `🔎 "${t.data.label}" 검증 결과가 도착했어요.`,
+              text: `🔎 "${liveNode.data.label}" 검증 결과가 도착했어요.`,
               l7Report: [item],
               timestamp: Date.now()
             });

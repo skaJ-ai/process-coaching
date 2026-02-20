@@ -12,7 +12,15 @@ export default function QualityDashboard() {
 
   const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
   const total = processNodes.length || 0;
-  if (total === 0) return null;
+  // T-06: 노드 0개일 때 null 대신 안내 메시지 표시
+  if (total === 0) {
+    return (
+      <div className="px-4 py-3" style={{ background: 'rgba(15,23,41,0.5)', borderBottom: '1px solid var(--border-primary)' }}>
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">품질 대시보드 (R/S)</span>
+        <div className="mt-2 text-[10px] text-slate-500">셰이프를 추가하면 L7 품질을 확인할 수 있어요.</div>
+      </div>
+    );
+  }
 
   const hasEnd = nodes.some(n => n.data.nodeType === 'end');
   const pass = processNodes.filter(n => n.data.l7Status === 'pass').length;

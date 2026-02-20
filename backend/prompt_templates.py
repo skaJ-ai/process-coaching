@@ -66,10 +66,12 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 문서화 품질을 점검하는 �
 }}
 
 중요:
-- summary나 reason에 노드 ID를 절대 포함하지 마세요. 한국어 라벨명만 사용하세요.
+- summary/reason에는 반드시 한국어 라벨명만 사용하세요. 노드 ID(예: node-1, n-abc123)는 절대 포함 금지.
+- insertAfterNodeId / targetNodeId 필드에만 ID를 사용하고, 해당 ID는 반드시 "노드 ID 참조표"에 있는 값이어야 합니다.
 - "더 효율적입니다", "개선하면 좋습니다" 같은 프로세스 변경 표현 금지
 - ADD는 현재 프로세스에 실제로 빠진 단계만, MODIFY는 현재 라벨의 표현 명확화만
 - ADD에는 labelSuggestion, MODIFY에는 newLabel을 반드시 채우세요. 혼용 금지.
+- MODIFY 제안에서 targetNodeId가 없으면 해당 제안을 포함하지 마세요.
 """
 
 COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 코치입니다.
