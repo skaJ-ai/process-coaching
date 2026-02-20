@@ -362,7 +362,7 @@ SAP가 인수한 글로벌 BPM 플랫폼의 UX 연구. "연결 끊김"(구조)�
 
 | # | 심각도 | 위치 | 내용 |
 | :--- | :--- | :--- | :--- |
-| T-01 | 중 | `backend/flow_services.py` mock_validate() | R-05 판정 시 `INTENT_EXCLUDE_PATTERNS`(~하고자 한다 등) 미적용 → 의도 표현 오판정 가능 |
+| T-01 | ~~중~~ | `backend/flow_services.py` mock_validate() | ~~R-05 판정 시 `INTENT_EXCLUDE_PATTERNS`(~하고자 한다 등) 미적용 → 의도 표현 오판정 가능~~ **수정 완료** (872333a) |
 | T-02 | 중 | `backend/flow_services.py` vs `frontend/l7Rules.ts` | Backend mock_validate과 Frontend 규칙 엔진 미동기화 (R-06 누락, R-15 불일치) |
 | T-03 | 중 | `backend/prompt_templates.py` REVIEW_SYSTEM | LLM 지시사항에서 "라벨명만" vs "ID 사용" 구분이 충분하지 않아 잘못된 노드 대상 제안 위험 |
 | T-04 | 낮음 | `frontend/src/store.ts` applySuggestion() | MODIFY action에 targetNodeId 없으면 조용히 실패 (사용자에게 피드백 없음) |
