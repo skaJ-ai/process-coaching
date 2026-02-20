@@ -95,6 +95,8 @@ export interface FlowNodeData {
   l7Issues?: L7Issue[];
   l7Rewrite?: string;
   changeHistory?: NodeChangeEntry[];
+  // Issue 5: AI 추가 노드 보호 (재수정 제안 금지)
+  addedBy?: 'ai' | 'user';
   // Position lock
 
   // v5: auto-enter inline edit on creation

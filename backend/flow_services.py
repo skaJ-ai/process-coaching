@@ -87,6 +87,10 @@ def describe_flow(nodes, edges):
         t = {"process": "태스크", "decision": "분기", "subprocess": "서브", "start": "시작", "end": "종료"}.get(node_type, node_type)
 
         meta = ""
+        # Issue 5: AI 추가 노드 표시 (재수정 제안 금지용)
+        added_by = getattr(n, "addedBy", None) or (n.data.get("addedBy") if hasattr(n, "data") else None)
+        if added_by == "ai":
+            meta += " [AI추가]"
         system_name = getattr(n, "systemName", None) or (n.data.get("systemName") if hasattr(n, "data") else None)
         if system_name:
             meta += f" SYS:{system_name}"

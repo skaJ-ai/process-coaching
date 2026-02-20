@@ -119,7 +119,7 @@ export const useStore = create<AppStore>((set, get) => ({
     setTimeout(() => {
       get().addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n왼쪽 도구 모음에서 단계를 추가하거나, 아래에 궁금한 점을 물어보세요.`,
+        text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n캔버스에 우클릭해서 셰이프를 추가하거나, 아래 빠른 질문을 클릭해보세요.`,
         quickQueries: ['어떻게 시작하면 좋을까요?', '일반적인 단계는 뭐가 있나요?', '예외 처리는 어떻게 표현하나요?']
       });
       onReady?.();
@@ -169,7 +169,7 @@ export const useStore = create<AppStore>((set, get) => ({
     get().pushHistory();
     get().updateUserActivity();
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type]);
-    const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', pendingEdit: true } };
+    const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', addedBy: 'user', pendingEdit: true } };
     let updated = reindexByPosition([...get().nodes, node]);
     const { dividerYs, swimLaneLabels } = get();
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
@@ -192,7 +192,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const id = generateId(type === 'decision' ? 'dec' : type === 'subprocess' ? 'sub' : 'proc');
     const after = nodes.find(n => n.id === afterNodeId);
     const pos = after ? { x: after.position.x, y: after.position.y + 150 } : { x: 300, y: 300 };
-    const node: Node<FlowNodeData> = { id, type, position: pos, draggable: true, data: { label, nodeType: type, category: 'as_is' } };
+    const node: Node<FlowNodeData> = { id, type, position: pos, draggable: true, data: { label, nodeType: type, category: 'as_is', addedBy: 'user' } };
     const outEdge = edges.find(e => e.source === afterNodeId);
     let newEdges = [...edges];
     if (outEdge) { newEdges = newEdges.filter(e => e.id !== outEdge.id); newEdges.push(makeEdge(afterNodeId, id)); newEdges.push(makeEdge(id, outEdge.target)); }
@@ -283,7 +283,9 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!label) return;
     const compound = detectCompoundAction(label);
     const primaryLabel = compound.isCompound ? compound.parts[0] : label;
-    if (afterId) get().addShapeAfter(st, primaryLabel, afterId); else get().addShape(st, primaryLabel, { x: 300, y: 300 });
+    const newNodeId = afterId ? get().addShapeAfter(st, primaryLabel, afterId) : get().addShape(st, primaryLabel, { x: 300, y: 300 });
+    // Issue 5: AI가 추가한 노드 표시 (재수정 제안 방지용)
+    set({ nodes: get().nodes.map(n => n.id === newNodeId ? { ...n, data: { ...n.data, addedBy: 'ai' as const } } : n) });
   },
   applySuggestionWithEdit: (s, l) => {
     const m = { ...s };

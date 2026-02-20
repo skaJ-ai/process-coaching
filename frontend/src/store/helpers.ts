@@ -4,7 +4,8 @@ import { NODE_DIMENSIONS } from '../constants';
 
 export function makeInitialNodes(): Node<FlowNodeData>[] {
   return [
-    { id: 'start', type: 'start', position: { x: 300, y: 40 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
+    // y: 40 → 20으로 상향 (온보딩 가이드와 겹침 방지)
+    { id: 'start', type: 'start', position: { x: 300, y: 20 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
   ];
 }
 
@@ -44,6 +45,7 @@ export function serialize(nodes: Node<FlowNodeData>[], edges: Edge[]) {
       duration: n.data.duration,
       category: n.data.category || 'as_is',
       swimLaneId: n.data.swimLaneId || null,
+      addedBy: n.data.addedBy || 'user', // Issue 5: AI 추가 노드 추적
     })),
     edges: edges.map((e) => ({
       id: e.id,

@@ -94,19 +94,20 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-700" />
 
+      {/* 순서 변경: 드로잉 가이드 → 작성 가이드 */}
+      <button
+        onClick={toggleGuide}
+        title="드로잉 가이드 (F1)"
+        className="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-slate-600/20 border border-slate-600/30"
+      >
+        ✏️ 드로잉 가이드
+      </button>
       <button
         onClick={() => setShowL7Guide(true)}
         title="L7 라벨 작성 가이드"
         className="px-2 py-1.5 rounded-lg text-xs font-semibold text-violet-300 hover:bg-violet-600/20 border border-violet-500/30"
       >
-        L7 가이드
-      </button>
-      <button
-        onClick={toggleGuide}
-        title="도움말 (F1)"
-        className="p-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20"
-      >
-        ❓
+        📝 작성 가이드
       </button>
     </div>
     {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}

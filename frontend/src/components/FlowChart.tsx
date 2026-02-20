@@ -157,47 +157,52 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
   );
 }
 
-// Vertical ghost flow (no start node — it already exists on canvas)
+// Vertical ghost flow (includes start node to avoid confusion)
 function GhostFlow() {
   return (
-    <svg width="250" height="320" viewBox="0 0 250 320">
+    <svg width="250" height="360" viewBox="0 0 250 360">
       <defs>
         <marker id="ga" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
           <path d="M0,0 L0,6 L6,3 z" fill="#334155" />
         </marker>
       </defs>
+      {/* Start circle */}
+      <circle cx="80" cy="18" r="16" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="22" textAnchor="middle" fill="#6ee7b7" fontSize="10" fontWeight="600">시작</text>
+      {/* Arrow from Start ↓ */}
+      <line x1="80" y1="36" x2="80" y2="58" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Process 1 */}
-      <rect x="25" y="0" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="23" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 접수한다</text>
+      <rect x="25" y="60" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="83" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 접수한다</text>
       {/* Arrow ↓ */}
-      <line x1="80" y1="40" x2="80" y2="62" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <line x1="80" y1="100" x2="80" y2="122" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Process 2 */}
-      <rect x="25" y="64" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="87" textAnchor="middle" fill="#93c5fd" fontSize="11">내용을 검토한다</text>
+      <rect x="25" y="124" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="147" textAnchor="middle" fill="#93c5fd" fontSize="11">내용을 검토한다</text>
       {/* Arrow ↓ */}
-      <line x1="80" y1="104" x2="80" y2="126" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
-      {/* Decision diamond — center (80, 154) */}
-      <polygon points="80,126 114,154 80,182 46,154" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="158" textAnchor="middle" fill="#fcd34d" fontSize="10">승인 여부 판단</text>
+      <line x1="80" y1="164" x2="80" y2="186" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      {/* Decision diamond — center (80, 214) */}
+      <polygon points="80,186 114,214 80,242 46,214" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="218" textAnchor="middle" fill="#fcd34d" fontSize="10">승인 여부 판단</text>
       {/* Arrow ↓ 예 */}
-      <line x1="80" y1="184" x2="80" y2="206" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
-      <text x="90" y="200" fill="#64748b" fontSize="9">예</text>
+      <line x1="80" y1="244" x2="80" y2="266" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <text x="90" y="260" fill="#64748b" fontSize="9">예</text>
       {/* Process Yes */}
-      <rect x="25" y="208" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="231" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 처리한다</text>
+      <rect x="25" y="268" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="291" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 처리한다</text>
       {/* Arrow ↓ to End */}
-      <line x1="80" y1="248" x2="80" y2="283" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <line x1="80" y1="308" x2="80" y2="343" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Arrow → 아니오 */}
-      <line x1="116" y1="154" x2="158" y2="154" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
-      <text x="136" y="148" textAnchor="middle" fill="#64748b" fontSize="9">아니오</text>
+      <line x1="116" y1="214" x2="158" y2="214" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <text x="136" y="208" textAnchor="middle" fill="#64748b" fontSize="9">아니오</text>
       {/* Process No */}
-      <rect x="160" y="134" width="82" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="201" y="157" textAnchor="middle" fill="#93c5fd" fontSize="10">보완을 요청한다</text>
+      <rect x="160" y="194" width="82" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="201" y="217" textAnchor="middle" fill="#93c5fd" fontSize="10">보완을 요청한다</text>
       {/* Process No → End (path right→down→left) */}
-      <path d="M 201 174 L 201 300 L 99 300" stroke="#334155" strokeWidth="1.5" fill="none" markerEnd="url(#ga)" />
+      <path d="M 201 234 L 201 360 L 99 360" stroke="#334155" strokeWidth="1.5" fill="none" markerEnd="url(#ga)" />
       {/* End circle */}
-      <circle cx="80" cy="300" r="18" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="304" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="600">종료</text>
+      <circle cx="80" cy="360" r="18" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="364" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="600">종료</text>
     </svg>
   );
 }
