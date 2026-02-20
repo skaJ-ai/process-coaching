@@ -299,8 +299,9 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
     );
   }
 
-  // Phase 1: nodes exist but not connected yet
-  if (workNodes.length >= 1 && edges.length === 0) {
+  // Phase 1: many nodes exist but not connected yet (threshold: 3+)
+  // Threshold raised to 3+ to avoid showing guide when user just started adding shapes via chatbot
+  if (workNodes.length >= 3 && edges.length === 0) {
     return (
       <div className="absolute top-24 left-1/2 -translate-x-1/2 pointer-events-none z-10 animate-pulse">
         <div className="bg-indigo-600/15 border border-indigo-500/40 text-indigo-200 px-5 py-2 rounded-full text-sm font-medium shadow-lg">
@@ -448,7 +449,7 @@ function FlowCanvas() {
           showCM({ show: true, x: e.clientX, y: e.clientY, flowX: flowPos.x, flowY: flowPos.y });
         }}
         fitView fitViewOptions={{ padding: 0.3 }}
-        defaultEdgeOptions={{ type: 'smoothstep' }}
+        defaultEdgeOptions={{ type: 'smoothstep', interactionWidth: 20 }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2} maxZoom={2} snapToGrid snapGrid={[10, 10]}
         connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}

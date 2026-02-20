@@ -65,12 +65,14 @@ export default function NodeDetailPanel() {
         {changeHistory && changeHistory.length > 0 && <div>
           <div className="text-xs text-slate-500 font-medium mb-2">변경 이력</div>
           {changeHistory.slice().reverse().slice(0, 5).map((h, i) => (
-            <div key={i} className="flex items-center gap-2 text-[11px] mb-1">
-              <span className="text-slate-600">{new Date(h.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-              <span className="px-1 py-0.5 rounded text-[9px]" style={{ background: h.source === 'ai' ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)', color: h.source === 'ai' ? '#c084fc' : '#60a5fa' }}>{h.source === 'ai' ? 'AI' : '사용자'}</span>
-              <span className="text-slate-500 line-through truncate max-w-[120px]">{h.before}</span>
-              <span className="text-slate-500">→</span>
-              <span className="text-slate-300 truncate max-w-[120px]">{h.after}</span>
+            <div key={i} className="flex items-start gap-2 text-[11px] mb-2">
+              <span className="text-slate-600 flex-shrink-0">{new Date(h.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="px-1 py-0.5 rounded text-[9px] flex-shrink-0" style={{ background: h.source === 'ai' ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)', color: h.source === 'ai' ? '#c084fc' : '#60a5fa' }}>{h.source === 'ai' ? 'AI' : '사용자'}</span>
+              <div className="flex-1 flex flex-wrap items-baseline gap-1">
+                <span className="text-slate-500 line-through break-all">{h.before}</span>
+                <span className="text-slate-500 flex-shrink-0">→</span>
+                <span className="text-slate-300 break-all">{h.after}</span>
+              </div>
             </div>
           ))}
         </div>}

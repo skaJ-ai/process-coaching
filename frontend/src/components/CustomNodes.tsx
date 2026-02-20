@@ -91,12 +91,21 @@ export const DecisionNode = memo(({ id, data, selected }: NodeProps<FlowNodeData
   const cat = CATEGORY_COLORS[data.category || 'as_is'];
   const defaultBg = selected ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#92400e,#78350f)';
   const bg = (data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
+  const ie = useInlineEdit(id, data.label, true);
+  const status = statusMap[data.l7Status || 'none']; const sc = status.color; const badge = status.badge;
   return (<div className="relative" style={{ width: 160, height: 160 }}>
     <AllHandles color={selected ? '#fbbf24' : '#f59e0b'} />
     {data.category && data.category !== 'as_is' && <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
-    <div className={`absolute inset-0 flex items-center justify-center ${selected ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : ''}`} style={{ clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', background: bg }}>
-      <span className="text-amber-100 text-xs font-semibold text-center px-6 leading-tight max-w-[120px]" style={{ wordBreak: 'break-all' }}>{data.label}</span>
+    <div className={`absolute inset-0 flex items-center justify-center ${selected ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : ''}`} style={{ clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', background: bg }} onDoubleClick={ie.startEdit}>
+      {ie.editing ? (
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <textarea id={`decision-label-${id}`} name={`decision_label_${id}`} aria-label="판단 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-amber-950/90 text-amber-100 text-xs font-semibold text-center leading-tight outline-none resize-none border border-amber-500/50 rounded px-2 py-1" style={{ width: '120px', minHeight: '40px' }} rows={Math.max(2, Math.ceil(ie.editText.length / 20))} />
+        </div>
+      ) : (
+        <span className="text-amber-100 text-xs font-semibold text-center px-6 leading-tight max-w-[120px]" style={{ wordBreak: 'break-all' }}>{data.label}</span>
+      )}
     </div>
+    {sc && badge && <div className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] z-20" style={{ background: `${sc}22`, border: `1.5px solid ${sc}`, color: sc }}>{badge}</div>}
   </div>);
 });
 DecisionNode.displayName = 'DecisionNode';
