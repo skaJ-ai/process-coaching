@@ -227,7 +227,7 @@ cd frontend && npm run sync:check
 | R-03b | 구체화 권장 동사 사용 시 대안 동사를 안내한다 | Warning | Process만 |
 | R-04 | 괄호/`~에서` 패턴의 시스템명은 메타데이터로 분리해야 한다 | Warning | 전체 |
 | R-05 | `~하고/~하며/~한 후` 복수 동작이 없어야 한다 | Reject | Process만 |
-| R-06 | 스윔레인 미사용 시, 타동사+목적어가 있으면 주어를 명시해야 한다 | Suggestion | Process만 |
+| ~~R-06~~ | ~~스윔레인 미사용 시, 타동사+목적어가 있으면 주어를 명시해야 한다~~ | ~~Suggestion~~ | **삭제됨** (주체는 스윔레인으로 처리) |
 | R-07 | 타동사 사용 시 목적어(을/를)가 있어야 한다 | Reject | Process만 |
 | R-08 | 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다 | Warning | Decision만 |
 
@@ -369,7 +369,7 @@ SAP가 인수한 글로벌 BPM 플랫폼의 UX 연구. "연결 끊김"(구조)�
 | # | 심각도 | 위치 | 내용 |
 | :--- | :--- | :--- | :--- |
 | T-01 | ~~중~~ | `backend/flow_services.py` mock_validate() | ~~R-05 판정 시 `INTENT_EXCLUDE_PATTERNS`(~하고자 한다 등) 미적용 → 의도 표현 오판정 가능~~ **수정 완료** (872333a) |
-| T-02 | ~~중~~ | `backend/flow_services.py` vs `frontend/l7Rules.ts` | ~~Backend mock_validate과 Frontend 규칙 엔진 미동기화 (R-06 누락, R-15 불일치)~~ **수정 완료** (e2efe28) |
+| T-02 | ~~중~~ | `backend/flow_services.py` vs `frontend/l7Rules.ts` | ~~Backend mock_validate과 Frontend 규칙 엔진 미동기화 (Decision 노드 가드 누락, R-07 severity 불일치)~~ **수정 완료** (e2efe28) |
 | T-03 | ~~중~~ | `backend/prompt_templates.py` REVIEW_SYSTEM | ~~LLM 지시사항에서 "라벨명만" vs "ID 사용" 구분이 충분하지 않아 잘못된 노드 대상 제안 위험~~ **수정 완료** (e2efe28) |
 | T-04 | ~~낮음~~ | `frontend/src/store.ts` applySuggestion() | ~~MODIFY action에 targetNodeId 없으면 조용히 실패 (사용자에게 피드백 없음)~~ **수정 완료** (e2efe28) |
 | T-05 | ~~낮음~~ | `frontend/src/store.ts` validateAllNodes() | ~~배치 검증 중 사용자 편집 시 결과 혼동 가능~~ **수정 완료** (e2efe28) |

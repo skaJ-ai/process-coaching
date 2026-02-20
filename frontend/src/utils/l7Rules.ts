@@ -6,7 +6,6 @@ import {
   TRANSITIVE_VERBS,
   SYSTEM_NAME_PATTERNS,
   DECISION_HINTS,
-  SUBJECT_PARTICLE_RE,
 } from '../config/rulesLoader';
 
 export interface L7ValidationResult {
@@ -85,7 +84,7 @@ function hasObjectParticle(label: string): boolean {
  *
  * @param label 노드 라벨
  * @param nodeType 노드 타입 (process | decision)
- * @param hasSwimLane 스윔레인 활성화 여부 (R-06 조건부 체크용)
+ * @param hasSwimLane 스윔레인 활성화 여부 (현재 미사용, 향후 확장용)
  */
 export function validateL7Label(
   label: string,
@@ -125,7 +124,7 @@ export function validateL7Label(
     ));
   }
 
-  // ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-06/R-07) 스킵 ──
+  // ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-07) 스킵 ──
   // 판단 조건은 "~여부", "~인가?" 형식으로 동사가 없는 게 정상.
   // Process 노드에서만 아래 룰 적용.
   if (nodeType !== 'decision') {
@@ -154,18 +153,7 @@ export function validateL7Label(
       ));
     }
 
-    // ── R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크 ──
-    if (!hasSwimLane && text.length >= 4) {
-      const usedTransitive = TRANSITIVE_VERBS.find((v) => text.includes(v));
-      if (usedTransitive && hasObjectParticle(text) && !SUBJECT_PARTICLE_RE.test(text)) {
-        issues.push(issue(
-          'R-06', 'suggestion', '주어 누락',
-          '주체가 명시되지 않았어요',
-          '스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.',
-          '스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다.',
-        ));
-      }
-    }
+    // R-06 삭제됨: 주어는 스윔레인으로 처리 (룰 기반 체크 불필요)
 
     // ── R-07: 목적어 누락 (reject) ──
     if (text.length >= 4) {

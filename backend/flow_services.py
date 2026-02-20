@@ -147,8 +147,8 @@ INTENT_EXCLUDE_RE = [
 ]
 
 
-def mock_validate(label, node_type="process", has_swim_lane=False, llm_failed=False):
-    """Rule-based L7 validation — v2 (2026-02-18 확정, T-02 동기화)"""
+def mock_validate(label, node_type="process", llm_failed=False):
+    """Rule-based L7 validation — v2 (2026-02-20 확정, R-06 제거)"""
     issues = []
     text = label.strip()
 
@@ -177,7 +177,7 @@ def mock_validate(label, node_type="process", has_swim_lane=False, llm_failed=Fa
     elif re.search(r"[(\[\]）（）)]", text):
         issues.append({"ruleId": "R-04", "severity": "warning", "friendlyTag": "시스템명 분리", "message": "괄호가 포함되어 있어요. 시스템명이라면 메타데이터로 분리하면 가독성이 좋아져요", "suggestion": "라벨은 동작만 남기고 시스템명은 '시스템명' 필드에 입력해보세요."})
 
-    # ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-06/R-07) 스킵 ──
+    # ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-07) 스킵 ──
     # 판단 조건은 "~여부", "~인가?" 형식으로 동사가 없는 게 정상. Process 노드에서만 아래 룰 적용.
     if node_type != "decision":
         # R-03b: 구체화 권장 동사 (warning) — 금지 동사가 아닌 경우만
@@ -196,12 +196,6 @@ def mock_validate(label, node_type="process", has_swim_lane=False, llm_failed=Fa
                     p2 = m.group(2) if m.group(2).endswith("다") else m.group(2) + "다"
                     issues.append({"ruleId": "R-05", "severity": "reject", "friendlyTag": "복수 동작", "message": "한 라벨에 동작이 2개 이상 포함되어 있어요", "suggestion": f'각 동작을 별도 단계로 분리해보세요: "{p1}" / "{p2}"', "reasoning": "하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다."})
                     break
-
-        # R-06: 주어 누락 (suggestion) — 스윔레인 미사용 시만 체크
-        if not has_swim_lane and len(text) >= 4:
-            used_transitive = next((v for v in TRANSITIVE_VERBS if v in text), None)
-            if used_transitive and re.search(r"[을를]", text) and not re.search(r"[이가은는]", text):
-                issues.append({"ruleId": "R-06", "severity": "suggestion", "friendlyTag": "주어 누락", "message": "주체가 명시되지 않았어요", "suggestion": "스윔레인으로 역할을 구분하거나, 라벨에 주어를 추가하면 제3자가 이해하기 쉬워집니다.", "reasoning": "스윔레인 활성화 시 이 안내는 자동으로 비활성화됩니다."})
 
         # R-07: 목적어 누락 (reject) — 프론트와 동일하게 reject 처리
         if len(text) >= 4:
