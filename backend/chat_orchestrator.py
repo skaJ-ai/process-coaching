@@ -5,9 +5,11 @@ from typing import Any
 try:
     from .flow_services import mock_review
     from .llm_service import call_llm
+    from .prompt_templates import KNOWLEDGE_PROMPT
 except ImportError:
     from flow_services import mock_review
     from llm_service import call_llm
+    from prompt_templates import KNOWLEDGE_PROMPT
 
 CHAT_CHAIN_ENABLED = os.getenv("CHAT_CHAIN_ENABLED", "true").lower() != "false"
 RULE_COACH_ENABLED = os.getenv("RULE_COACH_ENABLED", "true").lower() != "false"
@@ -70,6 +72,44 @@ def _normalize(payload: Any) -> dict:
     }
 
 
+_KNOWLEDGE_KEYWORDS = [
+    "뭐야", "뭔가", "무엇", "무슨", "어떤", "왜", "어떻게",
+    "의미", "차이", "종류", "개념", "정의", "설명", "알려",
+    "L1", "L2", "L3", "L4", "L5", "L6", "L7",
+    "BPMN", "bpmn", "스윔레인", "swim", "프로세스 맵",
+    "모범사례", "best practice", "일반적으로", "보통",
+    "란", "이란", "인가요", "인건가", "건가요", "가요",
+]
+
+_FLOW_ACTION_KEYWORDS = [
+    "추가", "삭제", "수정", "변경", "넣어", "빼", "만들어",
+    "다음", "next", "이어", "후속",
+    "누락", "빠진", "missing", "없어", "보강",
+    "추천", "제안", "suggest",
+]
+
+
+def _classify_intent(message: str) -> str:
+    q = (message or "").strip()
+
+    is_question = any(q.endswith(s) for s in ["?", "\uff1f", "가요", "인가", "건가", "나요", "는지"])
+    has_knowledge_kw = any(k in q for k in _KNOWLEDGE_KEYWORDS)
+    has_flow_action_kw = any(k in q for k in _FLOW_ACTION_KEYWORDS)
+
+    if has_knowledge_kw and not has_flow_action_kw:
+        return "knowledge"
+    if is_question and has_knowledge_kw:
+        return "knowledge"
+
+    if has_flow_action_kw:
+        return "flow_action"
+
+    if any(k in q for k in ["검토", "개선", "리뷰", "review", "평가", "괜찮", "잘하고"]):
+        return "coaching"
+
+    return "coaching"
+
+
 def _intent(message: str) -> str:
     q = (message or "").strip()
     if any(k in q for k in ["다음", "next", "이어", "후속"]):
@@ -106,6 +146,20 @@ def _flow_signals(nodes, edges) -> dict:
 
 
 def _rule_coach(message: str, nodes, edges) -> dict:
+    classified = _classify_intent(message)
+    if classified == "knowledge":
+        return {
+            "speech": "좋은 질문이에요! 현재 오프라인 모드라 상세한 설명을 드리기 어렵지만, "
+                      "프로세스 설계에 대해 궁금한 점이 있으면 구체적으로 질문해주시면 "
+                      "제가 아는 범위에서 안내해드리겠습니다.",
+            "suggestions": [],
+            "quickQueries": [
+                "L7 라벨은 어떻게 작성하나요?",
+                "분기 노드는 언제 사용하나요?",
+                "프로세스 종료 조건은 어떻게 정하나요?",
+            ],
+        }
+
     s = _flow_signals(nodes, edges)
     intent = _intent(message)
     issues = []
@@ -203,8 +257,11 @@ def get_chain_status() -> dict:
 
 
 async def orchestrate_chat(system_prompt: str, prompt: str, message: str, nodes, edges) -> dict:
+    intent = _classify_intent(message)
+    effective_prompt = KNOWLEDGE_PROMPT if intent == "knowledge" else system_prompt
+
     if not CHAT_CHAIN_ENABLED:
-        r = await call_llm(system_prompt, prompt, allow_text_fallback=True)
+        r = await call_llm(effective_prompt, prompt, allow_text_fallback=True)
         n = _normalize(r)
         if n["speech"]:
             n["source"] = "llm"
@@ -212,7 +269,7 @@ async def orchestrate_chat(system_prompt: str, prompt: str, message: str, nodes,
             return n
 
     if _llm_available_now():
-        r = await call_llm(system_prompt, prompt, allow_text_fallback=True)
+        r = await call_llm(effective_prompt, prompt, allow_text_fallback=True)
         n = _normalize(r)
         if n["speech"] or n["suggestions"]:
             _mark_llm_success()

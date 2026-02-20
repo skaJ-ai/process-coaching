@@ -12,13 +12,13 @@ try:
     from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from .chat_orchestrator import orchestrate_chat, get_chain_status
-    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM
+    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
     from .flow_services import describe_flow, mock_review, mock_validate
 except ImportError:
     from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from chat_orchestrator import orchestrate_chat, get_chain_status
-    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM
+    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
     from flow_services import describe_flow, mock_review, mock_validate
 
 
