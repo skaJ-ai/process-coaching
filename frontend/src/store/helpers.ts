@@ -57,9 +57,10 @@ export function serialize(nodes: Node<FlowNodeData>[], edges: Edge[]) {
 }
 
 export function buildRecentTurns(messages: ChatMessage[]): Array<{ role: 'user' | 'assistant'; content: string }> {
+  // 4턴 → 10턴 확장: AI가 과거 제안을 더 잘 기억하도록
   return messages
     .filter((m) => m.role === 'user' || m.role === 'bot')
-    .slice(-4)
+    .slice(-10)
     .map((m) => ({
       role: m.role === 'bot' ? ('assistant' as const) : ('user' as const),
       content: m.text,
@@ -67,11 +68,12 @@ export function buildRecentTurns(messages: ChatMessage[]): Array<{ role: 'user' 
 }
 
 export function buildConversationSummary(messages: ChatMessage[]): string {
+  // 8턴 → 16턴, 800자 → 2000자 확장: 더 긴 대화 맥락 유지
   const texts = messages
     .filter((m) => m.role === 'user' || m.role === 'bot')
-    .slice(-8)
+    .slice(-16)
     .map((m) => `${m.role === 'bot' ? 'A' : 'U'}: ${m.text.replace(/\s+/g, ' ').trim()}`);
-  return texts.join(' | ').slice(0, 800);
+  return texts.join(' | ').slice(0, 2000);
 }
 
 export function assignSwimLanes(nodes: Node<FlowNodeData>[], dividerYs: number[], labels: string[]): Node<FlowNodeData>[] {

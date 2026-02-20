@@ -64,7 +64,21 @@ def describe_flow(nodes, edges):
 
     lines.append(f"[HR 프로세스 요소] {hr_coverage}")
     lines.append("")
-    lines.append("노드 목록 (ID는 insertAfterNodeId/targetNodeId에 사용):")
+    lines.append("==== 현재 플로우의 모든 노드 (중복 방지용: ADD 제안 전 반드시 확인!) ====")
+
+    # 기존 노드 라벨 목록 먼저 표시 (중복 방지용)
+    process_labels = [
+        (n.data.get("label", "") if hasattr(n, "data") else getattr(n, "label", ""))
+        for n in nodes
+        if (getattr(n, "type", None) or getattr(n, "nodeType", None) or (hasattr(n, "data") and n.data.get("nodeType"))) in ("process", "decision")
+    ]
+    if process_labels:
+        lines.append("현재 존재하는 업무/판단 라벨:")
+        for label in process_labels:
+            if label:
+                lines.append(f"  - \"{label}\"")
+    lines.append("")
+    lines.append("노드 상세 목록 (ID는 insertAfterNodeId/targetNodeId에 사용):")
 
     for n in nodes:
         node_id = getattr(n, "id", "?")

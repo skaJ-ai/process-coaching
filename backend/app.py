@@ -42,7 +42,8 @@ async def chat(req: ChatRequest):
     try:
         fd = describe_flow(req.currentNodes, req.currentEdges)
         history_lines = []
-        for t in req.recentTurns[-4:]:
+        # 최근 10턴 사용 (프론트에서 10개 전송): AI가 과거 제안/대화를 더 잘 기억
+        for t in req.recentTurns[-10:]:
             role = "사용자" if t.get("role") == "user" else "코치"
             content = str(t.get("content", "")).strip()
             if content:
@@ -53,7 +54,7 @@ async def chat(req: ChatRequest):
             f"컨텍스트: {req.context}\n"
             f"플로우:\n{fd}\n"
             f"대화 요약: {summary}\n"
-            f"최근 대화 4턴:\n{history_block}\n"
+            f"최근 대화:\n{history_block}\n"
             f"질문: {req.message}"
         )
         return await orchestrate_chat(COACH_TEMPLATE, prompt, req.message, req.currentNodes, req.currentEdges)
