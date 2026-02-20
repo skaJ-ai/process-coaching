@@ -125,6 +125,12 @@ COMPOUND_RE = [
     re.compile(r"(.+?한)\s+후\s*(.+?한다)"),
     re.compile(r"(.+?한다),\s*(.+?한다)"),
 ]
+# R-05 예외: 의도/희망 표현 — 복수 동작이 아님 (rulesLoader.ts의 INTENT_EXCLUDE_PATTERNS와 동기화)
+INTENT_EXCLUDE_RE = [
+    re.compile(r"하고자\s*(한다|합니다|했다|했습니다)"),
+    re.compile(r"하고\s*싶다"),
+    re.compile(r"하고\s*싶었다"),
+]
 
 
 def mock_validate(label, node_type="process", llm_failed=False):
@@ -164,14 +170,15 @@ def mock_validate(label, node_type="process", llm_failed=False):
     elif re.search(r"[(\[\]）（）)]", text):
         issues.append({"ruleId": "R-04", "severity": "warning", "friendlyTag": "시스템명 분리", "message": "괄호가 포함되어 있어요. 시스템명이라면 메타데이터로 분리하면 가독성이 좋아져요", "suggestion": "라벨은 동작만 남기고 시스템명은 '시스템명' 필드에 입력해보세요."})
 
-    # R-05: 복수 동작 (reject)
-    for pattern in COMPOUND_RE:
-        m = pattern.search(text)
-        if m and m.group(1) and m.group(2):
-            p1 = m.group(1) if m.group(1).endswith("다") else m.group(1) + "다"
-            p2 = m.group(2) if m.group(2).endswith("다") else m.group(2) + "다"
-            issues.append({"ruleId": "R-05", "severity": "reject", "friendlyTag": "복수 동작", "message": "한 라벨에 동작이 2개 이상 포함되어 있어요", "suggestion": f'각 동작을 별도 단계로 분리해보세요: "{p1}" / "{p2}"', "reasoning": "하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다."})
-            break
+    # R-05: 복수 동작 (reject) — 의도/희망 표현(~하고자 한다 등)은 제외
+    if not any(p.search(text) for p in INTENT_EXCLUDE_RE):
+        for pattern in COMPOUND_RE:
+            m = pattern.search(text)
+            if m and m.group(1) and m.group(2):
+                p1 = m.group(1) if m.group(1).endswith("다") else m.group(1) + "다"
+                p2 = m.group(2) if m.group(2).endswith("다") else m.group(2) + "다"
+                issues.append({"ruleId": "R-05", "severity": "reject", "friendlyTag": "복수 동작", "message": "한 라벨에 동작이 2개 이상 포함되어 있어요", "suggestion": f'각 동작을 별도 단계로 분리해보세요: "{p1}" / "{p2}"', "reasoning": "하나의 화면 내 연속 동작 = 1개 L7 원칙에 따라 분리가 필요합니다."})
+                break
 
     # R-07: 목적어 누락 (warning)
     if len(text) >= 4:
