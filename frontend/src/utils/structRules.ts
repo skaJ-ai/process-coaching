@@ -152,7 +152,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
     issues.push({
       ruleId: 'S-08',
       severity: 'warning',
-      message: `판단 노드의 분기 연결 ${unlabeledDecisionEdgeIds.length}개에 조건 라벨이 없어요. 'Yes/No' 또는 구체적 조건을 적어주세요.`,
+      message: `판단 노드의 분기 연결 ${unlabeledDecisionEdgeIds.length}개에 조건 라벨이 없어요. 'Yes/No' 또는 구체적 조건을 적어주세요. 💡 판단 노드에서 새로 연결하면 Yes/No가 자동으로 붙습니다.`,
       edgeIds: unlabeledDecisionEdgeIds,
       nodeIds: unlabeledDecisionNodeIds,
     });

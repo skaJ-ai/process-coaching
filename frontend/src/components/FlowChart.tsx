@@ -183,13 +183,13 @@ function GhostFlow() {
       <line x1="80" y1="164" x2="80" y2="186" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Decision diamond — center (80, 214) */}
       <polygon points="80,186 114,214 80,242 46,214" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="218" textAnchor="middle" fill="#fcd34d" fontSize="10">승인 여부 판단</text>
+      <text x="80" y="218" textAnchor="middle" fill="#fcd34d" fontSize="10">승인 여부</text>
       {/* Arrow ↓ 예 */}
       <line x1="80" y1="244" x2="80" y2="266" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       <text x="90" y="260" fill="#64748b" fontSize="9">예</text>
       {/* Process Yes */}
       <rect x="25" y="268" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="291" textAnchor="middle" fill="#93c5fd" fontSize="11">요청을 처리한다</text>
+      <text x="80" y="291" textAnchor="middle" fill="#93c5fd" fontSize="11">요청 결과를 통보한다</text>
       {/* Arrow ↓ to End */}
       <line x1="80" y1="308" x2="80" y2="343" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Arrow → 아니오 */}
@@ -225,8 +225,8 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
     // Vertical layout, centered at x≈300
     const p1   = addShape('process',  '요청을 접수한다',  { x: cx,       y: 180 });
     const p2   = addShape('process',  '내용을 검토한다',  { x: cx,       y: 330 });
-    const d1   = addShape('decision', '승인 여부 판단',   { x: cx + 30,  y: 480 }); // decision 160px wide → center 300
-    const pYes = addShape('process',  '요청을 처리한다',  { x: cx,       y: 690 });
+    const d1   = addShape('decision', '승인 여부',   { x: cx + 30,  y: 480 }); // decision 160px wide → center 300
+    const pYes = addShape('process',  '요청 결과를 통보한다',  { x: cx,       y: 690 });
     const pNo  = addShape('process',  '보완을 요청한다',  { x: cx + 280, y: 530 });
     const eId  = addShape('end',      '종료',             { x: cx + 80,  y: 870 }); // end 60px wide → center 300
 
@@ -442,7 +442,7 @@ function FlowCanvas() {
         onEdgeClick={(_e, edge) => { setSelEdge(edge.id); setSel(null); }}
         onEdgeDoubleClick={(_e, edge) => { const l = prompt('엣지 라벨:', (edge.label as string) || ''); if (l !== null) updateEdgeLabel(edge.id, l); }}
         onNodeContextMenu={(e, n) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, nodeId: n.id }); }}
-        onEdgeContextMenu={(e, edge) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, edgeId: edge.id }); }}
+        onEdgeContextMenu={(e, edge) => { e.preventDefault(); showCM({ show: true, x: e.clientX, y: e.clientY, edgeId: edge.id, sourceNodeId: edge.source, targetNodeId: edge.target }); }}
         onPaneContextMenu={e => {
           e.preventDefault();
           const flowPos = rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY });

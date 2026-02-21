@@ -137,6 +137,10 @@ SYSTEM_NAME_RE = [
     re.compile(r"[(\[（]([^)\]）]+)[)\]）]"),
     re.compile(r"^(.+?)(에서)\s"),
 ]
+# 시스템명이 아닌 파일 형식/일반 용어 (프론트 l7Rules.ts NON_SYSTEM_TERMS와 동기화)
+NON_SYSTEM_TERMS = {"PPT", "PDF", "EXCEL", "HWP", "CSV", "XML", "JSON", "HTML",
+                    "피피티", "엑셀", "워드", "한글", "파워포인트"}
+SYSTEM_KEYWORDS_RE = re.compile(r"시스템|플랫폼|포털|ERP|솔루션|모듈")
 COMPOUND_RE = [
     re.compile(r"(.+?하고),?\s*(.+?한다)"),
     re.compile(r"(.+?하며),?\s*(.+?한다)"),
@@ -174,12 +178,18 @@ def mock_validate(label, node_type="process", llm_failed=False):
     for pattern in SYSTEM_NAME_RE:
         m = pattern.search(text)
         if m and m.group(1):
-            detected_system = m.group(1).strip()
-            break
+            candidate = m.group(1).strip()
+            # NON_SYSTEM_TERMS 제외 (파일 형식 등)
+            if candidate.upper() in NON_SYSTEM_TERMS:
+                continue
+            # 영문 대문자 포함 → 시스템명으로 판정
+            has_upper = bool(re.search(r"[A-Z]", candidate))
+            # 한국어 전용 → 시스템 키워드 필요
+            if has_upper or SYSTEM_KEYWORDS_RE.search(candidate):
+                detected_system = candidate
+                break
     if detected_system:
         issues.append({"ruleId": "R-04", "severity": "warning", "friendlyTag": "시스템명 분리", "message": f"시스템명 '{detected_system}'이 감지되었습니다. 메타데이터로 분리하면 라벨이 깔끔해져요", "suggestion": f"라벨은 동작만 남기고 '{detected_system}'은 시스템명 필드에 입력해보세요.", "reasoning": "라벨과 시스템명을 분리하면 프로세스 로직이 명확해집니다."})
-    elif re.search(r"[(\[\]）（）)]", text):
-        issues.append({"ruleId": "R-04", "severity": "warning", "friendlyTag": "시스템명 분리", "message": "괄호가 포함되어 있어요. 시스템명이라면 메타데이터로 분리하면 가독성이 좋아져요", "suggestion": "라벨은 동작만 남기고 시스템명은 '시스템명' 필드에 입력해보세요."})
 
     # ── Decision 노드: 동사 기반 룰(R-03b/R-05/R-07) 스킵 ──
     # 판단 조건은 "~여부", "~인가?" 형식으로 동사가 없는 게 정상. Process 노드에서만 아래 룰 적용.
@@ -212,15 +222,9 @@ def mock_validate(label, node_type="process", llm_failed=False):
         if not any(h in text for h in DECISION_HINTS):
             issues.append({"ruleId": "R-08", "severity": "warning", "friendlyTag": "기준값 누락", "message": "분기 기준이 드러나지 않아 판단 조건이 모호할 수 있어요", "suggestion": "'~여부' 또는 기준값(예: 1억원 초과)을 라벨에 포함해보세요.", "reasoning": "명확한 기준은 분기 누락과 운영 해석 차이를 줄여줍니다."})
 
-    # R-15: 표준 형식
-    if len(text) >= 4:
-        if node_type == "decision":
-            if not (text.endswith("?") or "여부" in text):
-                if not text.endswith("다") and not text.endswith("다."):
-                    issues.append({"ruleId": "R-15", "severity": "warning", "friendlyTag": "표준 형식", "message": "표준 어미를 맞추면 전체 플로우의 일관성이 좋아져요", "suggestion": "'~여부' 또는 '~인가?' 형태를 권장해요."})
-        else:
-            if not text.endswith("한다") and not text.endswith("한다."):
-                issues.append({"ruleId": "R-15", "severity": "warning", "friendlyTag": "표준 형식", "message": "표준 어미를 맞추면 전체 플로우의 일관성이 좋아져요", "suggestion": "'~한다' 형태로 마무리해보세요."})
+    # R-09: Decision 노드에 Process 형식(~한다/~합다) 사용
+    if node_type == "decision" and re.search(r"[한합]다\s*$", text):
+        issues.append({"ruleId": "R-09", "severity": "warning", "friendlyTag": "Decision 형식", "message": "판단 노드에 '~한다' 형식이 사용되었어요. '~여부' 또는 '~인가?' 형태가 적합합니다", "suggestion": "'승인 여부', '적격 인가?' 등 판단 조건 형식으로 바꿔주세요.", "reasoning": "Decision 노드는 분기 조건을 나타내므로 동작형 어미보다 조건형 어미가 적합합니다."})
 
     # 점수 계산 (감점제)
     reject_count = len([i for i in issues if i["severity"] == "reject"])

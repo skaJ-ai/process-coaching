@@ -9,6 +9,7 @@ export default function ContextMenu() {
   const addShape = useStore(s => s.addShape);
   const addShapeAfter = useStore(s => s.addShapeAfter);
   const delNode = useStore(s => s.deleteNode);
+  const changeNodeType = useStore(s => s.changeNodeType);
   const openMetaEdit = useStore(s => s.openMetaEdit);
   const setNodeCategory = useStore(s => s.setNodeCategory);
   const validate = useStore(s => s.validateNode);
@@ -65,6 +66,17 @@ export default function ContextMenu() {
         <div className="context-menu-item" onClick={() => { openMetaEdit({ nodeId: cm.nodeId!, inputLabel: node?.data.inputLabel, outputLabel: node?.data.outputLabel, systemName: node?.data.systemName, duration: node?.data.duration }); hide(); }}>📋 메타데이터</div>
         <div className="context-menu-item" onClick={() => { validate(cm.nodeId!); hide(); }}><span style={{ color: '#a855f7' }}>✓</span> L7 검증</div>
         {node?.data.l7Rewrite && <div className="context-menu-item" onClick={() => { applyRewrite(cm.nodeId!); hide(); }}><span style={{ color: '#22c55e' }}>↻</span> AI 추천 적용</div>}
+
+        {node && ['process', 'decision'].includes(node.data.nodeType) && (<>
+          <div className="context-menu-sep" />
+          <div className="context-menu-header">타입 변경</div>
+          {node.data.nodeType !== 'process' && (
+            <div className="context-menu-item" onClick={() => { changeNodeType(cm.nodeId!, 'process'); hide(); }}><span style={{ color: '#60a5fa' }}>▢</span> 프로세스로 변경</div>
+          )}
+          {node.data.nodeType !== 'decision' && (
+            <div className="context-menu-item" onClick={() => { changeNodeType(cm.nodeId!, 'decision'); hide(); }}><span style={{ color: '#fbbf24' }}>◇</span> 판단으로 변경</div>
+          )}
+        </>)}
 
         <div className="context-menu-sep" />
         <div className="context-menu-header">분류 색상</div>

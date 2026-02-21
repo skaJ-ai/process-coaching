@@ -7,6 +7,8 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
   const updateNodeLabel = useStore(s => s.updateNodeLabel);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const sendChat = useStore(s => s.sendChat);
+  const splitCompoundNode = useStore(s => s.splitCompoundNode);
+  const separateSystemName = useStore(s => s.separateSystemName);
   const [applied, setApplied] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -54,6 +56,20 @@ export default function L7ReportCard({ item }: { item: L7ReportItem }) {
                   </div>
                   {issue.reasoning && <div className="ml-8 text-slate-400 text-[11px] italic">{issue.reasoning}</div>}
                   {issue.suggestion && <div className="ml-8 text-slate-400 text-[11px]">→ {issue.suggestion}</div>}
+                  {issue.ruleId === 'R-05' && (
+                    <button onClick={(e) => { e.stopPropagation(); splitCompoundNode(item.nodeId); }}
+                      className="ml-8 mt-1 px-2 py-0.5 rounded text-[10px] font-medium border"
+                      style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.4)', color: '#a78bfa' }}>
+                      분리
+                    </button>
+                  )}
+                  {issue.ruleId === 'R-04' && (
+                    <button onClick={(e) => { e.stopPropagation(); separateSystemName(item.nodeId); }}
+                      className="ml-8 mt-1 px-2 py-0.5 rounded text-[10px] font-medium border"
+                      style={{ background: 'rgba(45,212,191,0.15)', borderColor: 'rgba(45,212,191,0.4)', color: '#2dd4bf' }}>
+                      시스템명 분리
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
