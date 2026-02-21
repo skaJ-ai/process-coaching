@@ -87,7 +87,7 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 문서화 품질을 점검하는 �
       "reason": "왜 이 수정이 문서화 품질을 높이는지"
     }}
   ],
-  "quickQueries": ["문서화 완성도를 높이기 위한 후속 질문 2개"]
+  "quickQueries": ["AS-IS 문서화 완성도를 높이기 위한 후속 질문 2개 (자동화/효율화/개선/SSC/RPA/AI 같은 TO-BE 주제 절대 금지)"]
 }}
 
 중요:
@@ -103,6 +103,7 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 문서화 품질을 점검하는 �
 - ADD는 현재 프로세스에 실제로 빠진 단계만, MODIFY는 현재 라벨의 표현 명확화만
 - ADD에는 labelSuggestion, MODIFY에는 newLabel을 반드시 채우세요. 혼용 금지.
 - MODIFY 제안에서 targetNodeId가 없으면 해당 제안을 포함하지 마세요.
+- ⚠️ quickQueries는 AS-IS 문서화 완성도만 다룸: 누락 단계, 예외 처리, 판단 기준, 역할 구분, 연결 끊김 등. 자동화/효율화/개선/SSC/Digital Worker/RPA/AI 같은 TO-BE 주제 절대 금지.
 """
 
 COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 코치입니다.
@@ -132,7 +133,7 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
       "targetNodeId": "MODIFY/DELETE 시: 참조표의 ID (없으면 null)"
     }}
   ],
-  "quickQueries": ["다음으로 확인할 질문2~3개"]
+  "quickQueries": ["AS-IS 문서화 중심 후속 질문 2~3개 (자동화/효율화/개선/SSC/RPA/AI 같은 TO-BE 주제 절대 금지)"]
 }}
 
 중요:
@@ -147,6 +148,7 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
   - Process/태스크 노드 → "~한다" 형식
   - Decision/분기 노드 → "~여부" 또는 "~인가?" 형식
   - Decision 노드에 "확인한다", "판단한다" 등 절대 금지!
+- ⚠️ quickQueries는 AS-IS 현황 파악만: 누락 단계, 예외 처리, 판단 기준, 역할 구분. 자동화/효율화/개선/SSC/Digital Worker/RPA/AI 같은 TO-BE 주제 절대 금지.
 """
 
 L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
@@ -212,13 +214,14 @@ CONTEXTUAL_SUGGEST_SYSTEM = f"""당신은 조용히 지켜보다가 필요한 �
 {{
   "guidance": "한 줄 제안 ('이해합니다' 같은 불필요한 공감 표현 금지, 한자 사용 금지)",
   "tone": "gentle",
-  "quickQueries": ["궁금할만한 질문1", "질문2"]
+  "quickQueries": ["AS-IS 문서화 관련 질문 2개 (자동화/효율화/개선 등 TO-BE 주제 금지)"]
 }}
 
 중요:
 - 너무 빈번하거나 강압적이지 않게. 작업 중단을 최소화.
 - "이해합니다", "알겠습니다" 같은 불필요한 공감 표현 금지.
 - 한자 사용 절대 금지.
+- quickQueries는 AS-IS 완성도만: 누락 단계, 예외 케이스, 판단 기준. 자동화/효율화/개선/SSC/RPA/AI 같은 TO-BE 주제 절대 금지.
 """
 
 FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는 사용자를 환영하고 격려하는 친절한 코치입니다.
@@ -236,13 +239,14 @@ FIRST_SHAPE_SYSTEM = f"""당신은 HR 프로세스 설계를 처음 시작하는
   "greeting": "환영 인사 (바로 본론, '이해합니다' 같은 불필요한 공감 표현 금지, 한자 사용 금지)",
   "processFlowExample": "일반적인 프로세스 흐름 (→로 단계를 연결)",
   "guidanceText": "이 프로세스에서 고려할 점들을 포함한 친절한 설명 (2-3문장)",
-  "quickQueries": ["후속 질문1", "후속 질문2", "후속 질문3"]
+  "quickQueries": ["AS-IS 문서화 관련 후속 질문 3개 (자동화/효율화/개선 등 TO-BE 주제 금지)"]
 }}
 
 중요:
 - 모든 표현을 제안형 어조로 작성하세요.
 - "이해합니다", "알겠습니다" 같은 불필요한 공감 표현 금지.
 - 한자 사용 절대 금지.
+- quickQueries는 AS-IS 완성도만: 누락 단계, 예외 처리, 판단 기준, 역할 구분. 자동화/효율화/개선/SSC/Digital Worker/RPA/AI 같은 TO-BE 주제 절대 금지.
 """
 
 KNOWLEDGE_PROMPT = f"""당신은 HR 프로세스 설계 분야의 지식 전문가입니다.
@@ -265,7 +269,7 @@ KNOWLEDGE_PROMPT = f"""당신은 HR 프로세스 설계 분야의 지식 전문�
 {{
   "speech": "질문에 대한 상세한 답변 ('이해합니다' 같은 불필요한 공감 표현 금지, 바로 본론, 한자 사용 금지)",
   "suggestions": [],
-  "quickQueries": ["관련 후속 질문 2~3개"]
+  "quickQueries": ["AS-IS 문서화 관련 후속 질문 2~3개 (자동화/효율화/개선/SSC/RPA/AI 같은 TO-BE 주제 절대 금지)"]
 }}
 """
 
