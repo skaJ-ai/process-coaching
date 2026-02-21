@@ -189,6 +189,15 @@ export function validateL7Label(
     ));
   }
 
+  // ── R-09: Decision 형식 위반 (Process 형식 "~한다/~합다" 사용) ──
+  if (nodeType === 'decision' && /[한합]다\s*$/.test(text)) {
+    issues.push(issue(
+      'R-09', 'warning', 'Decision 형식',
+      'Decision 노드에 "~한다" 형식이 사용되었어요. 판단 분기는 "~여부", "~인가?" 형식이 권장됩니다.',
+      '"~여부" 또는 "~인가?" 형식으로 바꿔보세요. (예: "승인 여부", "기한 초과 여부")',
+    ));
+  }
+
   // ── 점수 계산 (감점제) ──
   const rejectCount = issues.filter((i) => i.severity === 'reject').length;
   const warningCount = issues.filter((i) => i.severity === 'warning').length;

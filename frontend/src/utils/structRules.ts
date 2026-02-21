@@ -3,7 +3,7 @@ import { FlowNodeData } from '../types';
 
 export type StructRuleId =
   | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05'
-  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11';
+  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12';
 
 export interface StructIssue {
   ruleId: StructRuleId;
@@ -189,6 +189,67 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
       severity: 'warning',
       message: `전체 노드가 ${flowNodes.length}개로, 50개를 초과했어요. 서브프로세스로 분해하면 관리가 쉬워집니다.`,
     });
+  }
+
+  // ── S-12: 탈출 조건 없는 루프 (무한 루프 위험) ──
+  // 사이클을 탐지하고, 사이클 내 모든 노드에서 사이클 밖으로 나가는 경로가 없으면 경고
+  const adjacency = new Map<string, string[]>();
+  for (const e of edges) {
+    const arr = adjacency.get(e.source) || [];
+    arr.push(e.target);
+    adjacency.set(e.source, arr);
+  }
+  const nodeSet = new Set(nodes.map((n) => n.id));
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const cycles: string[][] = [];
+
+  function dfs(nodeId: string, path: string[]) {
+    if (!nodeSet.has(nodeId)) return;
+    if (inStack.has(nodeId)) {
+      // 사이클 발견: path에서 nodeId 위치부터 현재까지
+      const cycleStart = path.indexOf(nodeId);
+      if (cycleStart >= 0) {
+        cycles.push(path.slice(cycleStart));
+      }
+      return;
+    }
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    inStack.add(nodeId);
+    path.push(nodeId);
+    for (const next of adjacency.get(nodeId) || []) {
+      dfs(next, path);
+    }
+    path.pop();
+    inStack.delete(nodeId);
+  }
+
+  for (const n of nodes) {
+    if (!visited.has(n.id)) {
+      dfs(n.id, []);
+    }
+  }
+
+  // 각 사이클에서 탈출 경로가 있는지 확인
+  for (const cycle of cycles) {
+    const cycleSet = new Set(cycle);
+    const hasExit = cycle.some((nid) => {
+      const targets = adjacency.get(nid) || [];
+      return targets.some((t) => !cycleSet.has(t));
+    });
+    if (!hasExit) {
+      const cycleLabels = cycle
+        .map((nid) => nodes.find((n) => n.id === nid)?.data.label)
+        .filter(Boolean)
+        .join(' → ');
+      issues.push({
+        ruleId: 'S-12',
+        severity: 'warning',
+        message: `탈출 조건이 없는 루프가 감지되었어요: ${cycleLabels}. 루프 내 판단 노드에 탈출 분기를 추가해주세요.`,
+        nodeIds: cycle,
+      });
+    }
   }
 
   return { issues };

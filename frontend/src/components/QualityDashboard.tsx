@@ -38,6 +38,12 @@ export default function QualityDashboard() {
     return true;
   });
 
+  // ── 메타데이터 완성도 ──
+  const workNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
+  const noSystemName = workNodes.filter(n => n.data.nodeType !== 'decision' && !n.data.systemName?.trim()).length;
+  const noDuration = workNodes.filter(n => n.data.nodeType !== 'decision' && !n.data.duration?.trim()).length;
+  const showMetaHint = workNodes.length >= 5 && (noSystemName > 0 || noDuration > 0);
+
   const pct = total > 0 ? Math.round(((pass + warn) / total) * 100) : 0;
   const barColor = reject > 0 ? '#f97316' : unchecked > 0 ? '#64748b' : '#22c55e';
 
@@ -85,6 +91,21 @@ export default function QualityDashboard() {
           })
         )}
       </div>
+      {showMetaHint && (
+        <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-1">
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider">메타데이터</span>
+          {noSystemName > 0 && (
+            <div className="text-[10px] text-slate-400">
+              📋 시스템명 미입력 {noSystemName}개 — 노드 클릭 → 상세 패널에서 입력
+            </div>
+          )}
+          {noDuration > 0 && (
+            <div className="text-[10px] text-slate-400">
+              ⏱ 소요시간 미입력 {noDuration}개 — PDD 분석 시 자동화 ROI 산정에 활용
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

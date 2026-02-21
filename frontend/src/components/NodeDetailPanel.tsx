@@ -9,6 +9,8 @@ export default function NodeDetailPanel() {
   const applyRewrite = useStore(s => s.applyL7Rewrite);
   const validate = useStore(s => s.validateNode);
   const del = useStore(s => s.deleteNode);
+  const splitCompound = useStore(s => s.splitCompoundNode);
+  const separateSys = useStore(s => s.separateSystemName);
   const [editingRewrite, setEditingRewrite] = useState(false);
   const [editRewriteText, setEditRewriteText] = useState('');
   const node = nodes.find(n => n.id === sel);
@@ -36,7 +38,16 @@ export default function NodeDetailPanel() {
           {l7Issues.map((issue, i) => (
             <div key={i} className="flex items-start gap-2 text-xs px-3 py-2 rounded mb-1" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
               <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-medium" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>{issue.friendlyTag || issue.ruleId}</span>
-              <div className="flex-1"><div className="text-slate-300">{issue.message}</div>{issue.suggestion && <div className="text-slate-500 mt-0.5">→ {issue.suggestion}</div>}</div>
+              <div className="flex-1">
+                <div className="text-slate-300">{issue.message}</div>
+                {issue.suggestion && <div className="text-slate-500 mt-0.5">→ {issue.suggestion}</div>}
+                {issue.ruleId === 'R-05' && (
+                  <button onClick={() => splitCompound(node.id)} className="mt-1 px-2 py-0.5 rounded text-[9px] bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/40">분리</button>
+                )}
+                {issue.ruleId === 'R-04' && (
+                  <button onClick={() => separateSys(node.id)} className="mt-1 px-2 py-0.5 rounded text-[9px] bg-teal-600/20 border border-teal-500/30 text-teal-300 hover:bg-teal-600/40">시스템명 분리</button>
+                )}
+              </div>
             </div>
           ))}
         </div>}

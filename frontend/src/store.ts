@@ -108,6 +108,9 @@ interface AppStore {
   checkDecisionLabels: (nodeId: string) => void;
   checkSwimLaneNeed: () => void;
   celebrateL7Success: () => void;
+  // v5.3: one-click fixes
+  splitCompoundNode: (nodeId: string) => void;
+  separateSystemName: (nodeId: string) => void;
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -160,7 +163,14 @@ export const useStore = create<AppStore>((set, get) => ({
     debugTrace('onConnect', { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle || null, targetHandle: conn.targetHandle || null });
     get().pushHistory();
     get().updateUserActivity();
-    set({ edges: addEdge(makeEdge(conn.source, conn.target, undefined, undefined, conn.sourceHandle || undefined, conn.targetHandle || undefined), get().edges), saveStatus: 'unsaved' });
+    // Decision 노드에서 나가는 엣지 자동 라벨: 첫 번째=Yes, 두 번째=No
+    const sourceNode = get().nodes.find(n => n.id === conn.source);
+    let autoLabel: string | undefined;
+    if (sourceNode?.data.nodeType === 'decision') {
+      const existingOut = get().edges.filter(e => e.source === conn.source).length;
+      autoLabel = existingOut === 0 ? 'Yes' : existingOut === 1 ? 'No' : undefined;
+    }
+    set({ edges: addEdge(makeEdge(conn.source, conn.target, autoLabel, undefined, conn.sourceHandle || undefined, conn.targetHandle || undefined), get().edges), saveStatus: 'unsaved' });
     // v5.2: check if flow is now complete
     setTimeout(() => get().checkFlowCompletion(), 500);
   },
@@ -785,6 +795,41 @@ export const useStore = create<AppStore>((set, get) => ({
     }
   },
 
+  // v5.3: one-click fixes
+  splitCompoundNode: (nodeId: string) => {
+    const { nodes, edges } = get();
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const compound = detectCompoundAction(node.data.label);
+    if (!compound.isCompound || compound.parts.length < 2) return;
+    get().pushHistory();
+    // 1. 기존 노드 라벨을 parts[0]으로 변경
+    get().updateNodeLabel(nodeId, compound.parts[0], 'ai');
+    // 2. 새 노드 생성 (parts[1]) — addShapeAfter가 엣지 재연결을 자동 처리
+    get().addShapeAfter('process', compound.parts[1], nodeId);
+    // L7 상태 초기화 (재검증 필요)
+    set({ nodes: get().nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : n) });
+  },
+
+  separateSystemName: (nodeId: string) => {
+    const node = get().nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const result = validateL7Label(node.data.label, node.data.nodeType);
+    if (!result.detectedSystemName) return;
+    get().pushHistory();
+    const sysName = result.detectedSystemName;
+    // 라벨에서 시스템명 패턴 제거
+    const escaped = sysName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let newLabel = node.data.label
+      .replace(new RegExp(`[(\[（]${escaped}[)\\]）]\\s*`), '')
+      .replace(new RegExp(`^${escaped}에서\\s*`), '')
+      .trim();
+    get().updateNodeLabel(nodeId, newLabel, 'ai');
+    get().updateNodeMeta(nodeId, { systemName: sysName });
+    // L7 상태 초기화 (재검증 필요)
+    set({ nodes: get().nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : n) });
+  },
+
   celebrateL7Success: () => {
     const { nodes, addMessage, _lastCoachingTrigger } = get();
     if (_lastCoachingTrigger['l7Success']) return; // 1회만 발화
@@ -806,6 +851,7 @@ function friendlyTag(ruleId: string): string {
     'R-03a': '금지 동사', 'R-03b': '구체화 권장', 'R-03': '구체화 권장',
     'R-04': '시스템명 분리', 'R-05': '복수 동작',
     'R-06': '주어 누락', 'R-07': '목적어 누락', 'R-08': '기준값 누락',
+    'R-09': 'Decision 형식',
     'R-15': '표준 형식',
   };
   return m[ruleId] || ruleId;
