@@ -205,8 +205,18 @@ export const useStore = create<AppStore>((set, get) => ({
     const node: Node<FlowNodeData> = { id, type, position: pos, draggable: true, data: { label, nodeType: type, category: 'as_is', addedBy: 'user' } };
     const outEdge = edges.find(e => e.source === afterNodeId);
     let newEdges = [...edges];
-    if (outEdge) { newEdges = newEdges.filter(e => e.id !== outEdge.id); newEdges.push(makeEdge(afterNodeId, id)); newEdges.push(makeEdge(id, outEdge.target)); }
-    else newEdges.push(makeEdge(afterNodeId, id));
+    if (outEdge) {
+      // 기존 엣지 제거 후 재연결: afterNode → 새 노드 → 기존 타겟
+      newEdges = newEdges.filter(e => e.id !== outEdge.id);
+      // afterNode의 bottom-source → 새 노드의 top-target
+      newEdges.push(makeEdge(afterNodeId, id, undefined, undefined, 'bottom-source', 'top-target'));
+      // 새 노드의 bottom-source → 기존 타겟의 원래 핸들 유지
+      newEdges.push(makeEdge(id, outEdge.target, undefined, undefined, 'bottom-source', outEdge.targetHandle || 'top-target'));
+    }
+    else {
+      // afterNode 다음에 추가 (아래 방향): bottom-source → top-target
+      newEdges.push(makeEdge(afterNodeId, id, undefined, undefined, 'bottom-source', 'top-target'));
+    }
     let updated = reindexByPosition([...nodes, node]);
     const { dividerYs, swimLaneLabels } = get();
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
