@@ -75,7 +75,7 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 문서화 품질을 점검하는 �
 응답 형식 (JSON):
 {{
   "speech": "점검 결과 요약 (바로 본론, '이해합니다' 같은 불필요한 공감 표현 금지, 한자 사용 금지)",
-  "suggestions": [
+  "suggestions": [  // ⚠️ 프로세스 진행 순서대로 정렬 (첫 단계 → 마지막 단계)
     {{
       "action": "ADD|MODIFY|DELETE",
       "type": "PROCESS|DECISION|END|START|SUBPROCESS",
@@ -104,6 +104,7 @@ REVIEW_SYSTEM = f"""당신은 HR 프로세스 문서화 품질을 점검하는 �
 - ADD에는 labelSuggestion, MODIFY에는 newLabel을 반드시 채우세요. 혼용 금지.
 - MODIFY 제안에서 targetNodeId가 없으면 해당 제안을 포함하지 마세요.
 - ⚠️ quickQueries는 AS-IS 문서화 완성도만 다룸: 누락 단계, 예외 처리, 판단 기준, 역할 구분, 연결 끊김 등. 자동화/효율화/개선/SSC/Digital Worker/RPA/AI 같은 TO-BE 주제 절대 금지.
+- ⚠️ suggestions 배열 순서: 프로세스 진행 순서대로 정렬 필수 (첫 단계가 배열 첫 번째, 마지막 단계가 배열 마지막). 사용자가 위에서 아래로 클릭하면 캔버스에 순서대로 그려지도록.
 """
 
 COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 코치입니다.
@@ -123,7 +124,7 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
 응답 형식 (JSON):
 {{
   "speech": "바로 본론 답변 ('이해합니다', '알겠습니다' 같은 앵무새 반복 절대 금지, 한자 사용 금지)",
-  "suggestions": [
+  "suggestions": [  // ⚠️ 프로세스 진행 순서대로 정렬 (첫 단계 → 마지막 단계)
     {{
       "action": "ADD|MODIFY|DELETE",
       "type": "PROCESS|DECISION|END|START|SUBPROCESS",
@@ -149,6 +150,7 @@ COACH_TEMPLATE = f"""당신은 HR 프로세스 설계를 함께 만들어가는 
   - Decision/분기 노드 → "~여부" 또는 "~인가?" 형식
   - Decision 노드에 "확인한다", "판단한다" 등 절대 금지!
 - ⚠️ quickQueries는 AS-IS 현황 파악만: 누락 단계, 예외 처리, 판단 기준, 역할 구분. 자동화/효율화/개선/SSC/Digital Worker/RPA/AI 같은 TO-BE 주제 절대 금지.
+- ⚠️ suggestions 배열 순서: 프로세스 진행 순서대로 정렬 필수 (첫 단계가 배열 첫 번째, 마지막 단계가 배열 마지막). 사용자가 위에서 아래로 클릭하면 캔버스에 순서대로 그려지도록.
 """
 
 L7_VALIDATE = f"""당신은 L7 작성을 돕는 품질 코치입니다.
