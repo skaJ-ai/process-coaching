@@ -70,11 +70,23 @@ export function buildRecentTurns(messages: ChatMessage[]): Array<{ role: 'user' 
 }
 
 export function buildConversationSummary(messages: ChatMessage[]): string {
-  // 8턴 → 16턴, 800자 → 2000자 확장: 더 긴 대화 맥락 유지
-  const texts = messages
+  // 16턴/2000자: 대화 텍스트 + suggestions/L7 메타데이터 포함
+  const recent = messages
     .filter((m) => m.role === 'user' || m.role === 'bot')
-    .slice(-16)
-    .map((m) => `${m.role === 'bot' ? 'A' : 'U'}: ${m.text.replace(/\s+/g, ' ').trim()}`);
+    .slice(-16);
+  const texts = recent.map((m) => {
+    const base = `${m.role === 'bot' ? 'A' : 'U'}: ${m.text.replace(/\s+/g, ' ').trim()}`;
+    const meta: string[] = [];
+    if (m.suggestions && m.suggestions.length > 0) {
+      const actions = m.suggestions.map((s) => `${s.action}:${s.labelSuggestion || s.summary || ''}`).join(',');
+      meta.push(`[${m.suggestions.length}제안:${actions}]`);
+    }
+    if (m.l7Report && m.l7Report.length > 0) {
+      const issues = m.l7Report.reduce((sum, r) => sum + (r.issues?.length || 0), 0);
+      meta.push(`[L7:${m.l7Report.length}건,이슈${issues}]`);
+    }
+    return meta.length > 0 ? `${base} ${meta.join(' ')}` : base;
+  });
   return texts.join(' | ').slice(0, 2000);
 }
 

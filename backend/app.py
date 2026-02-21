@@ -1,6 +1,7 @@
 """HR Process Mining Tool - Backend (v5)"""
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -8,16 +9,25 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="HR Process Mining v5")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled exception on {request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content={"speech": "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "suggestions": [], "quickQueries": []},
+    )
+
 try:
     from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
-    from .chat_orchestrator import orchestrate_chat, get_chain_status
+    from .chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
     from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
     from .flow_services import describe_flow, mock_review, mock_validate
 except ImportError:
     from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
-    from chat_orchestrator import orchestrate_chat, get_chain_status
+    from chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
     from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
     from flow_services import describe_flow, mock_review, mock_validate
 
@@ -40,9 +50,8 @@ async def pdd_insights(req: ReviewRequest):
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     try:
-        fd = describe_flow(req.currentNodes, req.currentEdges)
+        intent = _classify_intent(req.message)
         history_lines = []
-        # 최근 10턴 사용 (프론트에서 10개 전송): AI가 과거 제안/대화를 더 잘 기억
         for t in req.recentTurns[-10:]:
             role = "사용자" if t.get("role") == "user" else "코치"
             content = str(t.get("content", "")).strip()
@@ -50,13 +59,25 @@ async def chat(req: ChatRequest):
                 history_lines.append(f"- {role}: {content}")
         history_block = "\n".join(history_lines) if history_lines else "(없음)"
         summary = req.conversationSummary or "(없음)"
-        prompt = (
-            f"컨텍스트: {req.context}\n"
-            f"플로우:\n{fd}\n"
-            f"대화 요약: {summary}\n"
-            f"최근 대화:\n{history_block}\n"
-            f"질문: {req.message}"
-        )
+
+        if intent == "knowledge":
+            # 지식 질문: 플로우 상세 생략, 노드 수만 전달하여 토큰 절약
+            node_count = len(req.currentNodes)
+            prompt = (
+                f"컨텍스트: {req.context}\n"
+                f"현재 플로우: 노드 {node_count}개\n"
+                f"최근 대화:\n{history_block}\n"
+                f"질문: {req.message}"
+            )
+        else:
+            fd = describe_flow(req.currentNodes, req.currentEdges)
+            prompt = (
+                f"컨텍스트: {req.context}\n"
+                f"플로우:\n{fd}\n"
+                f"대화 요약: {summary}\n"
+                f"최근 대화:\n{history_block}\n"
+                f"질문: {req.message}"
+            )
         return await orchestrate_chat(COACH_TEMPLATE, prompt, req.message, req.currentNodes, req.currentEdges)
     except Exception:
         logger.exception("/api/chat 처리 중 예외 발생")

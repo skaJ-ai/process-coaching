@@ -90,9 +90,9 @@ _FLOW_ACTION_KEYWORDS = [
 
 
 def _classify_intent(message: str) -> str:
+    """1차 의도 분류: knowledge / flow_action / coaching"""
     q = (message or "").strip()
 
-    is_question = any(q.endswith(s) for s in ["?", "\uff1f", "가요", "인가", "건가", "나요", "는지"])
     has_knowledge_kw = any(k in q for k in _KNOWLEDGE_KEYWORDS)
     has_flow_action_kw = any(k in q for k in _FLOW_ACTION_KEYWORDS)
 
@@ -109,11 +109,12 @@ def _classify_intent(message: str) -> str:
     return "coaching"
 
 
-def _intent(message: str) -> str:
+def _sub_intent(message: str) -> str:
+    """2차 세부 의도: flow_action/coaching 내에서 구체 행동 분류 (폴백 응답용)"""
     q = (message or "").strip()
     if any(k in q for k in ["다음", "next", "이어", "후속"]):
         return "next"
-    if any(k in q for k in ["누락", "빠진", "missing", "없어", "보강"]):
+    if any(k in q for k in ["누락", "빠진", "빠졌", "missing", "없어", "보강"]):
         return "missing"
     if any(k in q for k in ["분기", "승인", "반려", "조건", "예외"]):
         return "decision"
@@ -160,7 +161,7 @@ def _rule_coach(message: str, nodes, edges) -> dict:
         }
 
     s = _flow_signals(nodes, edges)
-    intent = _intent(message)
+    intent = _sub_intent(message)
     issues = []
     if not s["has_start"]:
         issues.append("시작 노드가 없습니다")
@@ -207,7 +208,7 @@ def _rule_coach(message: str, nodes, edges) -> dict:
             "action": "ADD",
             "type": "DECISION",
             "summary": "분기 노드 추가",
-            "labelSuggestion": "승인 여부를 판단한다",
+            "labelSuggestion": "승인 여부",
             "confidence": "medium",
             "reason": "예외/판단 경로 명확화",
         })
@@ -264,13 +265,17 @@ async def orchestrate_chat(system_prompt: str, prompt: str, message: str, nodes,
     intent = _classify_intent(message)
     effective_prompt = KNOWLEDGE_PROMPT if intent == "knowledge" else system_prompt
 
+    def _attach_meta(result: dict) -> dict:
+        result["intent"] = intent
+        return result
+
     if not CHAT_CHAIN_ENABLED:
         r = await call_llm(effective_prompt, prompt, allow_text_fallback=True)
         n = _normalize(r)
         if n["speech"]:
             n["source"] = "llm"
             n["fallbackLevel"] = 0
-            return n
+            return _attach_meta(n)
 
     if _llm_available_now():
         r = await call_llm(effective_prompt, prompt, allow_text_fallback=True)
@@ -279,7 +284,7 @@ async def orchestrate_chat(system_prompt: str, prompt: str, message: str, nodes,
             _mark_llm_success()
             n["source"] = "llm"
             n["fallbackLevel"] = 0
-            return n
+            return _attach_meta(n)
         _mark_llm_failure()
 
     if RULE_COACH_ENABLED:
@@ -288,19 +293,19 @@ async def orchestrate_chat(system_prompt: str, prompt: str, message: str, nodes,
         if n2["speech"] or n2["suggestions"]:
             n2["source"] = "rules"
             n2["fallbackLevel"] = 1
-            return n2
+            return _attach_meta(n2)
 
     if MOCK_COACH_ENABLED:
         r3 = _mock_coach(message, nodes, edges)
         n3 = _normalize(r3)
         n3["source"] = "mock"
         n3["fallbackLevel"] = 2
-        return n3
+        return _attach_meta(n3)
 
-    return {
+    return _attach_meta({
         "speech": "현재 코치 체인을 사용할 수 없습니다. 설정을 확인해주세요.",
         "suggestions": [],
         "quickQueries": [],
         "source": "none",
         "fallbackLevel": 3,
-    }
+    })

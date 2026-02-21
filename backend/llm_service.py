@@ -224,6 +224,32 @@ async def check_llm() -> bool:
         return False
 
 
+def _parse_llm_content(raw_content: str, allow_text_fallback: bool = False):
+    """LLM 응답에서 JSON을 추출. <think> 태그, 코드블록 처리 포함."""
+    content = raw_content
+    if "<think>" in content:
+        content = content.split("</think>")[-1]
+    if "```json" in content:
+        content = content.split("```json")[1].split("```")[0]
+    elif "```" in content:
+        content = content.split("```")[1].split("```")[0]
+
+    try:
+        return json.loads(content.strip())
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        if allow_text_fallback:
+            text = content.strip()
+            if text:
+                return {"speech": text, "suggestions": [], "quickQueries": []}
+        raise
+
+
+LLM_GLOBAL_TIMEOUT = int(os.getenv("LLM_GLOBAL_TIMEOUT", "180"))
+
+
 async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: bool = False,
                    max_tokens: int = 2000, temperature: float = 0.7):
     global _last_llm_error
@@ -231,6 +257,20 @@ async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: b
     if not available and USE_MOCK != "false":
         return None
 
+    try:
+        return await asyncio.wait_for(
+            _call_llm_inner(system_prompt, user_message, allow_text_fallback, max_tokens, temperature),
+            timeout=LLM_GLOBAL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        _last_llm_error = f"global_timeout_{LLM_GLOBAL_TIMEOUT}s"
+        logger.error(f"LLM 전체 타임아웃 ({LLM_GLOBAL_TIMEOUT}초 초과)")
+        return None
+
+
+async def _call_llm_inner(system_prompt: str, user_message: str, allow_text_fallback: bool,
+                          max_tokens: int, temperature: float):
+    global _last_llm_error
     client = await get_http_client()
     payload = {
         "model": LLM_MODEL,
@@ -255,24 +295,8 @@ async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: b
             try:
                 parsed = json.loads(curl_text)
                 content = parsed["choices"][0]["message"]["content"]
-                if "<think>" in content:
-                    content = content.split("</think>")[-1]
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0]
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0]
                 _set_llm_connected()
-                try:
-                    return json.loads(content.strip())
-                except json.JSONDecodeError:
-                    match = re.search(r"\{.*\}", content, re.DOTALL)
-                    if match:
-                        return json.loads(match.group())
-                    if allow_text_fallback:
-                        text = content.strip()
-                        if text:
-                            return {"speech": text, "suggestions": [], "quickQueries": []}
-                    raise
+                return _parse_llm_content(content, allow_text_fallback)
             except Exception as e:
                 logger.error(f"curl 우선 경로 파싱 실패: {e}")
         elif curl_text:
@@ -301,28 +325,10 @@ async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: b
             elapsed = time.time() - start_time
             logger.info(f"LLM 응답 시간: {elapsed:.2f}초")
             _set_llm_connected()
-
-            if "<think>" in content:
-                content = content.split("</think>")[-1]
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-
-            try:
-                return json.loads(content.strip())
-            except json.JSONDecodeError:
-                match = re.search(r"\{.*\}", content, re.DOTALL)
-                if match:
-                    return json.loads(match.group())
-                if allow_text_fallback:
-                    text = content.strip()
-                    if text:
-                        return {"speech": text, "suggestions": [], "quickQueries": []}
-                raise
+            return _parse_llm_content(content, allow_text_fallback)
         except asyncio.TimeoutError:
             wait_time = 2 ** attempt
-            _last_llm_error = "timeout"
+            _last_llm_error = f"timeout_attempt_{attempt + 1}"
             logger.warning(f"LLM 타임아웃 (시도 {attempt + 1}/3). {wait_time}초 후 재시도...")
             if attempt < 2:
                 await asyncio.sleep(wait_time)
@@ -349,24 +355,8 @@ async def call_llm(system_prompt: str, user_message: str, allow_text_fallback: b
             try:
                 parsed = json.loads(curl_text)
                 content = parsed["choices"][0]["message"]["content"]
-                if "<think>" in content:
-                    content = content.split("</think>")[-1]
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0]
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0]
                 _set_llm_connected()
-                try:
-                    return json.loads(content.strip())
-                except json.JSONDecodeError:
-                    match = re.search(r"\{.*\}", content, re.DOTALL)
-                    if match:
-                        return json.loads(match.group())
-                    if allow_text_fallback:
-                        text = content.strip()
-                        if text:
-                            return {"speech": text, "suggestions": [], "quickQueries": []}
-                    raise
+                return _parse_llm_content(content, allow_text_fallback)
             except Exception as e:
                 logger.error(f"curl fallback 응답 파싱 실패: {e}")
                 return None

@@ -264,7 +264,7 @@ def mock_review(nodes, edges):
         suggestions.append({"action": "MODIFY", "summary": f"연결되지 않은 노드 {len(orphans)}개 발견", "reason": "모든 단계를 연결하면 플로우가 더 명확해집니다", "reasoning": "독립적으로 떠있는 노드는 실행 순서가 불명확합니다. 어느 단계 이후에 수행되는지, 또는 병렬로 진행되는지를 표현하면 운영 효율성이 높아집니다.", "confidence": "high"})
     decisions = [n for n in nodes if n.type == "decision"]
     if not decisions and len(nodes) > 5:
-        suggestions.append({"action": "ADD", "type": "DECISION", "summary": "분기점 추가 고려", "labelSuggestion": "승인 여부를 판단한다", "reason": "승인/반려 같은 판단 지점을 추가하면 실제 프로세스에 더 가까워집니다", "reasoning": "HR 프로세스는 대부분 조건부 분기를 포함합니다(예: 조건 검토 → 승인/반려 결정). 5개 이상의 단계가 있는데 분기가 없다면, 예외 처리나 검토 프로세스를 추가하는 것이 좋습니다.", "confidence": "medium"})
+        suggestions.append({"action": "ADD", "type": "DECISION", "summary": "분기점 추가 고려", "labelSuggestion": "승인 여부", "reason": "승인/반려 같은 판단 지점을 추가하면 실제 프로세스에 더 가까워집니다", "reasoning": "HR 프로세스는 대부분 조건부 분기를 포함합니다(예: 조건 검토 → 승인/반려 결정). 5개 이상의 단계가 있는데 분기가 없다면, 예외 처리나 검토 프로세스를 추가하는 것이 좋습니다.", "confidence": "medium"})
 
     tone = "긍정적" if len(suggestions) < 2 else "건설적"
     speech = "좋은 구조예요! " if len(nodes) > 2 else "프로세스 설계를 시작해볼게요. "
