@@ -1,0 +1,8 @@
+# Default environment for local development (사내 개발망 설정)
+# 개인 설정이 필요한 경우 이 파일을 수정하세요 (gitignored after initial commit)
+LLM_BASE_URL=http://10.240.248.157:8533/v1
+LLM_MODEL=Qwen3-Next
+USE_MOCK=auto
+LLM_API_KEY=
+LLM_API_KEY_HEADER=Authorization
+LLM_USE_CURL=false
