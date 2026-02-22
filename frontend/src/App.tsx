@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useStore } from './store';
 import SetupModal from './components/SetupModal';
+import ModeSelector from './components/ModeSelector';
 import ChatPanel from './components/ChatPanel';
 import FlowChart from './components/FlowChart';
 
@@ -21,6 +22,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export default function App() {
   const ctx = useStore(s => s.processContext);
+  const mode = useStore(s => s.mode);
   const [chatW, setChatW] = useState(380);
   const [drag, setDrag] = useState(false);
 
@@ -51,6 +53,8 @@ export default function App() {
   }, []);
 
   if (!ctx) return <ErrorBoundary><SetupModal /></ErrorBoundary>;
+  if (!mode) return <ErrorBoundary><ModeSelector onSelect={() => {}} /></ErrorBoundary>;
+
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>

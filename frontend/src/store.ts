@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from 'reactflow';
-import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult } from './types';
+import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult, Mode } from './types';
 import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutEngine';
 import { API_BASE_URL, SWIMLANE_COLORS } from './constants';
 import { detectCompoundAction } from './utils/labelUtils';
@@ -40,6 +40,7 @@ function extractBotText(d: any): string {
 
 interface AppStore {
   processContext: ProcessContext | null; setProcessContext: (ctx: ProcessContext, onReady?: () => void) => void;
+  mode: Mode; setMode: (mode: Mode) => void;
   nodes: Node<FlowNodeData>[]; edges: Edge[];
   selectedNodeId: string | null; setSelectedNodeId: (id: string | null) => void;
   selectedEdgeId: string | null; setSelectedEdgeId: (id: string | null) => void;
@@ -115,6 +116,8 @@ interface AppStore {
 
 export const useStore = create<AppStore>((set, get) => ({
   processContext: null,
+  mode: null,
+  setMode: (mode) => set({ mode }),
   setProcessContext: (ctx, onReady?: () => void) => {
     const init = makeInitialNodes();
     set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerYs: [], swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'] });

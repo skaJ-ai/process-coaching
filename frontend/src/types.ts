@@ -11,6 +11,9 @@ export interface ProcessContext {
 // ─── Node Types ───
 export type ShapeType = 'start' | 'end' | 'process' | 'decision' | 'subprocess';
 
+// ─── Mode (투트랙) ───
+export type Mode = 'AS-IS' | 'TO-BE' | null;
+
 // ─── Node Category (색상 분류) ───
 export type NodeCategory = 'as_is' | 'digital_worker' | 'ssc_transfer' | 'delete_target' | 'new_addition';
 
