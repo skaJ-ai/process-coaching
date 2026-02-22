@@ -168,7 +168,21 @@ export type SaveStatus = 'unsaved' | 'draft' | 'complete';
 
 export type AppPhase = 'setup' | 'drawing';
 
+export interface HRModuleTemplate {
+  description?: string;
+  initialNodes?: Array<{
+    type: 'process' | 'decision' | 'subprocess';
+    label: string;
+  }>;
+  guidancePrompt?: string;
+  commonIssues?: string[];
+}
+
 export interface HRModule {
   l4: string;
-  tasks: { l5: string; l6_activities: string[]; }[];
+  tasks: {
+    l5: string;
+    l6_activities: string[];
+    template?: HRModuleTemplate;
+  }[];
 }
