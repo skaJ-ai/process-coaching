@@ -723,7 +723,7 @@ export const useStore = create<AppStore>((set, get) => ({
     else set({ tourStep: tourStep + 1 });
   },
   skipTour: () => { localStorage.setItem('pm-v5-tour-done', '1'); set({ tourActive: false, tourStep: 0 }); },
-  adminMode: false, toggleAdminMode: (pw) => { if (pw === 'pm2025') { set({ adminMode: !get().adminMode }); return true; } return false; },
+  adminMode: false, toggleAdminMode: (pw) => { if (pw === 'ax2026') { set({ adminMode: !get().adminMode }); return true; } return false; },
 
   // PDD Analysis
   pddAnalysis: null,
