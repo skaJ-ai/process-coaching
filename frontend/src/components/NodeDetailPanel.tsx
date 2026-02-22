@@ -94,7 +94,7 @@ export default function NodeDetailPanel() {
         </div>}
         {l7Status === 'none' && !changeHistory?.length && <div className="text-xs text-slate-500 text-center py-4">L7 검증을 실행하면 결과가 여기에 표시됩니다.</div>}
         {/* TO-BE 모드: 카테고리 분류 */}
-        {mode === 'TOBE' && (
+        {mode === 'TO-BE' && (
           <div>
             <div className="text-xs text-slate-500 font-medium mb-2">TO-BE 카테고리</div>
             <select

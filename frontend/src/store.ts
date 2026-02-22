@@ -469,7 +469,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   categorizeNodesAI: async () => {
     const { nodes, processContext, mode } = get();
-    if (mode !== 'TOBE') {
+    if (mode !== 'TO-BE') {
       alert('TO-BE 모드에서만 사용할 수 있습니다.');
       return;
     }

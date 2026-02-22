@@ -84,7 +84,7 @@ export default function Toolbar() {
         🎯 자동 정렬
       </button>
 
-      {mode === 'TOBE' && (
+      {mode === 'TO-BE' && (
         <button
           onClick={categorizeNodesAI}
           disabled={nodes.length === 0}
