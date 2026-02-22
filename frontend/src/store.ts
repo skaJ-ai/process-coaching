@@ -25,7 +25,8 @@ function debugTrace(event: string, payload?: Record<string, any>) {
 interface HistoryEntry { nodes: Node<FlowNodeData>[]; edges: Edge[]; }
 
 function extractBotText(d: any): string {
-  const direct = [d?.speech, d?.message, d?.guidance, d?.text, d?.content, d?.answer].find(v => typeof v === 'string' && v.trim());
+  // 표준 필드 우선, 하위 호환 필드는 fallback
+  const direct = [d?.message, d?.speech, d?.guidance, d?.text, d?.content, d?.answer].find(v => typeof v === 'string' && v.trim());
   if (direct) return String(direct).trim();
   const nested = d?.choices?.[0]?.message?.content;
   if (typeof nested === 'string' && nested.trim()) return nested.trim();
@@ -528,7 +529,7 @@ export const useStore = create<AppStore>((set, get) => ({
       }
       const d = await r.json();
       const validSuggestions = (d.suggestions || []).filter((s: any) => s.summary?.trim() || s.newLabel?.trim() || s.labelSuggestion?.trim());
-      debugTrace('chat:success', { hasText: !!(d.speech || d.message || d.guidance), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
+      debugTrace('chat:success', { hasText: !!(d.message || d.speech || d.guidance), suggestions: validSuggestions.length, quickQueries: (d.quickQueries || []).length });
       addMessage({
         id: generateId('msg'), role: 'bot', text: extractBotText(d),
         suggestions: validSuggestions.map((s: any) => ({ action: s.action || 'ADD', ...s })),

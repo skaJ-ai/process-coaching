@@ -26,9 +26,10 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.exception(f"Unhandled exception on {request.url.path}")
+    error_msg = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
     return JSONResponse(
         status_code=500,
-        content={"speech": "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "suggestions": [], "quickQueries": []},
+        content={"message": error_msg, "speech": error_msg, "suggestions": [], "quickQueries": []},
     )
 
 try:
@@ -130,7 +131,8 @@ async def chat(req: ChatRequest):
         return await orchestrate_chat(COACH_TEMPLATE, prompt, req.message, req.currentNodes, req.currentEdges)
     except Exception:
         logger.exception("/api/chat 처리 중 예외 발생")
-        return {"speech": "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "suggestions": [], "quickQueries": []}
+        error_msg = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        return {"message": error_msg, "speech": error_msg, "suggestions": [], "quickQueries": []}
 
 
 @app.post("/api/validate-l7")
@@ -145,7 +147,14 @@ async def contextual_suggest(req: ContextualSuggestRequest):
     # 초기 가이드용이므로 요약 모드로 토큰 절약
     fd = describe_flow(req.currentNodes, req.currentEdges, summary=True)
     r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
-    return r or {"guidance": "", "quickQueries": []}
+    if r:
+        guidance = r.get("guidance", "")
+        return {
+            "message": guidance,  # 표준 필드
+            "guidance": guidance,  # 하위 호환
+            "quickQueries": r.get("quickQueries", [])
+        }
+    return {"message": "", "guidance": "", "quickQueries": []}
 
 
 @app.post("/api/first-shape-welcome")
@@ -160,12 +169,16 @@ async def first_shape_welcome(req: ContextualSuggestRequest):
     r = await call_llm(FIRST_SHAPE_SYSTEM, welcome_prompt)
 
     if r:
+        text = f"👋 {r.get('greeting', '')}\n\n{r.get('processFlowExample', '')}\n\n{r.get('guidanceText', '')}"
         return {
-            "text": f"👋 {r.get('greeting', '')}\n\n{r.get('processFlowExample', '')}\n\n{r.get('guidanceText', '')}",
+            "message": text,  # 표준 필드
+            "text": text,  # 하위 호환
             "quickQueries": r.get("quickQueries", []),
         }
+    text = f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요."
     return {
-        "text": f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요.",
+        "message": text,  # 표준 필드
+        "text": text,  # 하위 호환
         "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"],
     }
 

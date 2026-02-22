@@ -66,7 +66,8 @@ def _normalize(payload: Any) -> dict:
         if isinstance(raw_quick, list):
             quick_queries = raw_quick
     return {
-        "speech": text,
+        "message": text,  # 표준 필드
+        "speech": text,  # 하위 호환
         "suggestions": suggestions,
         "quickQueries": quick_queries,
     }
