@@ -49,8 +49,6 @@ frontend/tests/**/results.json
 # Markdown policy: ignore all markdown except approved docs
 *.md
 !README.md
-!QA_USER_ACCEPTANCE_REQUEST.md
-!QA_USER_ACCEPTANCE_REQUEST_LITE.md
 
 # Keep examples tracked
 !.env.example
