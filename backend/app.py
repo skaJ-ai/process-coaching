@@ -252,12 +252,28 @@ L5 단위업무: {req.context.get('l5', 'Unknown')}
 
             fallback.append({
                 "nodeId": n.id,
-                "suggestedCategory": cat,
+                "category": cat,  # suggestedCategory → category
                 "confidence": "low",
                 "reasoning": reasoning
             })
-        return fallback
+        return {"categorizations": fallback}
 
+    # LLM 응답을 프론트엔드 형식으로 변환
+    if isinstance(result, list):
+        # LLM이 배열로 반환한 경우: suggestedCategory → category
+        normalized = [
+            {
+                "nodeId": item.get("nodeId"),
+                "category": item.get("suggestedCategory") or item.get("category"),
+                "confidence": item.get("confidence", "medium"),
+                "reasoning": item.get("reasoning", "")
+            }
+            for item in result
+            if item.get("nodeId")
+        ]
+        return {"categorizations": normalized}
+
+    # LLM이 이미 올바른 형식으로 반환한 경우
     return result
 
 
