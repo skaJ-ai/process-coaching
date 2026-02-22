@@ -96,8 +96,16 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentNodes: processNodes.map(n => ({ id: n.id, type: n.data.nodeType, label: n.data.label, category: n.data.category, swimLaneId: n.data.swimLaneId })), currentEdges: edges.map(e => ({ source: e.source, target: e.target, label: e.label })), context: ctx || {} }),
       });
-      if (r.ok) setInsights(await r.json());
-    } catch (e) { console.error('PDD insights error:', e); }
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${errText.slice(0, 100)}`);
+      }
+      const data = await r.json();
+      setInsights(data);
+    } catch (e) {
+      console.error('PDD insights error:', e);
+      alert(`⚠️ AI 인사이트 생성 실패\n\n${e instanceof Error ? e.message : '백엔드 서버가 실행 중인지 확인해주세요.'}`);
+    }
     finally { setInsightsLoading(false); }
   };
 
