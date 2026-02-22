@@ -43,6 +43,23 @@ HR 담당자가 매일 하는 일 중, 정말 '나만이 할 수 있는 일'은 
 - **맥락 제안**: 작업 중 조용히 한 줄 가이드 제공
 - **첫 노드 환영**: 시작 단계에서 프로세스 구조 제안
 
+**의도 분류 (2026-02-21):**
+- 3분류 체계: `knowledge` (지식 질문) / `flow_action` (플로우 수정 요청) / `coaching` (코칭)
+- 의도별 프롬프트 분기: knowledge → KNOWLEDGE_PROMPT (suggestions 빈 배열), coaching/flow_action → COACH_TEMPLATE
+- 2차 세부 의도: next / missing / decision / summary / review / general (폴백 응답 세분화)
+- API 응답에 `intent` 필드 포함 → 프론트에서 의도별 UI 분기 가능
+
+**L345 참조 데이터 활용 (2026-02-21):**
+- 실제 HR 프로세스 계층 구조(6개 L3, 40+ L4, 100+ L5)를 LLM 프롬프트에 동적 주입
+- 사용자의 L4에 해당하는 L3 블록만 선택적 삽입 (토큰 효율)
+- "← 현재" 마커로 현재 작업 위치 표시 → LLM이 전후 L5 흐름, 누락 단계 파악
+- `/api/chat`, `/api/review`, `/api/first-shape-welcome`, `/api/pdd-insights` 4개 엔드포인트 적용
+
+**분기점 가이드 (2026-02-21):**
+- L3/L4별 구체적 분기점 예시 (채용, 보상/근태, 노사, 임원조직, 총무, 해외인사)
+- Decision 5패턴 매핑: 유형 판별(P1), 존재·유무(P2), 상태 확인(P3), 기한 기준(P4), 여부(P5)
+- 2단계 분기점 감지: 업무 3개 이상 → 경미 안내, 5개 이상 → 강한 안내
+
 **챗봇 맥락 인식 (2026-02-20 개선):**
 - 대화 컨텍스트 확장: 최근 10턴 + 16턴 요약 (기존 4턴 + 8턴)
 - 중복 제안 방지: 기존 노드 목록 확인 필수, 유사 제안 금지
@@ -54,6 +71,8 @@ HR 담당자가 매일 하는 일 중, 정말 '나만이 할 수 있는 일'은 
 - 구조 규칙(S)·라벨 규칙(R) 위반 현황 실시간 표시
 - 이슈 클릭 시 해당 셰이프로 캔버스 이동
 - 전체 흐름 검토 제안 카드에서 "위치 보기" → 직접 해당 노드로 이동
+- **메타데이터 완성도 안내**: 시스템명/소요시간 미입력 건수 표시 (workNode 5개 이상일 때), 클릭 시 해당 노드로 이동
+- **원클릭 수정**: R-05 복수 동작 → "분리" 버튼, R-04 시스템명 → "시스템명 분리" 버튼
 
 ---
 
@@ -137,7 +156,8 @@ process-coaching/
     prompt_templates.py    # LLM 시스템 프롬프트 (REVIEW_SYSTEM, COACH_TEMPLATE 등)
     flow_services.py       # describe_flow, mock_validate, mock_review
     llm_service.py         # LLM 연결/호출/재시도 로직
-    chat_orchestrator.py   # 멀티턴 대화 오케스트레이션
+    chat_orchestrator.py   # 멀티턴 대화 오케스트레이션 (의도 분류 + 폴백 체인)
+    l345_reference.py      # L345 HR 프로세스 참조 데이터 (동적 LLM 프롬프트 주입)
     schemas.py             # Pydantic 요청/응답 스키마
     env_config.py          # 환경변수 로드
   frontend/
@@ -231,7 +251,8 @@ cd frontend && npm run sync:check
 | R-05 | `~하고/~하며/~한 후` 복수 동작이 없어야 한다 | Reject | Process만 |
 | ~~R-06~~ | ~~스윔레인 미사용 시, 타동사+목적어가 있으면 주어를 명시해야 한다~~ | ~~Suggestion~~ | **삭제됨** (주체는 스윔레인으로 처리) |
 | R-07 | 타동사 사용 시 목적어(을/를)가 있어야 한다 | Reject | Process만 |
-| R-08 | 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다 | Warning | Decision만 |
+| R-08 | 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다. Decision 5패턴(P1~P5) 안내 포함 | Warning | Decision만 |
+| R-09 | Decision 노드에 "~한다/~합다" Process 형식 사용 시 경고 | Warning | Decision만 |
 
 ---
 
@@ -423,12 +444,10 @@ SAP가 인수한 글로벌 BPM 플랫폼의 UX 연구. "연결 끊김"(구조)�
 | 구현 방향 | `structRules.ts`에 레이아웃 규칙 추가: L-01(엣지 교차 N개 초과), L-02(역방향 엣지 비율), L-03(노드 간 최소 간격 미달) |
 | 비고 | B-01(Auto-Layout) 구현 전에도 독립적으로 적용 가능. "문제는 알려주되 해결은 수동"이라도 인식 자체가 도움 |
 
-### B-05 · Decision 패턴 가이드 프롬프트 반영
+### ~~B-05 · Decision 패턴 가이드 프롬프트 반영~~ ✅ 완료
 
 | 항목 | 내용 |
 | :--- | :--- |
-| 우선순위 | **P0** — 코드 변경 소량, 즉시 적용 가능 |
+| 우선순위 | ~~**P0**~~ **완료** (b0299af) |
 | 현상 | LLM이 Decision 라벨을 제안할 때 일관된 패턴이 없음 (P1~P5 유형 혼재) |
-| 제안 | `L7_GUIDE` 프롬프트에 Decision 5패턴(유형판별·존재유무·상태확인·기한기준·여부) 가이드 추가 |
-| 구현 방향 | `backend/prompt_templates.py`의 `L7_GUIDE` 수정. 패턴 목록 + 선택 기준 포함 |
-| 비고 | 실제 작업물에서 도출된 패턴이므로 실무 검증 완료 |
+| 구현 | `L7_GUIDE`에 Decision 5패턴 + 선택 기준 추가, `BRANCHING_GUIDE`에 L3/L4별 분기점 예시, `R-09` Decision 형식 검증 규칙 신설, Decision 엣지 자동 라벨(Yes/No) |

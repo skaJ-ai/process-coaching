@@ -220,7 +220,7 @@ def mock_validate(label, node_type="process", llm_failed=False):
     # R-08: 기준값 누락 (decision만)
     if node_type == "decision":
         if not any(h in text for h in DECISION_HINTS):
-            issues.append({"ruleId": "R-08", "severity": "warning", "friendlyTag": "기준값 누락", "message": "분기 기준이 드러나지 않아 판단 조건이 모호할 수 있어요", "suggestion": "'~여부' 또는 기준값(예: 1억원 초과)을 라벨에 포함해보세요.", "reasoning": "명확한 기준은 분기 누락과 운영 해석 차이를 줄여줍니다."})
+            issues.append({"ruleId": "R-08", "severity": "warning", "friendlyTag": "기준값 누락", "message": "분기 기준이 드러나지 않아 판단 조건이 모호할 수 있어요", "suggestion": "Decision 5패턴 중 하나를 사용해보세요: '~여부'(범용), '~인가?'(유형 판별), '~가 있는가?'(존재 확인), '~되어 있는가?'(상태 확인), 'D-N 이전인가?'(기한 기준). 예: '승인 여부', '대기자가 있는가?', 'D-7 이전인가?'", "reasoning": "명확한 기준은 분기 누락과 운영 해석 차이를 줄여줍니다."})
 
     # R-09: Decision 노드에 Process 형식(~한다/~합다) 사용
     if node_type == "decision" and re.search(r"[한합]다\s*$", text):

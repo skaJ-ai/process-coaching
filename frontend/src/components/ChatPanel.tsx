@@ -34,10 +34,16 @@ export default function ChatPanel() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, ls.active]);
 
   const handleSaveIntermediate = () => {
+    const mode = useStore.getState().mode || 'AS-IS';
+    const l6 = ctx?.processName || 'flow';
+    const now = new Date();
+    const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
     const json = exportFlow();
     const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `process-${ctx?.processName || 'flow'}-중간저장-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    a.href = URL.createObjectURL(blob);
+    a.download = `${mode}-${l6}-중간저장-${dateTime}.json`;
+    a.click();
   };
   const handleSubmit = () => { const { ok, issues } = submitComplete(); if (!ok) setSubmitIssues(issues); };
   const handleSend = () => { if (!input.trim() || ls.active) return; sendChat(input.trim()); setInput(''); };

@@ -169,8 +169,10 @@ def _rule_coach(message: str, nodes, edges) -> dict:
         issues.append("종료 노드가 없습니다")
     if s["orphan_ids"]:
         issues.append(f"연결되지 않은 노드 {len(s['orphan_ids'])}개")
-    if s["process_count"] >= 3 and s["decision_count"] == 0:
-        issues.append("분기 노드가 없어 예외/판단 경로가 누락될 수 있습니다")
+    if s["process_count"] >= 5 and s["decision_count"] == 0:
+        issues.append("업무 단계가 5개 이상인데 판단 분기점이 없어요. 승인/반려, 조건 충족 여부 등 흐름이 갈라지는 지점이 있는지 확인해보세요.")
+    elif s["process_count"] >= 3 and s["decision_count"] == 0:
+        issues.append("흐름이 갈라지는 분기점이 있는지 확인해보세요. 예: 승인 여부, 조건 충족 여부")
 
     if intent == "next":
         speech = "다음 단계는 현재 마지막 업무 이후의 검토/승인 또는 종료 조건을 명확히 두는 것입니다."
@@ -207,20 +209,47 @@ def _rule_coach(message: str, nodes, edges) -> dict:
         suggestions.append({
             "action": "ADD",
             "type": "DECISION",
-            "summary": "분기 노드 추가",
+            "summary": "판단이 필요한 분기점 추가를 고려해보세요. 승인/반려, 조건 충족, 대상 구분 등 흐름이 갈라지는 지점이 있을 수 있어요.",
             "labelSuggestion": "승인 여부",
             "confidence": "medium",
-            "reason": "예외/판단 경로 명확화",
+            "reason": "워크플로우에서 분기점이 없으면 모든 경우가 동일하게 흘러가는 것처럼 보입니다. 실제로는 조건에 따라 경로가 달라지는 지점이 있을 수 있어요.",
         })
+
+    # 분기점이 있지만 개수 대비 적을 때
+    if s["process_count"] >= 7 and s["decision_count"] == 1:
+        suggestions.append({
+            "action": "ADD",
+            "type": "DECISION",
+            "summary": "업무 단계가 7개 이상인데 분기점이 1개뿐이에요. 추가로 흐름이 갈라지는 지점이 있는지 확인해보세요.",
+            "labelSuggestion": "조건 충족 여부",
+            "confidence": "low",
+            "reason": "복잡한 프로세스에서는 보통 여러 판단 지점이 존재합니다.",
+        })
+
+    quick = []
+    if s["decision_count"] == 0 and s["process_count"] >= 3:
+        quick = [
+            "이 프로세스에서 흐름이 갈라지는 지점이 있나요?",
+            "승인이나 반려가 필요한 단계가 있나요?",
+            "조건에 따라 다르게 처리하는 경우가 있나요?",
+        ]
+    elif s["node_count"] <= 3:
+        quick = [
+            "다음 단계로 무엇을 추가하면 좋을까요?",
+            "이 업무의 일반적인 흐름은 어떤가요?",
+            "어떤 조건에서 결과가 달라지나요?",
+        ]
+    else:
+        quick = [
+            "다음 단계로 무엇을 추가하면 좋을까요?",
+            "누락된 종료 조건이 있나요?",
+            "흐름이 갈라지는 분기점이 더 있나요?",
+        ]
 
     return {
         "speech": speech,
         "suggestions": suggestions,
-        "quickQueries": [
-            "다음 단계로 무엇을 추가하면 좋을까요?",
-            "누락된 종료 조건이 있나요?",
-            "분기 기준을 어떻게 적으면 좋을까요?",
-        ],
+        "quickQueries": quick,
     }
 
 

@@ -11,6 +11,7 @@ export default function NodeDetailPanel() {
   const del = useStore(s => s.deleteNode);
   const splitCompound = useStore(s => s.splitCompoundNode);
   const separateSys = useStore(s => s.separateSystemName);
+  const openMetaEdit = useStore(s => s.openMetaEdit);
   const [editingRewrite, setEditingRewrite] = useState(false);
   const [editRewriteText, setEditRewriteText] = useState('');
   const node = nodes.find(n => n.id === sel);
@@ -88,6 +89,41 @@ export default function NodeDetailPanel() {
           ))}
         </div>}
         {l7Status === 'none' && !changeHistory?.length && <div className="text-xs text-slate-500 text-center py-4">L7 검증을 실행하면 결과가 여기에 표시됩니다.</div>}
+        {/* 메타데이터 미리보기 — 유도 (Decision 제외) */}
+        {node.data.nodeType !== 'decision' && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-slate-500 font-medium">메타데이터</span>
+              <button onClick={() => openMetaEdit({ nodeId: node.id, inputLabel: node.data.inputLabel, outputLabel: node.data.outputLabel, systemName: node.data.systemName, duration: node.data.duration })}
+                className="text-[10px] text-blue-400 hover:text-blue-300">편집</button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { label: '시스템명', value: node.data.systemName, icon: '💻' },
+                { label: '소요시간', value: node.data.duration, icon: '⏱' },
+                { label: '인풋', value: node.data.inputLabel, icon: '📥' },
+                { label: '아웃풋', value: node.data.outputLabel, icon: '📤' },
+              ].map(({ label, value, icon }) => (
+                <button key={label} onClick={() => openMetaEdit({ nodeId: node.id, inputLabel: node.data.inputLabel, outputLabel: node.data.outputLabel, systemName: node.data.systemName, duration: node.data.duration })}
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded text-left hover:bg-slate-700/30 transition-colors"
+                  style={{ background: value?.trim() ? 'rgba(34,197,94,0.06)' : 'rgba(100,116,139,0.06)', border: `1px solid ${value?.trim() ? 'rgba(34,197,94,0.15)' : 'rgba(100,116,139,0.12)'}` }}>
+                  <span className="text-[10px]">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[9px] text-slate-500">{label}</div>
+                    <div className={`text-[11px] truncate ${value?.trim() ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {value?.trim() || '미입력'}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {(!node.data.systemName?.trim() || !node.data.duration?.trim()) && (l7Status === 'pass' || l7Status === 'warning') && (
+              <div className="mt-1.5 text-[10px] text-slate-500 italic">
+                메타데이터를 채우면 PDD 분석과 자동화 ROI 산정이 더 정확해져요
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

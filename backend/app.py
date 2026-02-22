@@ -24,18 +24,40 @@ try:
     from .chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
     from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
     from .flow_services import describe_flow, mock_review, mock_validate
+    from .l345_reference import get_l345_context
 except ImportError:
     from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest, CategorizeNodesRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
     from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
     from flow_services import describe_flow, mock_review, mock_validate
+    from l345_reference import get_l345_context
+
+
+def _build_l345_block(context: dict) -> str:
+    """req.context에서 L345 참조 블록 생성. 매칭 실패 시 빈 문자열."""
+    if not isinstance(context, dict):
+        return ""
+    return get_l345_context(
+        context.get("l4", ""),
+        context.get("l5", ""),
+        context.get("processName", ""),
+    )
 
 
 @app.post("/api/review")
 async def review_flow(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
-    r = await call_llm(REVIEW_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}",
+    l345 = _build_l345_block(req.context) if isinstance(req.context, dict) else ""
+    ctx_block = (
+        f"[프로세스 컨텍스트]\n"
+        f"L4: {req.context.get('l4', '미설정') if isinstance(req.context, dict) else req.context}\n"
+        f"L5: {req.context.get('l5', '미설정') if isinstance(req.context, dict) else ''}\n"
+        f"L6(활동): {req.context.get('processName', '미설정') if isinstance(req.context, dict) else ''}\n"
+    )
+    if l345:
+        ctx_block += f"\n{l345}\n"
+    r = await call_llm(REVIEW_SYSTEM, f"{ctx_block}\n플로우:\n{fd}",
                        max_tokens=1200, temperature=0.3)
     return r or mock_review(req.currentNodes, req.currentEdges)
 
@@ -43,7 +65,11 @@ async def review_flow(req: ReviewRequest):
 @app.post("/api/pdd-insights")
 async def pdd_insights(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
-    r = await call_llm(PDD_INSIGHTS_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
+    l345 = _build_l345_block(req.context) if isinstance(req.context, dict) else ""
+    pdd_ctx = f"컨텍스트: {req.context}\n"
+    if l345:
+        pdd_ctx += f"\n{l345}\n"
+    r = await call_llm(PDD_INSIGHTS_SYSTEM, f"{pdd_ctx}플로우:\n{fd}")
     return r or {"summary": "분석에 충분한 정보가 없습니다.", "inefficiencies": [], "digitalWorker": [], "sscCandidates": [], "redesign": []}
 
 
@@ -60,11 +86,21 @@ async def chat(req: ChatRequest):
         history_block = "\n".join(history_lines) if history_lines else "(없음)"
         summary = req.conversationSummary or "(없음)"
 
+        l345 = _build_l345_block(req.context) if isinstance(req.context, dict) else ""
+        ctx_lines = (
+            f"[프로세스 컨텍스트]\n"
+            f"L4: {req.context.get('l4', '미설정') if isinstance(req.context, dict) else req.context}\n"
+            f"L5: {req.context.get('l5', '미설정') if isinstance(req.context, dict) else ''}\n"
+            f"L6(활동): {req.context.get('processName', '미설정') if isinstance(req.context, dict) else ''}\n"
+        )
+        if l345:
+            ctx_lines += f"\n{l345}\n"
+
         if intent == "knowledge":
             # 지식 질문: 플로우 상세 생략, 노드 수만 전달하여 토큰 절약
             node_count = len(req.currentNodes)
             prompt = (
-                f"컨텍스트: {req.context}\n"
+                f"{ctx_lines}\n"
                 f"현재 플로우: 노드 {node_count}개\n"
                 f"최근 대화:\n{history_block}\n"
                 f"질문: {req.message}"
@@ -72,7 +108,7 @@ async def chat(req: ChatRequest):
         else:
             fd = describe_flow(req.currentNodes, req.currentEdges)
             prompt = (
-                f"컨텍스트: {req.context}\n"
+                f"{ctx_lines}\n"
                 f"플로우:\n{fd}\n"
                 f"대화 요약: {summary}\n"
                 f"최근 대화:\n{history_block}\n"
@@ -102,7 +138,12 @@ async def contextual_suggest(req: ContextualSuggestRequest):
 async def first_shape_welcome(req: ContextualSuggestRequest):
     process_name = req.context.get("processName", "HR 프로세스")
     process_type = req.context.get("l5", "프로세스")
-    r = await call_llm(FIRST_SHAPE_SYSTEM, f"프로세스명: {process_name}\n프로세스 타입: {process_type}\n\n사용자가 이 프로세스의 첫 번째 단계를 추가했습니다. 환영하고 격려해주세요.")
+    l345 = _build_l345_block(req.context) if isinstance(req.context, dict) else ""
+    welcome_prompt = f"프로세스명: {process_name}\n프로세스 타입: {process_type}\n"
+    if l345:
+        welcome_prompt += f"\n{l345}\n"
+    welcome_prompt += "\n사용자가 이 프로세스의 첫 번째 단계를 추가했습니다. 환영하고 격려해주세요."
+    r = await call_llm(FIRST_SHAPE_SYSTEM, welcome_prompt)
 
     if r:
         return {

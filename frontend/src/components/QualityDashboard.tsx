@@ -11,6 +11,8 @@ export default function QualityDashboard() {
   const validateAllNodes = useStore(s => s.validateAllNodes);
 
   const [nodeNavIndex, setNodeNavIndex] = useState<Record<string, number>>({});
+  const [metaNavSys, setMetaNavSys] = useState(-1);
+  const [metaNavDur, setMetaNavDur] = useState(-1);
 
   const processNodes = nodes.filter(n => ['process', 'decision'].includes(n.data.nodeType));
   const total = processNodes.length || 0;
@@ -96,16 +98,35 @@ export default function QualityDashboard() {
       {showMetaHint && (
         <div className="mt-2 pt-2 border-t border-slate-700/50 space-y-1">
           <span className="text-[10px] text-slate-500 uppercase tracking-wider">메타데이터</span>
-          {noSystemName > 0 && (
-            <div className="text-[10px] text-slate-400">
-              📋 시스템명 미입력 {noSystemName}개 — 노드 클릭 → 상세 패널에서 입력
-            </div>
-          )}
-          {noDuration > 0 && (
-            <div className="text-[10px] text-slate-400">
-              ⏱ 소요시간 미입력 {noDuration}개 — PDD 분석 시 자동화 ROI 산정에 활용
-            </div>
-          )}
+          {noSystemName > 0 && (() => {
+            const targets = workNodes.filter(n => n.data.nodeType !== 'decision' && !n.data.systemName?.trim());
+            return (
+              <button onClick={() => {
+                const idx = (metaNavSys + 1) % targets.length;
+                setMetaNavSys(idx);
+                setFocusNodeId(targets[idx]?.id);
+              }}
+                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-300 transition-colors w-full text-left">
+                <span>📋 시스템명 미입력 {noSystemName}개</span>
+                <span className="text-slate-600">— 클릭하여 이동</span>
+              </button>
+            );
+          })()}
+          {noDuration > 0 && (() => {
+            const targets = workNodes.filter(n => n.data.nodeType !== 'decision' && !n.data.duration?.trim());
+            return (
+              <button onClick={() => {
+                const idx = (metaNavDur + 1) % targets.length;
+                setMetaNavDur(idx);
+                setFocusNodeId(targets[idx]?.id);
+              }}
+                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-blue-300 transition-colors w-full text-left">
+                <span>⏱ 소요시간 미입력 {noDuration}개</span>
+                <span className="text-slate-600">— 클릭하여 이동</span>
+              </button>
+            );
+          })()}
+          <div className="text-[9px] text-slate-600 italic">채우면 PDD 분석이 더 정확해져요</div>
         </div>
       )}
       {mode === 'AS-IS' && total >= 3 && (

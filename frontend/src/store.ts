@@ -139,12 +139,17 @@ export const useStore = create<AppStore>((set, get) => ({
   setSelectedEdgeId: (id) => set({ selectedEdgeId: id }),
   focusNodeId: null, setFocusNodeId: (id) => { set({ focusNodeId: null }); setTimeout(() => set({ focusNodeId: id }), 10); },
   forceComplete: () => {
-    const { nodes, edges, processContext } = get();
+    const { nodes, edges, processContext, mode } = get();
     set({ saveStatus: 'complete' });
+    const modeStr = mode || 'AS-IS';
+    const l6 = processContext?.processName || 'flow';
+    const now = new Date();
+    const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
     const json = get().exportFlow();
     const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `process-${processContext?.processName || 'flow'}-완료-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    a.download = `${modeStr}-${l6}-완료-${dateTime}.json`;
+    a.click();
   },
   setNodes: (n) => set({ nodes: n }), setEdges: (e) => set({ edges: e }),
   onNodesChange: (c) => {
@@ -594,7 +599,7 @@ export const useStore = create<AppStore>((set, get) => ({
   saveStatus: 'unsaved', lastSaved: null,
   saveDraft: () => { localStorage.setItem('pm-v5-save', get().exportFlow()); set({ saveStatus: 'draft', lastSaved: Date.now() }); },
   submitComplete: (force = false) => {
-    const { nodes, edges, processContext } = get();
+    const { nodes, edges, processContext, mode } = get();
     const issues: string[] = [];
     if (!nodes.some(n => n.data.nodeType === 'end')) issues.push('종료 노드가 없습니다. 우클릭으로 추가해주세요.');
     const orphans = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType) && !edges.some(e => e.source === n.id || e.target === n.id));
@@ -603,10 +608,14 @@ export const useStore = create<AppStore>((set, get) => ({
     if (unc.length) issues.push(`L7 검증 미실행 노드 ${unc.length}개`);
     if (force || !issues.length) {
       set({ saveStatus: 'complete' });
+      const modeStr = mode || 'AS-IS';
+      const l6 = processContext?.processName || 'flow';
+      const now = new Date();
+      const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
       const json = get().exportFlow();
       const blob = new Blob([json], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `process-${processContext?.processName || 'flow'}-완료-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      a.download = `${modeStr}-${l6}-완료-${dateTime}.json`; a.click();
     }
     return { ok: force || !issues.length, issues };
   },

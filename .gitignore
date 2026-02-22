@@ -55,3 +55,6 @@ frontend/tests/**/results.json
 # Keep examples tracked
 !.env.example
 !backend/environment.txt.example
+
+# Temporary intro page development (excluded from project)
+intropage/
