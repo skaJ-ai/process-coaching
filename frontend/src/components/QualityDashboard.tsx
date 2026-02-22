@@ -5,6 +5,8 @@ import { analyzeStructure } from '../utils/structRules';
 export default function QualityDashboard() {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
+  const mode = useStore(s => s.mode);
+  const setMode = useStore(s => s.setMode);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const validateAllNodes = useStore(s => s.validateAllNodes);
 
@@ -104,6 +106,28 @@ export default function QualityDashboard() {
               ⏱ 소요시간 미입력 {noDuration}개 — PDD 분석 시 자동화 ROI 산정에 활용
             </div>
           )}
+        </div>
+      )}
+      {mode === 'AS-IS' && total >= 3 && (
+        <div className="mt-2 pt-2 border-t border-slate-700/50">
+          <button
+            onClick={() => {
+              setMode('TO-BE');
+              useStore.getState().addMessage({
+                id: `mode-switch-${Date.now()}`,
+                role: 'bot',
+                timestamp: Date.now(),
+                text: '🎯 TO-BE 설계 모드로 전환되었습니다!\n\n이제 개선된 프로세스를 설계할 수 있어요. 노드를 선택하고 카테고리를 지정해보세요:\n• 🟢 현행 유지 (as_is)\n• 🔵 디지털 워커 (digital_worker)\n• 🟡 SSC 이관 (ssc_transfer)\n• 🔴 삭제 대상 (delete_target)\n• 🟣 신규 추가 (new_addition)',
+                quickQueries: ['자동화 가능한 업무는?', 'PDD 생성하기', 'TO-BE 설계 팁을 알려줘']
+              });
+            }}
+            className="w-full px-3 py-2 rounded-lg border-2 border-purple-500/40 bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-300 font-medium text-xs hover:border-purple-400 hover:from-purple-600/30 hover:to-blue-600/30 transition-all"
+          >
+            🎯 TO-BE 설계 모드로 전환
+          </button>
+          <div className="mt-1.5 text-[10px] text-slate-500">
+            AS-IS 분석 완료 후 개선된 프로세스를 설계할 수 있어요
+          </div>
         </div>
       )}
     </div>

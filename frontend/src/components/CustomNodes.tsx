@@ -66,14 +66,16 @@ export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
 EndNode.displayName = 'EndNode';
 
 export const ProcessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
-  const cat = CATEGORY_COLORS[data.category || 'as_is']; const status = statusMap[data.l7Status || 'none']; const sc = status.color; const badge = status.badge;
+  const mode = useStore(s => s.mode);
+  const effectiveCategory = mode === 'TO-BE' ? (data.category || 'as_is') : 'as_is';
+  const cat = CATEGORY_COLORS[effectiveCategory]; const status = statusMap[data.l7Status || 'none']; const sc = status.color; const badge = status.badge;
   const borderColor = selected ? '#3b82f6' : (sc || cat.border);
   const shadow = selected ? '0 0 0 3px rgba(59,130,246,0.4),0 0 20px rgba(59,130,246,0.2)' : sc ? `0 0 16px ${sc}33` : '0 4px 16px rgba(0,0,0,0.3)';
   const ie = useInlineEdit(id, data.label, true);
   return (<div className="relative flex flex-col rounded-lg transition-all" style={{ minWidth: 220, maxWidth: 320, minHeight: 60, background: cat.gradient, border: `2px solid ${borderColor}`, boxShadow: shadow }}>
     <AllHandles color={selected ? '#3b82f6' : '#60a5fa'} />
     {data.inputLabel && <div className="absolute -top-5 left-2 text-[9px] text-cyan-400 bg-cyan-900/30 px-1.5 py-0.5 rounded border border-cyan-800/40">IN: {data.inputLabel}</div>}
-    {data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
+    {mode === 'TO-BE' && data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
     <div className="flex items-center px-4 py-3" onDoubleClick={ie.startEdit}>
       {ie.editing ? <textarea id={`process-label-${id}`} name={`process_label_${id}`} aria-label="프로세스 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="flex-1 bg-transparent text-slate-200 text-sm font-medium leading-snug outline-none resize-none border-b border-blue-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
         : <span className="text-slate-200 text-sm font-medium leading-snug flex-1" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>{data.label}</span>}
@@ -88,14 +90,16 @@ export const ProcessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>
 ProcessNode.displayName = 'ProcessNode';
 
 export const DecisionNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
-  const cat = CATEGORY_COLORS[data.category || 'as_is'];
+  const mode = useStore(s => s.mode);
+  const effectiveCategory = mode === 'TO-BE' ? (data.category || 'as_is') : 'as_is';
+  const cat = CATEGORY_COLORS[effectiveCategory];
   const defaultBg = selected ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#92400e,#78350f)';
-  const bg = (data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
+  const bg = (mode === 'TO-BE' && data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
   const ie = useInlineEdit(id, data.label, true);
   const status = statusMap[data.l7Status || 'none']; const sc = status.color; const badge = status.badge;
   return (<div className="relative" style={{ width: 160, height: 160 }}>
     <AllHandles color={selected ? '#fbbf24' : '#f59e0b'} />
-    {data.category && data.category !== 'as_is' && <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
+    {mode === 'TO-BE' && data.category && data.category !== 'as_is' && <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
     <div className={`absolute inset-0 flex items-center justify-center ${selected ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : ''}`} style={{ clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', background: bg }} onDoubleClick={ie.startEdit}>
       {ie.editing ? (
         <div className="absolute inset-0 flex items-center justify-center z-30">
@@ -111,17 +115,19 @@ export const DecisionNode = memo(({ id, data, selected }: NodeProps<FlowNodeData
 DecisionNode.displayName = 'DecisionNode';
 
 export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
-  const cat = CATEGORY_COLORS[data.category || 'as_is'];
+  const mode = useStore(s => s.mode);
+  const effectiveCategory = mode === 'TO-BE' ? (data.category || 'as_is') : 'as_is';
+  const cat = CATEGORY_COLORS[effectiveCategory];
   const defaultBg = 'linear-gradient(135deg, #115e59, #0f2a2a)';
-  const bg = (data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
-  const borderColor = (data.category && data.category !== 'as_is') ? cat.border : '#14b8a6';
+  const bg = (mode === 'TO-BE' && data.category && data.category !== 'as_is') ? cat.gradient : defaultBg;
+  const borderColor = (mode === 'TO-BE' && data.category && data.category !== 'as_is') ? cat.border : '#14b8a6';
   const shadow = selected ? '0 0 0 3px rgba(45,212,191,0.4),0 0 20px rgba(45,212,191,0.2)' : '0 4px 16px rgba(0,0,0,0.3)';
   const ie = useInlineEdit(id, data.label, true);
   return (<div className="relative flex items-center rounded-lg transition-all" style={{ minWidth: 220, maxWidth: 320, minHeight: 60, background: bg, border: `2px solid ${selected ? '#2dd4bf' : borderColor}`, boxShadow: shadow }}>
     <AllHandles color={selected ? '#2dd4bf' : '#5eead4'} />
     <div style={{ position: 'absolute', left: 14, top: 6, bottom: 6, width: 2, background: borderColor, opacity: 0.5, borderRadius: 1 }} />
     <div style={{ position: 'absolute', right: 14, top: 6, bottom: 6, width: 2, background: borderColor, opacity: 0.5, borderRadius: 1 }} />
-    {data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
+    {mode === 'TO-BE' && data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
     <div className="flex-1 px-7 py-3" onDoubleClick={ie.startEdit}>
       {ie.editing ? <textarea id={`subprocess-label-${id}`} name={`subprocess_label_${id}`} aria-label="서브프로세스 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="w-full bg-transparent text-teal-100 text-sm font-medium leading-snug outline-none resize-none border-b border-teal-500/50" style={{ minHeight: '20px' }} rows={Math.max(1, Math.ceil(ie.editText.length / 25))} />
         : <span className="text-teal-100 text-sm font-medium leading-snug" style={{ wordBreak: 'break-all' }}>{data.label}</span>}

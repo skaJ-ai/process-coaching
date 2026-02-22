@@ -5,6 +5,7 @@ import { CATEGORY_COLORS } from '../constants';
 
 export default function ContextMenu() {
   const cm = useStore(s => s.contextMenu);
+  const mode = useStore(s => s.mode);
   const hide = useStore(s => s.hideContextMenu);
   const addShape = useStore(s => s.addShape);
   const addShapeAfter = useStore(s => s.addShapeAfter);
@@ -78,15 +79,17 @@ export default function ContextMenu() {
           )}
         </>)}
 
-        <div className="context-menu-sep" />
-        <div className="context-menu-header">분류 색상</div>
-        {Object.entries(CATEGORY_COLORS).map(([key, val]) => (
-          <div key={key} className={`context-menu-item ${node?.data.category === key ? 'active' : ''}`} onClick={() => { setNodeCategory(cm.nodeId!, key as NodeCategory); hide(); }}>
-            <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: val.border, flexShrink: 0 }} />
-            {val.label}
-            {(node?.data.category || 'as_is') === key && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3b82f6' }}>✓</span>}
-          </div>
-        ))}
+        {mode === 'TO-BE' && (<>
+          <div className="context-menu-sep" />
+          <div className="context-menu-header">분류 색상</div>
+          {Object.entries(CATEGORY_COLORS).map(([key, val]) => (
+            <div key={key} className={`context-menu-item ${node?.data.category === key ? 'active' : ''}`} onClick={() => { setNodeCategory(cm.nodeId!, key as NodeCategory); hide(); }}>
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: val.border, flexShrink: 0 }} />
+              {val.label}
+              {(node?.data.category || 'as_is') === key && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3b82f6' }}>✓</span>}
+            </div>
+          ))}
+        </>)}
         <div className="context-menu-sep" />
         <div className="context-menu-item danger" onClick={() => { delNode(cm.nodeId!); hide(); }}>🗑️ 삭제</div>
       </>)}
