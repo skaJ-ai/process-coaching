@@ -20,13 +20,6 @@ export default function Toolbar() {
   const addDividerY = useStore((s) => s.addDividerY);
   const toggleGuide = useStore((s) => s.toggleGuide);
 
-  const pc = nodes.filter((n) => n.data.nodeType === 'process').length;
-  const dc = nodes.filter((n) => n.data.nodeType === 'decision').length;
-  const sc = nodes.filter((n) => n.data.nodeType === 'subprocess').length;
-  const savedLabel = lastSaved
-    ? `저장 ${new Date(lastSaved).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
-    : '';
-  const statusDot = { unsaved: '#ef4444', draft: '#f59e0b', complete: '#22c55e' }[saveStatus];
   const laneActive = dividerYs.length > 0;
 
   const handleToggleLane = () => {
@@ -43,8 +36,17 @@ export default function Toolbar() {
     addDividerY(lastY + 200);
   };
 
+  const pc = nodes.filter((n) => n.data.nodeType === 'process').length;
+  const dc = nodes.filter((n) => n.data.nodeType === 'decision').length;
+  const sc = nodes.filter((n) => n.data.nodeType === 'subprocess').length;
+  const savedLabel = lastSaved
+    ? `저장 ${new Date(lastSaved).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
+  const statusDot = { unsaved: '#ef4444', draft: '#f59e0b', complete: '#22c55e' }[saveStatus];
+
   return (
     <>
+    {/* 메인 툴바 */}
     <div
       className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5"
       style={{
@@ -111,14 +113,6 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-700" />
 
-      <div className="flex items-center gap-2 px-2 text-xs text-slate-500">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />
-        {savedLabel && <span>{savedLabel}</span>}
-        <span>{pc}P {dc}D {sc}S</span>
-      </div>
-
-      <div className="w-px h-5 bg-slate-700" />
-
       {/* 순서 변경: 드로잉 가이드 → 작성 가이드 */}
       <button
         onClick={toggleGuide}
@@ -135,6 +129,26 @@ export default function Toolbar() {
         📝 작성 가이드
       </button>
     </div>
+
+    {/* 저장 상태 뱃지 (우측 상단) */}
+    <div
+      className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 text-xs text-slate-400"
+      style={{
+        background: 'rgba(22,32,50,0.95)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: 10,
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+      }}
+    >
+      <div className="flex items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />
+        {savedLabel && <span className="text-slate-500">{savedLabel}</span>}
+      </div>
+      <div className="w-px h-4 bg-slate-700" />
+      <span className="font-medium">{pc}P {dc}D {sc}S</span>
+    </div>
+
     {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
     </>
   );

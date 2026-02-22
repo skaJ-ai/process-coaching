@@ -11,9 +11,9 @@ export const NODE_DIMENSIONS: Record<string, { width: number; height: number }> 
 };
 
 export const LAYOUT_CONFIG = {
-  nodesep: 80,
-  ranksep: 120,
-  rankdir: 'TB' as const,
+  nodesep: 120,
+  ranksep: 160,
+  rankdir: 'LR' as const,
   marginx: 40,
   marginy: 40,
 };
