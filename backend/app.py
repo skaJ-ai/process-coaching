@@ -19,16 +19,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 try:
-    from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
+    from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest, CategorizeNodesRequest
     from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from .chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
-    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
+    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
     from .flow_services import describe_flow, mock_review, mock_validate
 except ImportError:
-    from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest
+    from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest, CategorizeNodesRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
-    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT
+    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
     from flow_services import describe_flow, mock_review, mock_validate
 
 
@@ -132,6 +132,65 @@ async def analyze_pdd(req: ReviewRequest):
             cat = "ssc_transfer"
         recs.append({"nodeId": n.id, "nodeLabel": n.label, "suggestedCategory": cat, "reason": "규칙 기반", "confidence": "low"})
     return {"recommendations": recs, "summary": "규칙 기반 자동 분류입니다."}
+
+
+@app.post("/api/categorize-nodes")
+async def categorize_nodes(req: CategorizeNodesRequest):
+    """ZBR 기준으로 노드의 카테고리 추천 (TO-BE 모드 전용)"""
+    # Prepare node descriptions
+    node_descriptions = []
+    for n in req.nodes:
+        if n.type in ("start", "end"):
+            continue
+        desc = f"- {n.label} (ID: {n.id}, 타입: {n.type})"
+        if n.systemName:
+            desc += f", 시스템: {n.systemName}"
+        if n.duration:
+            desc += f", 소요시간: {n.duration}"
+        node_descriptions.append(desc)
+
+    if not node_descriptions:
+        return []
+
+    prompt = f"""프로세스: {req.context.get('processName', 'Unknown')}
+L4 모듈: {req.context.get('l4', 'Unknown')}
+L5 단위업무: {req.context.get('l5', 'Unknown')}
+
+[분류 대상 노드 목록]
+{chr(10).join(node_descriptions)}
+
+위 노드들을 ZBR 4가지 질문 기준으로 분류하고 JSON 배열로 반환하세요."""
+
+    result = await call_llm(CATEGORIZE_PROMPT, prompt)
+
+    # Fallback: 규칙 기반 분류
+    if not result:
+        fallback = []
+        for n in req.nodes:
+            if n.type in ("start", "end"):
+                continue
+            cat = "as_is"
+            reasoning = "LLM 실패로 규칙 기반 분류"
+
+            if any(k in n.label for k in ["조회", "입력", "추출", "집계", "계산", "전송"]):
+                cat = "digital_worker"
+                reasoning = "데이터 처리 작업으로 자동화 가능"
+            elif any(k in n.label for k in ["통보", "안내", "발송", "접수", "정산"]):
+                cat = "ssc_transfer"
+                reasoning = "표준화 가능한 공통 업무"
+            elif any(k in n.label for k in ["확인", "검토"]) and "승인" not in n.label:
+                cat = "delete_target"
+                reasoning = "형식적 확인 단계로 통합 또는 제거 검토"
+
+            fallback.append({
+                "nodeId": n.id,
+                "suggestedCategory": cat,
+                "confidence": "low",
+                "reasoning": reasoning
+            })
+        return fallback
+
+    return result
 
 
 @app.get("/api/health")

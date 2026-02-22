@@ -53,3 +53,8 @@ class ContextualSuggestRequest(BaseModel):
     context: dict
     currentNodes: list[FlowNode] = []
     currentEdges: list[FlowEdge] = []
+
+
+class CategorizeNodesRequest(BaseModel):
+    context: dict
+    nodes: list[FlowNode]
