@@ -11,12 +11,10 @@ export default function SetupModal() {
   const [l5, setL5] = useState('');
   const [l6, setL6] = useState('');
   const [showRecovery, setShowRecovery] = useState(false);
-  const [useTemplate, setUseTemplate] = useState(false);
 
   const mod = useMemo(() => hrModules.find(m => m.l4 === l4), [l4]);
   const task = useMemo(() => mod?.tasks.find(t => t.l5 === l5), [mod, l5]);
   const ok = l4 && l5 && l6;
-  const hasTemplate = task?.template && task.template.initialNodes && task.template.initialNodes.length > 0;
 
   useEffect(() => {
     const saved = localStorage.getItem('pm-v5-save');
@@ -25,35 +23,7 @@ export default function SetupModal() {
 
   const handleStart = () => {
     if (!ok) return;
-    const ctx = { l4, l5, processName: l6 };
-    if (useTemplate && hasTemplate) {
-      // Store template info in processContext for later use
-      setCtx(ctx, () => {
-        // Apply template after context is set
-        const template = task!.template!;
-        const addShape = useStore.getState().addShape;
-        const startNode = useStore.getState().nodes.find(n => n.data.nodeType === 'start');
-        let lastY = startNode ? startNode.position.y + 150 : 180;
-
-        template.initialNodes!.forEach((node, idx) => {
-          addShape(node.type as any, node.label, { x: 190, y: lastY });
-          lastY += 150;
-        });
-
-        // Add guidance message if available
-        if (template.guidancePrompt || template.description) {
-          const addMessage = useStore.getState().addMessage;
-          addMessage({
-            id: `template-guide-${Date.now()}`,
-            role: 'bot',
-            timestamp: Date.now(),
-            text: `📋 ${template.description || '표준 템플릿이 적용되었습니다.'}\n\n${template.guidancePrompt || ''}${template.commonIssues && template.commonIssues.length > 0 ? `\n\n⚠️ 자주 놓치는 부분:\n${template.commonIssues.map(i => `• ${i}`).join('\n')}` : ''}`,
-          });
-        }
-      });
-    } else {
-      setCtx(ctx);
-    }
+    setCtx({ l4, l5, processName: l6 });
   };
 
 
@@ -144,25 +114,6 @@ export default function SetupModal() {
               <option value="">선택...</option>
               {task.l6_activities.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
-            {hasTemplate && (
-              <div className="mt-3 p-3 rounded-lg border border-green-500/30 bg-green-500/10">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-semibold text-green-400">📋 표준 템플릿 사용 가능</span>
-                </div>
-                {task.template!.description && (
-                  <p className="text-xs text-slate-400 mb-2">{task.template!.description}</p>
-                )}
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useTemplate}
-                    onChange={e => setUseTemplate(e.target.checked)}
-                    className="w-4 h-4 rounded border-green-500/50 bg-green-900/30 text-green-500 focus:ring-green-500/50"
-                  />
-                  <span className="text-xs text-green-300">시작 시 템플릿 노드 자동 생성 ({task.template!.initialNodes!.length}개)</span>
-                </label>
-              </div>
-            )}
           </div>}
         </div>
         <div>
