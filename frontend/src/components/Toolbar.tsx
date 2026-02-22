@@ -6,8 +6,11 @@ export default function Toolbar() {
   const [showL7Guide, setShowL7Guide] = useState(false);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
+  const applyAutoLayout = useStore((s) => s.applyAutoLayout);
+  const categorizeNodesAI = useStore((s) => s.categorizeNodesAI);
   const hi = useStore((s) => s.historyIndex);
   const hl = useStore((s) => s.history.length);
+  const mode = useStore((s) => s.mode);
 
   const saveStatus = useStore((s) => s.saveStatus);
   const lastSaved = useStore((s) => s.lastSaved);
@@ -69,6 +72,28 @@ export default function Toolbar() {
       >
         ↷
       </button>
+
+      <div className="w-px h-5 bg-slate-700" />
+
+      <button
+        onClick={applyAutoLayout}
+        disabled={nodes.length === 0}
+        title="노드 자동 정렬 (dagre 레이아웃)"
+        className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20 disabled:opacity-30"
+      >
+        🎯 자동 정렬
+      </button>
+
+      {mode === 'TOBE' && (
+        <button
+          onClick={categorizeNodesAI}
+          disabled={nodes.length === 0}
+          title="AI 기반 TO-BE 카테고리 자동 분류"
+          className="px-2 py-1.5 rounded-lg text-xs text-violet-400 hover:bg-violet-600/20 disabled:opacity-30"
+        >
+          🤖 AI 분류
+        </button>
+      )}
 
       <div className="w-px h-5 bg-slate-700" />
 

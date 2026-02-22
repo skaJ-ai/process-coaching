@@ -1,4 +1,9 @@
-def describe_flow(nodes, edges):
+def describe_flow(nodes, edges, summary=False):
+    """
+    플로우 상태를 텍스트로 요약
+    summary=True: 통계+라벨 목록만 (토큰 절약, Knowledge 분기용)
+    summary=False: 전체 노드 상세 + 연결 구조 (기본, Coaching 분기용)
+    """
     if not nodes:
         return "플로우 비어있음."
 
@@ -63,22 +68,31 @@ def describe_flow(nodes, edges):
         lines.append(f"  ⚠ {len(disconnected_ends)}개 종료 노드 연결 안됨")
 
     lines.append(f"[HR 프로세스 요소] {hr_coverage}")
-    lines.append("")
-    lines.append("==== 현재 플로우의 모든 노드 (중복 방지용: ADD 제안 전 반드시 확인!) ====")
 
-    # 기존 노드 라벨 목록 먼저 표시 (중복 방지용)
+    # 기존 노드 라벨 목록 (중복 방지용, 항상 표시)
     process_labels = [
         (n.data.get("label", "") if hasattr(n, "data") else getattr(n, "label", ""))
         for n in nodes
         if (getattr(n, "type", None) or getattr(n, "nodeType", None) or (hasattr(n, "data") and n.data.get("nodeType"))) in ("process", "decision")
     ]
     if process_labels:
-        lines.append("현재 존재하는 업무/판단 라벨:")
-        for label in process_labels:
+        lines.append("")
+        lines.append("현재 존재하는 업무/판단 라벨 (중복 방지용):")
+        # 요약 모드에서는 최대 10개만 표시
+        display_labels = process_labels[:10] if summary else process_labels
+        for label in display_labels:
             if label:
                 lines.append(f"  - \"{label}\"")
+        if summary and len(process_labels) > 10:
+            lines.append(f"  ... 외 {len(process_labels) - 10}개")
+
+    # 요약 모드면 여기서 종료
+    if summary:
+        return "\n".join(lines)
+
+    # 상세 모드: 노드/엣지 전체 목록
     lines.append("")
-    lines.append("노드 상세 목록 (ID는 insertAfterNodeId/targetNodeId에 사용):")
+    lines.append("==== 노드 상세 목록 (ID는 insertAfterNodeId/targetNodeId에 사용) ====")
 
     for n in nodes:
         node_id = getattr(n, "id", "?")
@@ -103,6 +117,7 @@ def describe_flow(nodes, edges):
         meta_str = f" ({meta.strip()})" if meta.strip() else ""
         lines.append(f"  {node_id} | {t} | {label}{meta_str}")
 
+    lines.append("")
     lines.append("연결 구조:")
     for e in edges:
         source = e["source"] if isinstance(e, dict) else e.source

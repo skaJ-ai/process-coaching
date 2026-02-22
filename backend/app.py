@@ -7,7 +7,20 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Process Coaching AI 베타버전")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Import CORS configuration
+try:
+    from .env_config import ALLOWED_ORIGINS
+except ImportError:
+    from env_config import ALLOWED_ORIGINS
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
 @app.exception_handler(Exception)
@@ -129,7 +142,8 @@ async def validate_l7(req: ValidateL7Request):
 
 @app.post("/api/contextual-suggest")
 async def contextual_suggest(req: ContextualSuggestRequest):
-    fd = describe_flow(req.currentNodes, req.currentEdges)
+    # 초기 가이드용이므로 요약 모드로 토큰 절약
+    fd = describe_flow(req.currentNodes, req.currentEdges, summary=True)
     r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
     return r or {"guidance": "", "quickQueries": []}
 

@@ -45,8 +45,15 @@ def load_local_env_files() -> None:
 
 load_local_env_files()
 
+# LLM Settings
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://10.240.248.157:8533/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "Qwen3-Next")
 USE_MOCK = os.getenv("USE_MOCK", "auto")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_API_KEY_HEADER = os.getenv("LLM_API_KEY_HEADER", "Authorization")
+
+# CORS Settings
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://10.240.248.157:5173"
+).split(",")

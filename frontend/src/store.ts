@@ -63,6 +63,8 @@ interface AppStore {
   forceComplete: () => void;
 
   history: HistoryEntry[]; historyIndex: number; pushHistory: () => void; undo: () => void; redo: () => void;
+  applyAutoLayout: () => void;
+  categorizeNodesAI: () => Promise<void>;
   messages: ChatMessage[]; loadingState: LoadingState; addMessage: (m: ChatMessage) => void; setLoadingMessage: (m: string) => void;
   sendChat: (msg: string) => Promise<void>; requestReview: () => Promise<void>;
 
@@ -457,6 +459,49 @@ export const useStore = create<AppStore>((set, get) => ({
   pushHistory: () => { const { nodes, edges, history, historyIndex } = get(); const h = history.slice(0, historyIndex + 1); h.push({ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }); if (h.length > 50) h.shift(); set({ history: h, historyIndex: h.length - 1 }); },
   undo: () => { const { history: h, historyIndex: i } = get(); if (i <= 0) return; set({ nodes: h[i - 1].nodes, edges: h[i - 1].edges, historyIndex: i - 1 }); },
   redo: () => { const { history: h, historyIndex: i } = get(); if (i >= h.length - 1) return; set({ nodes: h[i + 1].nodes, edges: h[i + 1].edges, historyIndex: i + 1 }); },
+  applyAutoLayout: () => {
+    const { nodes, edges, pushHistory } = get();
+    if (nodes.length === 0) return;
+    pushHistory();
+    const { nodes: layoutedNodes, edges: layoutedEdges } = applyDagreLayout(nodes, edges);
+    const reindexed = reindexByPosition(layoutedNodes);
+    set({ nodes: reindexed, edges: layoutedEdges });
+  },
+  categorizeNodesAI: async () => {
+    const { nodes, processContext, mode } = get();
+    if (mode !== 'TOBE') {
+      alert('TO-BE 모드에서만 사용할 수 있습니다.');
+      return;
+    }
+    if (nodes.length === 0) return;
+    set({ loadingState: { active: true, message: 'AI 카테고리 분류 중...', startTime: Date.now(), elapsed: 0, requestCount: 1 } });
+    try {
+      const { nodes: sn } = serialize(nodes, []);
+      const r = await fetch(`${API_BASE_URL}/categorize-nodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: processContext || {}, nodes: sn })
+      });
+      const data = await r.json();
+      if (data.categorizations && Array.isArray(data.categorizations)) {
+        const updatedNodes = nodes.map(n => {
+          const cat = data.categorizations.find((c: any) => c.nodeId === n.id);
+          if (cat && cat.category) {
+            return { ...n, data: { ...n.data, category: cat.category } };
+          }
+          return n;
+        });
+        set({ nodes: updatedNodes, loadingState: { active: false, message: '', startTime: 0, elapsed: 0, requestCount: 0 } });
+        alert(`${data.categorizations.length}개 노드 카테고리 분류 완료`);
+      } else {
+        throw new Error('카테고리 분류 응답이 올바르지 않습니다.');
+      }
+    } catch (e) {
+      console.error('categorizeNodesAI error:', e);
+      alert('카테고리 분류 실패: ' + (e instanceof Error ? e.message : '알 수 없는 오류'));
+      set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0, requestCount: 0 } });
+    }
+  },
 
   messages: [], loadingState: { active: false, message: '', startTime: 0, elapsed: 0, requestCount: 0 },
   addMessage: (m) => set(s => ({ messages: [...s.messages, m] })),

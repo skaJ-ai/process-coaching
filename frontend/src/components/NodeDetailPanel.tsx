@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { NodeCategory } from '../types';
+import { CATEGORY_COLORS } from '../constants';
 
 export default function NodeDetailPanel() {
   const sel = useStore(s => s.selectedNodeId);
   const nodes = useStore(s => s.nodes);
+  const mode = useStore(s => s.mode);
   const setSel = useStore(s => s.setSelectedNodeId);
   const updateLabel = useStore(s => s.updateNodeLabel);
   const applyRewrite = useStore(s => s.applyL7Rewrite);
@@ -12,6 +15,7 @@ export default function NodeDetailPanel() {
   const splitCompound = useStore(s => s.splitCompoundNode);
   const separateSys = useStore(s => s.separateSystemName);
   const openMetaEdit = useStore(s => s.openMetaEdit);
+  const setNodeCategory = useStore(s => s.setNodeCategory);
   const [editingRewrite, setEditingRewrite] = useState(false);
   const [editRewriteText, setEditRewriteText] = useState('');
   const node = nodes.find(n => n.id === sel);
@@ -89,6 +93,32 @@ export default function NodeDetailPanel() {
           ))}
         </div>}
         {l7Status === 'none' && !changeHistory?.length && <div className="text-xs text-slate-500 text-center py-4">L7 검증을 실행하면 결과가 여기에 표시됩니다.</div>}
+        {/* TO-BE 모드: 카테고리 분류 */}
+        {mode === 'TOBE' && (
+          <div>
+            <div className="text-xs text-slate-500 font-medium mb-2">TO-BE 카테고리</div>
+            <select
+              value={node.data.category || 'as_is'}
+              onChange={(e) => setNodeCategory(node.id, e.target.value as NodeCategory)}
+              className="w-full px-3 py-2 rounded-lg text-xs bg-slate-800/60 border border-slate-600/50 text-slate-200 focus:outline-none focus:border-violet-500/50"
+            >
+              <option value="as_is">As-Is 유지</option>
+              <option value="digital_worker">Digital Worker (자동화)</option>
+              <option value="ssc_transfer">SSC 이관</option>
+              <option value="delete_target">삭제 대상</option>
+              <option value="new_addition">신규 추가</option>
+            </select>
+            {node.data.category && (
+              <div className="mt-2 px-3 py-2 rounded-lg text-xs" style={{
+                background: CATEGORY_COLORS[node.data.category]?.bg + '20' || 'rgba(100,116,139,0.1)',
+                border: `1px solid ${CATEGORY_COLORS[node.data.category]?.border || '#64748b'}40`
+              }}>
+                <span className="text-slate-400">현재: </span>
+                <span className="text-slate-200 font-medium">{CATEGORY_COLORS[node.data.category]?.label || node.data.category}</span>
+              </div>
+            )}
+          </div>
+        )}
         {/* 메타데이터 미리보기 — 유도 (Decision 제외) */}
         {node.data.nodeType !== 'decision' && (
           <div>
