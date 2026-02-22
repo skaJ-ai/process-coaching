@@ -56,3 +56,6 @@ frontend/tests/**/results.json
 
 # Temporary intro page development (excluded from project)
 intropage/
+
+# Example images (local only)
+example.jpg
