@@ -94,7 +94,7 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
   const lines = (
     <>
       {sortedDividers.map(({ y, idx }) => (
-        <div key={`divider-${idx}`} style={{ position: 'absolute', left: -20000, width: 40000, top: y - lineThickness / 2, height: lineThickness, borderTop: `${lineThickness}px dashed #94a3b8`, pointerEvents: 'none', zIndex: 5, opacity: 0.65 }} />
+        <div key={`divider-${idx}`} style={{ position: 'absolute', left: -20000, width: 40000, top: y - lineThickness / 2, height: lineThickness, borderTop: `${lineThickness}px solid #4a6fa5`, pointerEvents: 'none', zIndex: 5, opacity: 0.7 }} />
       ))}
     </>
   );

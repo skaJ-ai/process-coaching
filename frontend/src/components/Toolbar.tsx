@@ -8,7 +8,6 @@ export default function Toolbar() {
   const [showGuide, setShowGuide] = useState(false);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
-  const applyAutoLayout = useStore((s) => s.applyAutoLayout);
   const categorizeNodesAI = useStore((s) => s.categorizeNodesAI);
   const hi = useStore((s) => s.historyIndex);
   const hl = useStore((s) => s.history.length);
@@ -23,6 +22,7 @@ export default function Toolbar() {
   const toggleGuide = useStore((s) => s.toggleGuide);
 
   const laneActive = dividerYs.length > 0;
+  const workNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
 
   const handleToggleLane = () => {
     setDividerYs(laneActive ? [] : [400]);
@@ -77,35 +77,37 @@ export default function Toolbar() {
         ↷
       </button>
 
-      <div className="w-px h-5 bg-slate-700" />
-
-      <button
-        onClick={applyAutoLayout}
-        disabled={nodes.length === 0}
-        title="노드 자동 정렬 (dagre 레이아웃)"
-        className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20 disabled:opacity-30"
-      >
-        🎯 자동 정렬
-      </button>
-
       {mode === 'TO-BE' && (
-        <button
-          onClick={categorizeNodesAI}
-          disabled={nodes.length === 0}
-          title="AI 기반 TO-BE 카테고리 자동 분류"
-          className="px-2 py-1.5 rounded-lg text-xs text-violet-400 hover:bg-violet-600/20 disabled:opacity-30"
-        >
-          🤖 AI 분류
-        </button>
+        <>
+          <div className="w-px h-5 bg-slate-700" />
+          <button
+            onClick={categorizeNodesAI}
+            disabled={nodes.length === 0}
+            title="AI 기반 TO-BE 카테고리 자동 분류"
+            className="px-2 py-1.5 rounded-lg text-xs text-violet-400 hover:bg-violet-600/20 disabled:opacity-30"
+          >
+            🤖 AI 분류
+          </button>
+        </>
       )}
 
       <div className="w-px h-5 bg-slate-700" />
 
       <button
         onClick={handleToggleLane}
-        className={`px-2 py-1.5 rounded-lg text-xs hover:bg-slate-600/20 ${laneActive ? 'text-blue-400' : 'text-slate-400'}`}
+        title="역할 구분선 (스윔레인)"
+        className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 hover:bg-slate-600/20 ${laneActive ? 'text-blue-400' : 'text-slate-400'}`}
       >
-        역할 구분선 {laneActive ? 'ON' : 'OFF'}
+        <svg width="13" height="11" viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="1" x2="13" y2="1" stroke="currentColor" strokeWidth="1.5"/>
+          <line x1="0" y1="5.5" x2="13" y2="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2.5 1.5"/>
+          <line x1="0" y1="10" x2="13" y2="10" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+        역할 구분선
+        <span
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ background: laneActive ? '#60a5fa' : '#475569' }}
+        />
       </button>
       {laneActive && dividerYs.length < 3 && (
         <button onClick={handleAddLane} className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20">
@@ -115,7 +117,6 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-700" />
 
-      {/* 순서 변경: 드로잉 가이드 → 작성 가이드 */}
       <button
         onClick={toggleGuide}
         title="드로잉 가이드 (F1)"
@@ -130,13 +131,15 @@ export default function Toolbar() {
       >
         📝 작성 가이드
       </button>
-      <button
-        onClick={() => setShowGuide(true)}
-        title="툴 소개 및 사용법"
-        className="px-2 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 border border-indigo-500/30"
-      >
-        🎓 툴 소개
-      </button>
+      {workNodes.length === 0 && (
+        <button
+          onClick={() => setShowGuide(true)}
+          title="툴 소개 및 사용법"
+          className="px-2 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 border border-indigo-500/30"
+        >
+          🎓 툴 소개
+        </button>
+      )}
     </div>
 
     {/* 저장 상태 뱃지 (우측 상단) */}

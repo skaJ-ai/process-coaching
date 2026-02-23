@@ -19,7 +19,30 @@ export default function ChatPanel() {
   const saveStatus = useStore(s => s.saveStatus);
   const validateAllNodes = useStore(s => s.validateAllNodes);
 
+  const mode = useStore(s => s.mode);
+  const setMode = useStore(s => s.setMode);
+  const nodes = useStore(s => s.nodes);
+  const resetToSetup = useStore(s => s.resetToSetup);
   const adminMode = useStore(s => s.adminMode);
+
+  const hasEnd = nodes.some(n => n.data.nodeType === 'end');
+  const canSwitchToBe = mode === 'AS-IS' && hasEnd;
+
+  const handleGoHome = () => {
+    if (!confirm('처음 화면으로 돌아가시겠습니까?\n현재 작업은 자동 저장되며, 복구 화면에서 불러올 수 있습니다.')) return;
+    resetToSetup();
+  };
+
+  const handleSwitchToBe = () => {
+    setMode('TO-BE');
+    useStore.getState().addMessage({
+      id: `mode-switch-${Date.now()}`,
+      role: 'bot',
+      timestamp: Date.now(),
+      text: '🎯 TO-BE 설계 모드로 전환되었습니다!\n\n이제 개선된 프로세스를 설계할 수 있어요. 노드를 선택하고 카테고리를 지정해보세요:\n• 🟢 현행 유지 (as_is)\n• 🔵 디지털 워커 (digital_worker)\n• 🟡 SSC 이관 (ssc_transfer)\n• 🔴 삭제 대상 (delete_target)\n• 🟣 신규 추가 (new_addition)',
+      quickQueries: ['자동화 가능한 업무는?', 'PDD 생성하기', 'TO-BE 설계 팁을 알려줘']
+    });
+  };
 
   const dismissMessage = (msgId: string) => {
     useStore.setState(s => ({ messages: s.messages.filter(m => m.id !== msgId) }));
@@ -92,6 +115,24 @@ export default function ChatPanel() {
                     ))}
                   </div>
                 ) : null}
+                {msg.quickActions?.length ? (
+                  <div className="ml-9 flex flex-wrap gap-1.5">
+                    {msg.quickActions.map((a, i) => (
+                      <button
+                        key={`${msg.id}-qa${i}`}
+                        onClick={() => {
+                          if (a.storeAction === 'toggleSwimLane') {
+                            const { dividerYs, setDividerYs } = useStore.getState();
+                            if (dividerYs.length === 0) setDividerYs([400]);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-full text-xs text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/20 hover:border-emerald-500/50 transition-colors"
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -116,6 +157,22 @@ export default function ChatPanel() {
             className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 disabled:from-slate-600 disabled:to-slate-600 disabled:text-slate-400">
             {saveStatus === 'complete' ? '✅ 완료됨' : '✓ 완료하기'}
           </button>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={handleGoHome}
+            className="flex-1 px-4 py-2 rounded-xl text-sm font-medium border border-slate-700/40 text-slate-500 hover:bg-slate-700/20 hover:text-slate-300 transition-colors"
+          >
+            ⌂ 처음으로
+          </button>
+          {canSwitchToBe && (
+            <button
+              onClick={handleSwitchToBe}
+              className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold border-2 border-purple-500/40 bg-gradient-to-r from-purple-600/20 to-blue-600/20 text-purple-300 hover:border-purple-400 hover:from-purple-600/30 transition-all"
+            >
+              🎯 TO-BE 전환
+            </button>
+          )}
         </div>
       </div>
       {submitIssues && <SubmitModal issues={submitIssues} onClose={() => setSubmitIssues(null)} onForceSubmit={() => { setSubmitIssues(null); forceComplete(); }} />}

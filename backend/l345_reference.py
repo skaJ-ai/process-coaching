@@ -56,10 +56,13 @@ L345_TREE: dict[str, dict[str, list[str]]] = {
 }
 
 # ── L4→L3 역방향 인덱스 (초기화 시 1회 빌드) ──
+# first-wins: 해외인사가 "채용", "보상", "인력운영" 등 다른 L3와 동명 키를 가지므로
+# 먼저 등록된 L3 항목을 보존하여 오분류 방지
 _L4_TO_L3: dict[str, str] = {}
 for _l3, _l4_dict in L345_TREE.items():
     for _l4 in _l4_dict:
-        _L4_TO_L3[_l4] = _l3
+        if _l4 not in _L4_TO_L3:
+            _L4_TO_L3[_l4] = _l3
 
 
 def _normalize_korean(raw: str) -> str:
@@ -72,24 +75,39 @@ def find_l3_for_l4(l4_raw: str) -> Optional[tuple[str, str]]:
     """L4 문자열에서 해당 (L3, 정규화된 L4명) 반환. 매칭 실패 시 None.
 
     매칭 우선순위:
-    1. 정확 매칭: _L4_TO_L3에서 직접 찾기
-    2. 부분 매칭: L4 키가 입력에 포함되어 있거나, 입력이 L4 키에 포함
-    3. L3 이름 직접 매칭: 입력이 L3 이름 자체인 경우
+    1. L4 정확 매칭
+    2. L3 이름 정확·접두사 매칭 — 부분 L4 매칭보다 우선
+       예: "채용 공고 작성" → "채용" L3 (해외인사 L4 "채용"보다 우선)
+    3. L4 부분 매칭 — 더 긴(구체적인) 키 우선
+    4. L3 이름 포함 매칭 (느슨)
     """
     normalized = _normalize_korean(l4_raw)
     if not normalized:
         return None
 
-    # 1. 정확 매칭
+    # 1. L4 정확 매칭
     if normalized in _L4_TO_L3:
         return (_L4_TO_L3[normalized], normalized)
 
-    # 2. 부분 매칭 (양방향)
-    for l4_key, l3_name in _L4_TO_L3.items():
-        if l4_key in normalized or normalized in l4_key:
-            return (l3_name, l4_key)
+    # 2. L3 이름 정확·접두사 매칭
+    #    "채용 공고 작성".startswith("채용") → "채용" L3 반환
+    #    → 해외인사 L4 "채용"의 부분 매칭보다 먼저 처리
+    for l3_name in L345_TREE:
+        if normalized == l3_name or normalized.startswith(l3_name):
+            return (l3_name, "")
 
-    # 3. L3 이름 직접 매칭 (사용자가 L3 이름을 L4로 넣은 경우)
+    # 3. L4 부분 매칭 — 더 긴(구체적인) 키 우선으로 오매칭 최소화
+    candidates = [
+        (len(l4_key), l4_key, l3_name)
+        for l4_key, l3_name in _L4_TO_L3.items()
+        if l4_key in normalized or normalized in l4_key
+    ]
+    if candidates:
+        candidates.sort(key=lambda x: -x[0])
+        _, best_key, best_l3 = candidates[0]
+        return (best_l3, best_key)
+
+    # 4. L3 이름 포함 매칭 (느슨)
     for l3_name in L345_TREE:
         if l3_name in normalized or normalized in l3_name:
             return (l3_name, "")

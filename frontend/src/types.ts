@@ -77,6 +77,7 @@ export interface ChatMessage {
   suggestions?: Suggestion[];
   l7Report?: L7ReportItem[];
   quickQueries?: string[];
+  quickActions?: { label: string; storeAction: 'toggleSwimLane' }[];
   timestamp: number;
   dismissible?: boolean;
 }

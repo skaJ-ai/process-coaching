@@ -115,6 +115,7 @@ interface AppStore {
   // v5.3: one-click fixes
   splitCompoundNode: (nodeId: string) => void;
   separateSystemName: (nodeId: string) => void;
+  resetToSetup: () => void;
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -679,12 +680,6 @@ export const useStore = create<AppStore>((set, get) => ({
       edges: se,
       dividerYs,
       swimLaneLabels,
-      // backward compat
-      swimLanes: dividerYs.length > 0 ? [
-        { id: 'lane-top', label: swimLaneLabels[0], order: 0, color: SWIMLANE_COLORS[0].text },
-        { id: 'lane-bottom', label: swimLaneLabels[1], order: 1, color: SWIMLANE_COLORS[1].text }
-      ] : [],
-      laneBoundaries: dividerYs
     }, null, 2);
   },
   importFlow: (json) => {
@@ -692,24 +687,38 @@ export const useStore = create<AppStore>((set, get) => ({
       const d = JSON.parse(json); if (!d.nodes) return;
       const ns: Node<FlowNodeData>[] = d.nodes.map((n: any) => ({ id: n.id, type: n.type, position: n.position || { x: 0, y: 0 }, draggable: true, data: { label: n.label, nodeType: n.type, inputLabel: n.inputLabel, outputLabel: n.outputLabel, systemName: n.systemName, duration: n.duration, category: n.category || 'as_is', swimLaneId: n.swimLaneId } }));
       const es: Edge[] = (d.edges || []).map((e: any) => makeEdge(e.source, e.target, e.label || undefined, undefined, e.sourceHandle || undefined, e.targetHandle || undefined));
-      // New format
-      let divY = d.dividerY || 0;
-      let topLbl = d.topLabel || 'A 주체';
-      let botLbl = d.bottomLabel || 'B 주체';
-      // backward compat: old multi-lane format → new 2-lane
-      if (!divY && d.swimLanes?.length === 2 && d.laneBoundaries?.length === 1) {
-        divY = d.laneBoundaries[0];
-        topLbl = d.swimLanes[0]?.label || 'A 주체';
-        botLbl = d.swimLanes[1]?.label || 'B 주체';
+
+      // 스윔레인 복원 — 신규 포맷(dividerYs 배열) 우선, 구버전 하위 호환
+      let divYs: number[] = [];
+      let laneLabels: string[] = ['A 주체', 'B 주체'];
+
+      if (d.dividerYs && Array.isArray(d.dividerYs) && d.dividerYs.length > 0) {
+        // 현재 포맷: dividerYs 배열 + swimLaneLabels 배열
+        divYs = d.dividerYs;
+        if (Array.isArray(d.swimLaneLabels) && d.swimLaneLabels.length >= 2) {
+          laneLabels = d.swimLaneLabels;
+        }
+      } else {
+        // 구버전 하위 호환
+        let divY = d.dividerY || 0;
+        let topLbl = d.topLabel || 'A 주체';
+        let botLbl = d.bottomLabel || 'B 주체';
+        if (!divY && d.swimLanes?.length === 2 && d.laneBoundaries?.length >= 1) {
+          divY = d.laneBoundaries[0];
+          topLbl = d.swimLanes[0]?.label || 'A 주체';
+          botLbl = d.swimLanes[1]?.label || 'B 주체';
+        }
+        if (!divY && d.swimLaneDividerY && d.swimLaneDividerY > 0) {
+          divY = d.swimLaneDividerY;
+          topLbl = (d.swimLaneLabels as any)?.top || 'A 주체';
+          botLbl = (d.swimLaneLabels as any)?.bottom || 'B 주체';
+        }
+        if (divY > 0) divYs = [divY];
+        laneLabels = [topLbl, botLbl];
       }
-      // backward compat: very old divider format
-      if (!divY && d.swimLaneDividerY && d.swimLaneDividerY > 0) {
-        divY = d.swimLaneDividerY;
-        topLbl = d.swimLaneLabels?.top || 'A 주체';
-        botLbl = d.swimLaneLabels?.bottom || 'B 주체';
-      }
-      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divY > 0 ? [divY] : [], swimLaneLabels: [topLbl, botLbl] });
-      debugTrace('importFlow:success', { nodeCount: ns.length, edgeCount: es.length, dividerY: divY || null });
+
+      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divYs, swimLaneLabels: laneLabels });
+      debugTrace('importFlow:success', { nodeCount: ns.length, edgeCount: es.length, dividerYs: divYs });
     } catch (e) { debugTrace('importFlow:error', { error: String(e) }); console.error('Import failed:', e); }
   },
   loadFromLocalStorage: () => { const j = localStorage.getItem('pm-v5-save'); if (j) { get().importFlow(j); return true; } return false; },
@@ -882,8 +891,8 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요. 상단 툴바의 "≡ 역할 구분선" 버튼으로 활성화할 수 있습니다.',
-        quickQueries: ['수영레인 설정 방법'],
+        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요.',
+        quickActions: [{ label: '스윔레인 설정하기', storeAction: 'toggleSwimLane' }],
         dismissible: true
       });
     }
@@ -922,6 +931,12 @@ export const useStore = create<AppStore>((set, get) => ({
     get().updateNodeMeta(nodeId, { systemName: sysName });
     // L7 상태 초기화 (재검증 필요)
     set({ nodes: get().nodes.map(n => n.id === nodeId ? { ...n, data: { ...n.data, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } } : n) });
+  },
+
+  resetToSetup: () => {
+    // 현재 작업을 로컬 스토리지에 저장 후 초기 화면으로 복귀
+    get().saveDraft();
+    set({ processContext: null, mode: null });
   },
 
   celebrateL7Success: () => {
