@@ -83,9 +83,9 @@ export default function QualityDashboard() {
             <button
               onClick={() => validateAllNodes()}
               disabled={ls.active}
-              className="text-slate-400 hover:text-violet-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2 py-0.5 rounded border border-violet-500/40 text-violet-300 hover:bg-violet-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {ls.active ? '⚙ 검증 중...' : `⚙ ${unchecked}개 미검증 · 검증하기`}
+              {ls.active ? '⚙ 검증 중...' : `⚙ ${unchecked} 미검증 · 검증하기`}
             </button>
           )}
         </div>
