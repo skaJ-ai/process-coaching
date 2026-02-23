@@ -81,10 +81,7 @@ export default function SetupModal() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setShowGuide(true)} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">🎓 툴 소개</button>
-          <button onClick={handleImport} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-700/30 border border-slate-600/40 text-slate-300 hover:bg-slate-700/50">📂 JSON 가져오기</button>
-        </div>
+        <button onClick={handleImport} className="w-full mb-6 px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-700/30 border border-slate-600/40 text-slate-300 hover:bg-slate-700/50">📂 JSON 가져오기</button>
 
         <div className="flex items-center gap-3 mb-6"><div className="flex-1 h-px bg-slate-700" /><span className="text-xs text-slate-500">또는 새로 시작</span><div className="flex-1 h-px bg-slate-700" /></div>
 
@@ -124,6 +121,12 @@ export default function SetupModal() {
             프로세스 드로잉 시작 →
           </button>
           {!ok && <p className="text-xs text-slate-500 mt-2 text-center">3개 항목을 모두 선택해주세요</p>}
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-slate-700/50">
+          <button onClick={() => setShowGuide(true)} className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">
+            🎓 툴 소개 및 사용법
+          </button>
         </div>
       </div>
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}

@@ -37,7 +37,7 @@ const slides = [
     values: [
       { icon: '👁️', title: 'Visibility', desc: '내 업무 전체를 처음으로 한 눈에 봅니다.' },
       { icon: '⚖️', title: 'Autonomy', desc: "'이 단계, 내가 해야 하나?' 스스로 판단할 수 있습니다." },
-      { icon: '🎯', title: 'Focus', desc: '반복/단순/비효율 업무는 AI, SSC가 맡고, 나는 고부가가치 업무에 집중합니다.' },
+      { icon: '🎯', title: 'Focus', desc: '반복/단순/비효율 업무는 AI, SSC가 맡고,\n나는 고부가가치 업무에 집중합니다.' },
       { icon: '⚡', title: 'Efficiency', desc: 'AI 코칭을 통해 쉽고 빠르게 워크 플로우를 정리할 수 있습니다.' },
     ],
   },
@@ -161,7 +161,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-[90vw] max-w-[1100px] h-[80vh] rounded-2xl flex flex-col overflow-hidden"
+        className="relative w-[95vw] max-w-[1400px] h-[90vh] rounded-2xl flex flex-col overflow-hidden"
         style={{ background: '#0f1729', border: '1px solid rgba(148,163,184,0.2)', boxShadow: '0 24px 80px rgba(0,0,0,0.7)' }}
         onClick={e => e.stopPropagation()}
       >
@@ -189,33 +189,33 @@ export default function GuideModal({ onClose }: GuideModalProps) {
         <div className="flex-1 overflow-y-auto px-8 py-8">
           {slide.type === 'hero' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="text-6xl mb-6">🤖</div>
-              <h1 className="text-4xl font-bold text-slate-100 mb-3">{slide.title}</h1>
-              <p className="text-lg text-slate-400">{slide.subtitle}</p>
+              <div className="text-8xl mb-8">🤖</div>
+              <h1 className="text-5xl font-bold text-slate-100 mb-4">{slide.title}</h1>
+              <p className="text-2xl text-slate-400">{slide.subtitle}</p>
             </div>
           )}
 
           {slide.type === 'agenda' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-3xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
-              <div className="grid grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <div className="grid grid-cols-2 gap-10 max-w-5xl mx-auto">
                 {slide.items.map(item => (
                   <div
                     key={item.number}
-                    className="p-8 rounded-xl border transition-all hover:scale-105"
+                    className="p-10 rounded-xl border transition-all hover:scale-105"
                     style={{
                       background: item.number === '01' ? 'rgba(59,130,246,0.08)' : 'rgba(251,113,133,0.08)',
                       border: item.number === '01' ? '2px solid rgba(59,130,246,0.3)' : '2px solid rgba(251,113,133,0.3)',
                     }}
                   >
                     <div
-                      className="text-6xl font-bold mb-4"
+                      className="text-7xl font-bold mb-5"
                       style={{ color: item.number === '01' ? '#3b82f6' : '#fb7185' }}
                     >
                       {item.number}
                     </div>
-                    <h3 className="text-xl font-bold text-slate-100 mb-2">{item.title}</h3>
-                    <p className="text-sm text-slate-400">{item.subtitle}</p>
+                    <h3 className="text-2xl font-bold text-slate-100 mb-3">{item.title}</h3>
+                    <p className="text-lg text-slate-400">{item.subtitle}</p>
                   </div>
                 ))}
               </div>
@@ -224,28 +224,47 @@ export default function GuideModal({ onClose }: GuideModalProps) {
 
           {slide.type === 'problem' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-3xl font-bold text-slate-100 mb-12 text-center max-w-3xl mx-auto">{slide.title}</h2>
-              <div className="grid grid-cols-3 gap-6 max-w-5xl mx-auto">
-                {slide.sections.map((sec, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="text-5xl mb-4">{sec.icon}</div>
-                    <div className="text-lg font-bold text-slate-300 mb-2">{sec.label}</div>
-                    <p className="text-sm text-slate-400 leading-relaxed">{sec.text}</p>
-                  </div>
-                ))}
+              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center max-w-4xl mx-auto">{slide.title}</h2>
+              <div className="flex items-center justify-center gap-8 max-w-6xl mx-auto">
+                {/* 왼쪽: Logs */}
+                <div className="flex flex-col items-center w-64 opacity-60">
+                  <div className="text-5xl mb-4">{slide.sections[0].icon}</div>
+                  <div className="text-lg font-bold text-slate-400 mb-2">{slide.sections[0].label}</div>
+                  <p className="text-sm text-slate-500 leading-relaxed text-center">{slide.sections[0].text}</p>
+                </div>
+
+                {/* 화살표 */}
+                <div className="text-5xl text-slate-600">→</div>
+
+                {/* 중앙: 사람 (크게) */}
+                <div className="flex flex-col items-center w-80">
+                  <div className="text-8xl mb-6">{slide.sections[1].icon}</div>
+                  <div className="text-2xl font-bold text-slate-200 mb-3">{slide.sections[1].label}</div>
+                  <p className="text-base text-slate-300 leading-relaxed text-center">{slide.sections[1].text}</p>
+                </div>
+
+                {/* 화살표 */}
+                <div className="text-5xl text-slate-600">→</div>
+
+                {/* 오른쪽: Drawing */}
+                <div className="flex flex-col items-center w-64 opacity-60">
+                  <div className="text-5xl mb-4">{slide.sections[2].icon}</div>
+                  <div className="text-lg font-bold text-slate-400 mb-2">{slide.sections[2].label}</div>
+                  <p className="text-sm text-slate-500 leading-relaxed text-center">{slide.sections[2].text}</p>
+                </div>
               </div>
             </div>
           )}
 
           {slide.type === 'value' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-3xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
-              <div className="grid grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <div className="grid grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {slide.values.map((val, idx) => (
-                  <div key={idx} className="p-6 rounded-xl border border-slate-700 bg-slate-800/30">
-                    <div className="text-3xl mb-3">{val.icon}</div>
-                    <h3 className="text-lg font-bold text-slate-100 mb-2">{val.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{val.desc}</p>
+                  <div key={idx} className="p-8 rounded-xl border border-slate-700 bg-slate-800/30">
+                    <div className="text-5xl mb-4">{val.icon}</div>
+                    <h3 className="text-2xl font-bold text-slate-100 mb-3">{val.title}</h3>
+                    <p className="text-base text-slate-400 leading-relaxed whitespace-pre-line">{val.desc}</p>
                   </div>
                 ))}
               </div>
@@ -254,27 +273,27 @@ export default function GuideModal({ onClose }: GuideModalProps) {
 
           {slide.type === 'method' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-2xl font-bold text-slate-100 mb-2 text-center max-w-3xl mx-auto">{slide.title}</h2>
-              <p className="text-sm text-slate-500 mb-8 text-center">{slide.subtitle}</p>
-              <div className="flex items-center justify-center gap-4 mb-8">
+              <h2 className="text-3xl font-bold text-slate-100 mb-3 text-center max-w-4xl mx-auto">{slide.title}</h2>
+              <p className="text-base text-slate-500 mb-12 text-center">{slide.subtitle}</p>
+              <div className="flex items-center justify-center gap-6 mb-12">
                 {slide.process.map((p, idx) => (
                   <React.Fragment key={idx}>
                     <div className="text-center">
-                      <div className="px-6 py-4 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600">
-                        <div className="font-bold text-slate-100 text-sm whitespace-pre-line">{p.label}</div>
-                        <div className="text-xs text-slate-500 mt-1">{p.sublabel}</div>
+                      <div className="px-8 py-6 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 shadow-lg">
+                        <div className="font-bold text-slate-100 text-lg whitespace-pre-line">{p.label}</div>
+                        <div className="text-sm text-slate-500 mt-2">{p.sublabel}</div>
                       </div>
                     </div>
-                    {idx < slide.process.length - 1 && <div className="text-3xl text-slate-600">→</div>}
+                    {idx < slide.process.length - 1 && <div className="text-5xl text-slate-500 font-bold">→</div>}
                   </React.Fragment>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-4 max-w-5xl mx-auto">
+              <div className="grid grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {slide.methods.map((m, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-                    <div className="text-2xl mb-2">{m.icon}</div>
-                    <h4 className="text-sm font-bold text-slate-200 mb-1">{m.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-line">{m.desc}</p>
+                  <div key={idx} className="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
+                    <div className="text-4xl mb-3">{m.icon}</div>
+                    <h4 className="text-base font-bold text-slate-200 mb-2">{m.title}</h4>
+                    <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{m.desc}</p>
                   </div>
                 ))}
               </div>
@@ -283,41 +302,44 @@ export default function GuideModal({ onClose }: GuideModalProps) {
 
           {slide.type === 'howto' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-3xl font-bold text-slate-100 mb-8 text-center">{slide.title}</h2>
-              <div className="flex items-center justify-center gap-3 mb-8">
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
+              <div className="flex items-center justify-center gap-4 mb-10">
                 {slide.steps.map((s, idx) => (
                   <React.Fragment key={s.num}>
                     <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-2xl mb-2">
+                      <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-3xl mb-3">
                         {s.icon}
                       </div>
-                      <div className="text-xs font-medium text-slate-300 text-center max-w-[100px]">{s.label}</div>
+                      <div className="text-sm font-medium text-slate-300 text-center max-w-[120px]">{s.label}</div>
                     </div>
-                    {idx < slide.steps.length - 1 && <div className="text-2xl text-slate-600 mb-6">→</div>}
+                    {idx < slide.steps.length - 1 && <div className="text-3xl text-slate-600 mb-6">→</div>}
                   </React.Fragment>
                 ))}
               </div>
-              <div className="max-w-2xl mx-auto p-6 rounded-xl bg-slate-800/40 border border-slate-700">
-                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line text-center">{slide.note}</p>
+              <div className="max-w-3xl mx-auto p-8 rounded-xl bg-slate-800/40 border border-slate-700">
+                <p className="text-base text-slate-300 leading-relaxed whitespace-pre-line text-center">{slide.note}</p>
               </div>
             </div>
           )}
 
           {slide.type === 'tutorial' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-2xl font-bold text-slate-100 mb-8 text-center">{slide.title}</h2>
-              <div className="grid grid-cols-2 gap-8 max-w-5xl mx-auto">
+              <h2 className="text-3xl font-bold text-slate-100 mb-10 text-center">{slide.title}</h2>
+              <div className="grid grid-cols-2 gap-10 max-w-6xl mx-auto">
                 {slide.steps.map(s => (
                   <div key={s.num} className="flex flex-col">
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="mb-5 flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center text-white font-bold text-xl">
                         {s.num}
                       </div>
-                      <h3 className="text-lg font-bold text-slate-100">{s.title}</h3>
+                      <h3 className="text-xl font-bold text-slate-100">{s.title}</h3>
                     </div>
-                    <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line mb-4">{s.desc}</p>
-                    <div className="flex-1 rounded-lg bg-slate-800/50 border border-slate-700 flex items-center justify-center text-slate-600 text-sm">
-                      UI 스크린샷 영역
+                    <p className="text-base text-slate-400 leading-relaxed whitespace-pre-line mb-5">{s.desc}</p>
+                    <div className="flex-1 min-h-[280px] rounded-xl bg-gradient-to-br from-slate-800/70 to-slate-900/70 border-2 border-slate-700/50 flex items-center justify-center text-slate-500 text-base shadow-inner">
+                      <div className="text-center">
+                        <div className="text-4xl mb-3">📸</div>
+                        <div>UI 스크린샷 영역</div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -327,13 +349,13 @@ export default function GuideModal({ onClose }: GuideModalProps) {
 
           {slide.type === 'tips' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-3xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
-              <div className="grid grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <div className="grid grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {slide.tips.map((tip, idx) => (
-                  <div key={idx} className="p-6 rounded-xl border border-green-700/30 bg-green-900/10">
-                    <div className="text-3xl mb-3">{tip.icon}</div>
-                    <h3 className="text-lg font-bold text-green-300 mb-2">{tip.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{tip.desc}</p>
+                  <div key={idx} className="p-8 rounded-xl border border-green-700/30 bg-green-900/10">
+                    <div className="text-5xl mb-4">{tip.icon}</div>
+                    <h3 className="text-2xl font-bold text-green-300 mb-3">{tip.title}</h3>
+                    <p className="text-base text-slate-400 leading-relaxed whitespace-pre-line">{tip.desc}</p>
                   </div>
                 ))}
               </div>
@@ -342,11 +364,11 @@ export default function GuideModal({ onClose }: GuideModalProps) {
 
           {slide.type === 'closing' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <h1 className="text-4xl font-bold text-slate-100 mb-8">{slide.title}</h1>
-              <p className="text-lg text-slate-300 leading-relaxed max-w-3xl whitespace-pre-line mb-12">{slide.message}</p>
+              <h1 className="text-5xl font-bold text-slate-100 mb-10">{slide.title}</h1>
+              <p className="text-2xl text-slate-300 leading-relaxed max-w-4xl whitespace-pre-line mb-16">{slide.message}</p>
               <button
                 onClick={onClose}
-                className="px-8 py-4 rounded-xl text-base font-bold text-white transition-all hover:scale-105"
+                className="px-12 py-5 rounded-xl text-xl font-bold text-white transition-all hover:scale-105"
                 style={{ background: 'linear-gradient(135deg, #2563eb, #8b5cf6)', boxShadow: '0 8px 32px rgba(37,99,235,0.4)' }}
               >
                 🚀 지금 시작하기
