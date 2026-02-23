@@ -20,7 +20,15 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
     return laneIds.map(id => ({ id: id!, label: id! }));
   }, [nodes]);
   const [pddContent, setPddContent] = useState('');
-  const [insights, setInsights] = useState<PddInsights | null>(null);
+  const [insights, setInsights] = useState<PddInsights | null>(() => {
+    // 이전 인사이트 복원
+    try {
+      const saved = sessionStorage.getItem('pdd-insights');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [insightsLoading, setInsightsLoading] = useState(false);
 
   const generatePDD = () => {
@@ -102,6 +110,12 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
       }
       const data = await r.json();
       setInsights(data);
+      // 인사이트 저장
+      try {
+        sessionStorage.setItem('pdd-insights', JSON.stringify(data));
+      } catch (e) {
+        console.warn('Failed to save insights:', e);
+      }
     } catch (e) {
       console.error('PDD insights error:', e);
       alert(`⚠️ AI 인사이트 생성 실패\n\n${e instanceof Error ? e.message : '백엔드 서버가 실행 중인지 확인해주세요.'}`);
@@ -131,7 +145,7 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
               <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{pddContent}</pre>
             </div>
             {insights && (
-              <div className="px-6 py-4 space-y-3" style={{ borderTop: '1px solid var(--border-primary)' }}>
+              <div className="px-6 py-4 space-y-3 max-h-[300px] overflow-y-auto" style={{ borderTop: '1px solid var(--border-primary)' }}>
                 <p className="text-xs font-semibold text-indigo-300 mb-1">🔍 AI 전략 인사이트</p>
                 <p className="text-xs text-slate-400 leading-relaxed">{insights.summary}</p>
                 {insights.inefficiencies.length > 0 && (
