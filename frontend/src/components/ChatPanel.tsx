@@ -6,6 +6,7 @@ import LoadingIndicator from './LoadingIndicator';
 import SubmitModal from './SubmitModal';
 import QualityDashboard from './QualityDashboard';
 import PDDGenerator from './PDDGenerator';
+import GuideModal from './GuideModal';
 
 export default function ChatPanel() {
   const messages = useStore(s => s.messages);
@@ -28,6 +29,7 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   const [submitIssues, setSubmitIssues] = useState<string[] | null>(null);
   const [showPDD, setShowPDD] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -53,7 +55,10 @@ export default function ChatPanel() {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-secondary)' }}>
       <div className="flex-shrink-0 px-5 py-4" style={{ borderBottom: '1px solid var(--border-primary)' }}>
-        <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />Process Coaching AI</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base font-bold text-slate-100 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />Process Coaching AI</h2>
+          <button onClick={() => setShowGuide(true)} title="툴 소개 및 사용법" className="px-2 py-1 rounded-lg text-[11px] font-medium text-indigo-300 hover:bg-indigo-600/20 border border-indigo-500/30 transition-colors">🎓 툴 소개</button>
+        </div>
         {ctx && <p className="text-xs text-slate-500 mb-2">{ctx.l4} → {ctx.l5} → {ctx.processName}</p>}
         <div className="flex gap-1.5 flex-wrap">
           <button data-tour="review" onClick={() => requestReview()} disabled={ls.active} className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600/30 disabled:opacity-40">🔍 전체 흐름 검토</button>
@@ -138,6 +143,7 @@ export default function ChatPanel() {
       </div>
       {submitIssues && <SubmitModal issues={submitIssues} onClose={() => setSubmitIssues(null)} onForceSubmit={() => { setSubmitIssues(null); forceComplete(); }} />}
       {showPDD && <PDDGenerator onClose={() => setShowPDD(false)} />}
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }

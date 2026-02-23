@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import L7GuideModal from './L7GuideModal';
-import GuideModal from './GuideModal';
 
 export default function Toolbar() {
   const [showL7Guide, setShowL7Guide] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const categorizeNodesAI = useStore((s) => s.categorizeNodesAI);
@@ -28,7 +26,6 @@ export default function Toolbar() {
   const laneActive = dividerYs.length > 0;
   const workNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
   const hasEnd = nodes.some((n) => n.data.nodeType === 'end');
-  const canSwitchToBe = mode === 'AS-IS' && hasEnd;
 
   const handleGoHome = () => {
     if (!confirm('처음 화면으로 돌아가시겠습니까?\n현재 작업은 자동 저장되며, 복구 화면에서 불러올 수 있습니다.')) return;
@@ -43,6 +40,16 @@ export default function Toolbar() {
       timestamp: Date.now(),
       text: '🎯 TO-BE 설계 모드로 전환되었습니다!\n\n이제 개선된 프로세스를 설계할 수 있어요. 노드를 선택하고 카테고리를 지정해보세요:\n• 🟢 현행 유지 (as_is)\n• 🔵 디지털 워커 (digital_worker)\n• 🟡 SSC 이관 (ssc_transfer)\n• 🔴 삭제 대상 (delete_target)\n• 🟣 신규 추가 (new_addition)',
       quickQueries: ['자동화 가능한 업무는?', 'PDD 생성하기', 'TO-BE 설계 팁을 알려줘']
+    });
+  };
+
+  const handleSwitchToAsIs = () => {
+    setMode('AS-IS');
+    addMessage({
+      id: `mode-switch-${Date.now()}`,
+      role: 'bot',
+      timestamp: Date.now(),
+      text: '🔍 AS-IS 분석 모드로 전환되었습니다.',
     });
   };
 
@@ -153,15 +160,6 @@ export default function Toolbar() {
       >
         📝 작성 가이드
       </button>
-      {workNodes.length === 0 && (
-        <button
-          onClick={() => setShowGuide(true)}
-          title="툴 소개 및 사용법"
-          className="px-2 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 border border-indigo-500/30"
-        >
-          🎓 툴 소개
-        </button>
-      )}
     </div>
 
     {/* 우측 상단 컨트롤 패널 */}
@@ -186,39 +184,46 @@ export default function Toolbar() {
         <div className="w-px h-4 bg-slate-700" />
         <span className="font-medium">{pc}P {dc}D {sc}S</span>
       </button>
-      {/* 처음으로 / TO-BE 전환 */}
-      <div className="flex gap-1.5">
+      {/* 처음으로 / 모드 전환 탭 */}
+      <div className="flex gap-1.5 items-center">
         <button
           onClick={handleGoHome}
           title="처음 화면으로"
           className="px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
-          style={{
-            background: 'rgba(22,32,50,0.9)',
-            border: '1px solid var(--border-primary)',
-            backdropFilter: 'blur(12px)',
-          }}
+          style={{ background: 'rgba(22,32,50,0.9)', border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}
         >
           ⌂ 처음으로
         </button>
-        {canSwitchToBe && (
+        {/* AS-IS / TO-BE 탭 — 항상 노출 */}
+        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}>
           <button
-            onClick={handleSwitchToBe}
-            title="TO-BE 설계 모드로 전환"
-            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-purple-300 hover:text-purple-200 transition-colors"
-            style={{
-              background: 'rgba(22,32,50,0.9)',
-              border: '1px solid rgba(168,85,247,0.4)',
-              backdropFilter: 'blur(12px)',
-            }}
+            onClick={() => mode !== 'AS-IS' && handleSwitchToAsIs()}
+            title="AS-IS 분석 모드"
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              mode === 'AS-IS'
+                ? 'bg-blue-600/30 text-blue-300'
+                : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
+            }`}
           >
-            🎯 TO-BE 전환
+            AS-IS
           </button>
-        )}
+          <div className="w-px bg-slate-700" />
+          <button
+            onClick={() => mode !== 'TO-BE' && handleSwitchToBe()}
+            title="TO-BE 설계 모드"
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              mode === 'TO-BE'
+                ? 'bg-purple-600/30 text-purple-300'
+                : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
+            }`}
+          >
+            TO-BE
+          </button>
+        </div>
       </div>
     </div>
 
     {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
-    {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
     </>
   );
 }
