@@ -50,9 +50,9 @@ export const StartNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
   return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }} onDoubleClick={ie.startEdit}>
-    <AllHandles color="#4ade80" />
     {ie.editing ? <textarea id={`start-label-${id}`} name={`start_label_${id}`} aria-label="시작 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
+    {[Position.Bottom, Position.Right, Position.Left, Position.Top].map(p => <Handle key={p} type="source" position={p} id={p.toLowerCase() + '-source'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#4ade80', border: '2px solid #0f1729', borderRadius: '50%', opacity: 0.5 }} />)}
   </div>);
 });
 StartNode.displayName = 'StartNode';
@@ -62,9 +62,9 @@ export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
   return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }} onDoubleClick={ie.startEdit}>
-    <AllHandles color="#f87171" />
     {ie.editing ? <textarea id={`end-label-${id}`} name={`end_label_${id}`} aria-label="종료 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
+    {[Position.Top, Position.Bottom, Position.Left, Position.Right].map(p => <Handle key={p} type="target" position={p} id={p.toLowerCase() + '-target'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#f87171', border: '2px solid #0f1729', borderRadius: '50%' }} />)}
   </div>);
 });
 EndNode.displayName = 'EndNode';
@@ -193,6 +193,8 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
   const tgtCount: number = (data?.targetSiblingCount as number) || 1;
   const tgtIdx: number = (data?.targetSiblingIndex as number) || 0;
   const isDecision: boolean = !!(data?.isFromDecision);
+  const isBidirectional: boolean = !!(data?.isBidirectional);
+  const bidirectionalIndex: number = (data?.bidirectionalIndex as number) ?? 0;
 
   const getOffset = (pos: Position, idx: number, count: number): { dx: number; dy: number } => {
     if (count <= 1) return { dx: 0, dy: 0 };
@@ -205,9 +207,24 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
   const srcOff = getOffset(sourcePosition, srcIdx, srcCount);
   const tgtOff = getOffset(targetPosition, tgtIdx, tgtCount);
 
+  // 양방향 엣지 offset (서로 겹치지 않도록 수직 방향으로 분리)
+  let biOffset = { dx: 0, dy: 0 };
+  if (isBidirectional) {
+    const BI_OFFSET = 12;
+    const direction = bidirectionalIndex === 0 ? -1 : 1;
+    // sourcePosition에 따라 perpendicular 방향 결정
+    if (sourcePosition === Position.Left || sourcePosition === Position.Right) {
+      biOffset.dy = direction * BI_OFFSET;
+    } else {
+      biOffset.dx = direction * BI_OFFSET;
+    }
+  }
+
   const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX: sourceX + srcOff.dx, sourceY: sourceY + srcOff.dy,
-    targetX: targetX + tgtOff.dx, targetY: targetY + tgtOff.dy,
+    sourceX: sourceX + srcOff.dx + biOffset.dx,
+    sourceY: sourceY + srcOff.dy + biOffset.dy,
+    targetX: targetX + tgtOff.dx + biOffset.dx,
+    targetY: targetY + tgtOff.dy + biOffset.dy,
     sourcePosition, targetPosition, borderRadius: 8,
   });
 

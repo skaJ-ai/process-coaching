@@ -160,7 +160,7 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
 // Vertical ghost flow (includes start node to avoid confusion)
 function GhostFlow() {
   return (
-    <svg width="250" height="360" viewBox="0 0 250 360">
+    <svg width="250" height="390" viewBox="0 0 250 390">
       <defs>
         <marker id="ga" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
           <path d="M0,0 L0,6 L6,3 z" fill="#334155" />
@@ -191,7 +191,7 @@ function GhostFlow() {
       <rect x="25" y="268" width="110" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
       <text x="80" y="291" textAnchor="middle" fill="#93c5fd" fontSize="11">요청 결과를 통보한다</text>
       {/* Arrow ↓ to End */}
-      <line x1="80" y1="308" x2="80" y2="343" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
+      <line x1="80" y1="308" x2="80" y2="355" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       {/* Arrow → 아니오 */}
       <line x1="116" y1="214" x2="158" y2="214" stroke="#334155" strokeWidth="1.5" markerEnd="url(#ga)" />
       <text x="136" y="208" textAnchor="middle" fill="#64748b" fontSize="9">아니오</text>
@@ -199,10 +199,10 @@ function GhostFlow() {
       <rect x="160" y="194" width="82" height="38" rx="7" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 3" />
       <text x="201" y="217" textAnchor="middle" fill="#93c5fd" fontSize="10">보완을 요청한다</text>
       {/* Process No → End (path right→down→left) */}
-      <path d="M 201 234 L 201 360 L 99 360" stroke="#334155" strokeWidth="1.5" fill="none" markerEnd="url(#ga)" />
+      <path d="M 201 234 L 201 372 L 99 372" stroke="#334155" strokeWidth="1.5" fill="none" markerEnd="url(#ga)" />
       {/* End circle */}
-      <circle cx="80" cy="360" r="18" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="5 3" />
-      <text x="80" y="364" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="600">종료</text>
+      <circle cx="80" cy="372" r="18" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="80" y="376" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="600">종료</text>
     </svg>
   );
 }
@@ -372,10 +372,27 @@ function FlowCanvas() {
 
   // Auto-spread: assign sibling indices so edges from the same handle fan out
   // 판단 노드(decision)에서 출발하는 엣지는 isFromDecision=true → 점선 처리
+  // 양방향 엣지(A→C + C→A)는 서로 겹치지 않도록 offset 적용
   const edgesWithSpread = useMemo(() => {
     const decisionNodeIds = new Set(nodes.filter(n => n.data?.nodeType === 'decision').map(n => n.id));
     const srcGroups: Record<string, string[]> = {};
     const tgtGroups: Record<string, string[]> = {};
+
+    // 양방향 엣지 감지
+    const bidirectionalMap = new Map<string, { edgeId: string; reverseId: string; index: number }>();
+    edges.forEach(e1 => {
+      if (e1.type === 'selfloop' || bidirectionalMap.has(e1.id)) return;
+      const reverse = edges.find(e2 =>
+        e2.type !== 'selfloop' &&
+        e2.source === e1.target &&
+        e2.target === e1.source
+      );
+      if (reverse) {
+        bidirectionalMap.set(e1.id, { edgeId: e1.id, reverseId: reverse.id, index: 0 });
+        bidirectionalMap.set(reverse.id, { edgeId: e1.id, reverseId: reverse.id, index: 1 });
+      }
+    });
+
     edges.forEach(e => {
       if (e.type === 'selfloop') return;
       const sk = `${e.source}::${e.sourceHandle ?? ''}`;
@@ -397,6 +414,7 @@ function FlowCanvas() {
       const tk = `${e.target}::${e.targetHandle ?? ''}`;
       const sg = srcGroups[sk] ?? [e.id];
       const tg = tgtGroups[tk] ?? [e.id];
+      const bidirectional = bidirectionalMap.get(e.id);
       return {
         ...e,
         type: 'spread',
@@ -408,6 +426,8 @@ function FlowCanvas() {
           targetSiblingIndex: tg.indexOf(e.id),
           targetSiblingCount: tg.length,
           isFromDecision: isDecision,
+          isBidirectional: !!bidirectional,
+          bidirectionalIndex: bidirectional?.index,
         },
       };
     });
