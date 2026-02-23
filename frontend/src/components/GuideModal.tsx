@@ -16,17 +16,17 @@ const slides = [
     type: 'agenda' as const,
     title: '오늘 다룰 두 가지 핵심 질문',
     items: [
-      { number: '01', title: 'Phase 1. 왜 이 툴을 써야 하는가?', subtitle: '업무의 '난독'과 '각지'' },
-      { number: '02', title: 'Phase 2. 어떻게 쓰는가?', subtitle: '즉시 시작하는 '실행' 가이드' },
+      { number: '01', title: 'Phase 1. 왜 이 툴을 써야 하는가?', subtitle: "업무의 '난독'과 '각지'" },
+      { number: '02', title: 'Phase 2. 어떻게 쓰는가?', subtitle: "즉시 시작하는 '실행' 가이드" },
     ],
   },
   {
     id: 3,
     type: 'problem' as const,
-    title: '지금 하는 일 중, '나만이 할 수 있는 일'은 얼마나 됩니까?',
+    title: "지금 하는 일 중, '나만이 할 수 있는 일'은 얼마나 됩니까?",
     sections: [
       { icon: '📄', label: 'Logs', text: 'HR 담당자의 하루는 반복/단순/비효율 업무로 가득 차 있습니다.' },
-      { icon: '🧠', label: '사람', text: '그 안에서 정작 내가 '만약하고 기획'하는 시간은 얼마나 될까요?' },
+      { icon: '🧠', label: '사람', text: "그 안에서 정작 내가 '만약하고 기획'하는 시간은 얼마나 될까요?" },
       { icon: '✏️', label: 'Drawing', text: '이 툴은 그 비율을 바꾸기 위해 만들어졌습니다.' },
     ],
   },
@@ -36,7 +36,7 @@ const slides = [
     title: '이 툴로 내가 얻게 되는 것',
     values: [
       { icon: '👁️', title: 'Visibility', desc: '내 업무 전체를 처음으로 한 눈에 봅니다.' },
-      { icon: '⚖️', title: 'Autonomy', desc: ''이 단계, 내가 해야 하나?' 스스로 판단할 수 있습니다.' },
+      { icon: '⚖️', title: 'Autonomy', desc: "'이 단계, 내가 해야 하나?' 스스로 판단할 수 있습니다." },
       { icon: '🎯', title: 'Focus', desc: '반복/단순/비효율 업무는 AI, SSC가 맡고, 나는 고부가가치 업무에 집중합니다.' },
       { icon: '⚡', title: 'Efficiency', desc: 'AI 코칭을 통해 쉽고 빠르게 워크 플로우를 정리할 수 있습니다.' },
     ],
@@ -44,7 +44,7 @@ const slides = [
   {
     id: 5,
     type: 'method' as const,
-    title: '기존 업무를 고치는 것이 아니라, '제로(0)'에서 다시 설계합니다',
+    title: "기존 업무를 고치는 것이 아니라, '제로(0)'에서 다시 설계합니다",
     subtitle: 'Modern Engineering Blueprint',
     process: [
       { label: 'HR 암묵지', sublabel: '(Implicit Knowledge)' },
@@ -67,7 +67,7 @@ const slides = [
       { num: 3, icon: '◇', label: '판단 기준을 쓴다' },
       { num: 4, icon: '✨', label: 'AI 검토를 받는다' },
     ],
-    note: '복잡한 프로세스 모델링 기법(BPMN)을 배울 필요가 없습니다.\n'내가 실제로 하는 일'을 순서대로 한 동작씩 적으면 됩니다.\nCoaching AI가 정석을 보완하고, 빠진 단계를 찾아줍니다.',
+    note: "복잡한 프로세스 모델링 기법(BPMN)을 배울 필요가 없습니다.\n'내가 실제로 하는 일'을 순서대로 한 동작씩 적으면 됩니다.\nCoaching AI가 정석을 보완하고, 빠진 단계를 찾아줍니다.",
   },
   {
     id: 7,
@@ -77,7 +77,7 @@ const slides = [
       {
         num: 1,
         title: '단계를 추가한다',
-        desc: '내가 하는 동작 하나 = 셰이프 하나.\n'급여를 조회한다', '결재를 요청한다' 처럼 한 동작씩 넣습니다.',
+        desc: "내가 하는 동작 하나 = 셰이프 하나.\n'급여를 조회한다', '결재를 요청한다' 처럼 한 동작씩 넣습니다.",
       },
       {
         num: 2,
@@ -99,7 +99,7 @@ const slides = [
       {
         num: 4,
         title: 'AI 검토를 받는다',
-        desc: ''전체 흐름 검토'를 누르면 AI가 빠진 단계와 모호한 표현을 즉시 짚어줍니다.',
+        desc: "'전체 흐름 검토'를 누르면 AI가 빠진 단계와 모호한 표현을 즉시 짚어줍니다.",
       },
     ],
   },
