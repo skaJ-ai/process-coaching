@@ -36,18 +36,7 @@ export default function App() {
 
 
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      useStore.getState().updateUserActivity();
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        e.preventDefault();
-        const pw = prompt('관리자 비밀번호:');
-        if (pw) {
-          const ok = useStore.getState().toggleAdminMode(pw);
-          if (ok) alert('관리자 모드 ' + (useStore.getState().adminMode ? '활성화' : '비활성화'));
-          else alert('비밀번호가 틀렸습니다.');
-        }
-      }
-    };
+    const h = () => { useStore.getState().updateUserActivity(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);

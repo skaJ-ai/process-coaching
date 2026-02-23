@@ -90,7 +90,6 @@ interface AppStore {
   // Product Tour
   tourActive: boolean; tourStep: number;
   startTour: () => void; nextTourStep: () => void; skipTour: () => void;
-  adminMode: boolean; toggleAdminMode: (password: string) => boolean;
   // PDD
   pddAnalysis: PDDAnalysisResult | null; analyzePDD: () => Promise<void>;
   // v5: pending inline edit
@@ -739,7 +738,6 @@ export const useStore = create<AppStore>((set, get) => ({
     else set({ tourStep: tourStep + 1 });
   },
   skipTour: () => { localStorage.setItem('pm-v5-tour-done', '1'); set({ tourActive: false, tourStep: 0 }); },
-  adminMode: false, toggleAdminMode: (pw) => { if (pw === 'ax2026') { set({ adminMode: !get().adminMode }); return true; } return false; },
 
   // PDD Analysis
   pddAnalysis: null,
