@@ -163,62 +163,63 @@ export default function Toolbar() {
     </div>
 
     {/* 우측 상단 컨트롤 패널 */}
-    <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
-      {/* 저장 상태 뱃지 — 클릭 시 임시저장 (Ctrl+S와 동일) */}
-      <button
-        onClick={saveDraft}
-        title="임시저장 (Ctrl+S)"
-        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
-        style={{
-          background: 'rgba(22,32,50,0.95)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 10,
-          backdropFilter: 'blur(12px)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />
-          {savedLabel && <span className="text-slate-500">{savedLabel}</span>}
-        </div>
-        <div className="w-px h-4 bg-slate-700" />
-        <span className="font-medium">{pc}P {dc}D {sc}S</span>
-      </button>
-      {/* 처음으로 / 모드 전환 탭 */}
-      <div className="flex gap-1.5 items-center">
+    <div className="absolute top-4 right-4 z-10">
+      <div className="flex flex-col gap-2">
+        {/* 저장 버튼 — w-full로 아래 행 너비에 맞춤 */}
         <button
-          onClick={handleGoHome}
-          title="처음 화면으로"
-          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
-          style={{ background: 'rgba(22,32,50,0.9)', border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}
+          onClick={saveDraft}
+          title="임시저장 (Ctrl+S)"
+          className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+          style={{
+            background: 'rgba(22,32,50,0.95)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 8,
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          }}
         >
-          ⌂ 처음으로
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusDot }} />
+            {savedLabel && <span className="text-slate-500">{savedLabel}</span>}
+          </div>
+          <span className="font-medium">{pc}P {dc}D {sc}S</span>
         </button>
-        {/* AS-IS / TO-BE 탭 — 항상 노출 */}
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}>
+        {/* 처음으로 / 모드 전환 탭 */}
+        <div className="flex gap-1.5 items-center">
           <button
-            onClick={() => mode !== 'AS-IS' && handleSwitchToAsIs()}
-            title="AS-IS 분석 모드"
-            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              mode === 'AS-IS'
-                ? 'bg-blue-600/30 text-blue-300'
-                : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
-            }`}
+            onClick={handleGoHome}
+            title="처음 화면으로"
+            className="px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
+            style={{ background: 'rgba(22,32,50,0.9)', border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}
           >
-            AS-IS
+            ⌂ 처음으로
           </button>
-          <div className="w-px bg-slate-700" />
-          <button
-            onClick={() => mode !== 'TO-BE' && handleSwitchToBe()}
-            title="TO-BE 설계 모드"
-            className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              mode === 'TO-BE'
-                ? 'bg-purple-600/30 text-purple-300'
-                : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
-            }`}
-          >
-            TO-BE
-          </button>
+          {/* AS-IS / TO-BE 탭 — 항상 노출 */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-primary)', backdropFilter: 'blur(12px)' }}>
+            <button
+              onClick={() => mode !== 'AS-IS' && handleSwitchToAsIs()}
+              title="AS-IS 분석 모드"
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'AS-IS'
+                  ? 'bg-blue-600/30 text-blue-300'
+                  : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
+              }`}
+            >
+              AS-IS
+            </button>
+            <div className="w-px bg-slate-700" />
+            <button
+              onClick={() => mode !== 'TO-BE' && handleSwitchToBe()}
+              title="TO-BE 설계 모드"
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === 'TO-BE'
+                  ? 'bg-purple-600/30 text-purple-300'
+                  : 'bg-slate-800/80 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'
+              }`}
+            >
+              TO-BE
+            </button>
+          </div>
         </div>
       </div>
     </div>
