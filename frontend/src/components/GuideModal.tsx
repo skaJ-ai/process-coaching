@@ -184,15 +184,15 @@ export default function GuideModal({ onClose }: GuideModalProps) {
           {slide.type === 'hero' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="text-8xl mb-8">🤖</div>
-              <h1 className="text-5xl font-bold text-slate-100 mb-4" style={{ wordBreak: 'keep-all' }}>{slide.title}</h1>
-              <p className="text-xl text-slate-400" style={{ wordBreak: 'keep-all' }}>{slide.subtitle}</p>
+              <h1 className="text-5xl font-bold text-slate-100 mb-4 whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.title}</h1>
+              <p className="text-xl text-slate-400 whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.subtitle}</p>
             </div>
           )}
 
           {/* ── 2. Agenda ── */}
           {slide.type === 'agenda' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center whitespace-pre-line">{slide.title}</h2>
               <div className="grid grid-cols-2 gap-10 max-w-5xl mx-auto">
                 {slide.items.map(item => (
                   <div
@@ -206,8 +206,8 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                     <div className="text-7xl font-bold mb-5" style={{ color: item.number === '01' ? '#3b82f6' : '#fb7185' }}>
                       {item.number}
                     </div>
-                    <h3 className="text-xl font-bold text-slate-100 mb-3" style={{ wordBreak: 'keep-all' }}>{item.title}</h3>
-                    <p className="text-base text-slate-400" style={{ wordBreak: 'keep-all' }}>{item.subtitle}</p>
+                    <h3 className="text-xl font-bold text-slate-100 mb-3 whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{item.title}</h3>
+                    <p className="text-base text-slate-400 whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{item.subtitle}</p>
                   </div>
                 ))}
               </div>
@@ -217,7 +217,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
           {/* ── 3. Problem ── */}
           {slide.type === 'problem' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center max-w-4xl mx-auto" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center max-w-4xl mx-auto whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
               <div className="flex items-center justify-center gap-8 max-w-6xl mx-auto">
 
                 {/* 왼쪽: Logs — 여러 종이 겹침 */}
@@ -228,7 +228,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                     <span className="absolute text-5xl" style={{ top: 0, left: 0 }}>📄</span>
                   </div>
                   <div className="text-xl font-bold text-slate-300 mb-3">{slide.sections[0].label}</div>
-                  <p className="text-base text-slate-400 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[0].text}</p>
+                  <p className="text-base text-slate-400 leading-relaxed text-center whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.sections[0].text}</p>
                 </div>
 
                 <div className="text-5xl text-blue-500/40 font-bold">→</div>
@@ -237,7 +237,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                 <div className="flex flex-col items-center w-96 p-8 rounded-2xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-2 border-blue-500/30 shadow-xl">
                   <div className="text-8xl mb-5">{slide.sections[1].icon}</div>
                   <div className="text-2xl font-bold text-blue-100 mb-3">{slide.sections[1].label}</div>
-                  <p className="text-lg text-blue-200 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[1].text}</p>
+                  <p className="text-lg text-blue-200 leading-relaxed text-center whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.sections[1].text}</p>
                 </div>
 
                 <div className="text-5xl text-blue-500/40 font-bold">→</div>
@@ -246,7 +246,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                 <div className="flex flex-col items-center w-72 p-6 rounded-xl bg-slate-800/30 border border-slate-700/50">
                   <div className="text-6xl mb-5">{slide.sections[2].icon}</div>
                   <div className="text-xl font-bold text-slate-300 mb-3">{slide.sections[2].label}</div>
-                  <p className="text-base text-slate-400 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[2].text}</p>
+                  <p className="text-base text-slate-400 leading-relaxed text-center whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.sections[2].text}</p>
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                   <div key={idx} className="p-8 rounded-xl border border-slate-700 bg-slate-800/30">
                     <div className="text-5xl mb-4">{val.icon}</div>
                     <h3 className="text-xl font-bold text-slate-100 mb-3">{val.title}</h3>
-                    <p className="text-base text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{val.desc}</p>
+                    <p className="text-base text-slate-400 leading-relaxed whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{val.desc}</p>
                   </div>
                 ))}
               </div>
@@ -271,8 +271,8 @@ export default function GuideModal({ onClose }: GuideModalProps) {
           {/* ── 5. Method ── */}
           {slide.type === 'method' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-3 text-center max-w-4xl mx-auto" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
-              <p className="text-base text-slate-500 mb-10 text-center">{slide.subtitle}</p>
+              <h2 className="text-4xl font-bold text-slate-100 mb-3 text-center max-w-4xl mx-auto whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
+              <p className="text-base text-slate-500 mb-10 text-center whitespace-pre-line">{slide.subtitle}</p>
               {/* #5 process 박스에 큰 아이콘 추가 */}
               <div className="flex items-center justify-center gap-6 mb-10">
                 {slide.process.map((p, idx) => (
@@ -312,7 +312,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                   <div key={idx} className="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
                     <div className="text-4xl mb-3">{m.icon}</div>
                     <h4 className="text-base font-bold text-slate-200 mb-2">{m.title}</h4>
-                    <p className="text-sm text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{m.desc}</p>
+                    <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{m.desc}</p>
                   </div>
                 ))}
               </div>
@@ -337,7 +337,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                 ))}
               </div>
               <div className="max-w-3xl mx-auto p-8 rounded-xl bg-slate-800/40 border border-slate-700">
-                <p className="text-base text-slate-300 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.note}</p>
+                <p className="text-base text-slate-300 leading-relaxed text-center whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{slide.note}</p>
               </div>
             </div>
           )}
@@ -355,7 +355,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                       </div>
                       <h3 className="text-xl font-bold text-slate-100" style={{ wordBreak: 'keep-all' }}>{s.title}</h3>
                     </div>
-                    <p className="text-base text-slate-400 leading-relaxed mb-5" style={{ wordBreak: 'keep-all' }}>{s.desc}</p>
+                    <p className="text-base text-slate-400 leading-relaxed mb-5 whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{s.desc}</p>
                     <div className="flex-1 min-h-[300px] rounded-xl bg-gradient-to-br from-slate-800/70 to-slate-900/70 border-2 border-slate-700/50 shadow-inner overflow-hidden">
 
                       {/* Step 1: 셰이프 추가 */}
@@ -510,7 +510,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                     {/* #8 체크박스 대신 적합한 이모지 */}
                     <div className="text-5xl mb-4">{tip.icon}</div>
                     <h3 className="text-xl font-bold text-green-300 mb-3">{tip.title}</h3>
-                    <p className="text-base text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{tip.desc}</p>
+                    <p className="text-base text-slate-400 leading-relaxed whitespace-pre-line" style={{ wordBreak: 'keep-all' }}>{tip.desc}</p>
                   </div>
                 ))}
               </div>
