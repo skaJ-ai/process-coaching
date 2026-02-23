@@ -75,21 +75,21 @@ export default function QualityDashboard() {
         <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden mb-1.5">
           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: barColor }} />
         </div>
-        <div className="flex gap-3 text-[10px]">
+        <div className="flex items-center gap-3 text-[10px] leading-none">
           {pass > 0 && <span className="text-green-400">✓ {pass} 준수</span>}
           {warn > 0 && <span className="text-amber-400">💡 {warn} 개선가능</span>}
           {reject > 0 && <span className="text-[#f97316]">✏ {reject} 추천</span>}
           {unchecked > 0 && (
-            <>
+            <div className="flex items-center gap-1.5">
               <span className="text-slate-500">○ {unchecked} 미검증</span>
               <button
                 onClick={() => validateAllNodes()}
                 disabled={ls.active}
-                className="px-2 py-0.5 rounded border border-violet-500/40 text-violet-300 hover:bg-violet-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-[2px] rounded border border-violet-500/40 text-[10px] leading-none text-violet-300 hover:bg-violet-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {ls.active ? '⚙ 검증 중...' : '검증하기'}
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
