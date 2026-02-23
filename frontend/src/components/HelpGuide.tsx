@@ -24,7 +24,7 @@ const content: Record<string, { title: string; desc: string }[]> = {
     { title: '분류 색상', desc: '셰이프 우클릭 → 분류 색상. As-Is / Digital Worker / SSC 이관 / 삭제 대상 / 신규 추가.' },
     { title: 'L7 자동 검증', desc: '노드 추가/수정 후 3초 뒤 자동 검증 시작. 상단 품질 대시보드에서 현황 확인.' },
     { title: '셀프 루프', desc: '셰이프에서 같은 셰이프로 연결하면 루프 화살표 자동 표시.' },
-    { title: 'PDD 생성', desc: '관리자 모드(Ctrl+Shift+A)에서 📄 PDD 버튼으로 프로세스 정의서 자동 생성.' },
+    { title: 'PDD 생성', desc: 'TO-BE 설계 모드에서 좌측 패널 상단의 📄 PDD 버튼으로 프로세스 정의서 자동 생성.' },
     { title: '다중 선택', desc: 'Shift + 클릭으로 여러 셰이프 선택. 파란 글로우 효과.' },
     { title: '가져오기/내보내기', desc: '📤 내보내기(JSON). 셋업 화면에서 📂 JSON 가져오기.' },
   ],
@@ -38,7 +38,6 @@ const content: Record<string, { title: string; desc: string }[]> = {
     { title: '더블클릭 (엣지)', desc: '라벨 편집' },
     { title: '우클릭 (빈 공간)', desc: '셰이프 팔레트' },
     { title: '우클릭 (노드)', desc: '편집 메뉴 + 분류 색상' },
-    { title: 'Ctrl + Shift + A', desc: '관리자 모드 토글 (PM 전용)' },
   ],
 };
 
@@ -51,7 +50,7 @@ export default function HelpGuide({ onClose }: Props) {
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-primary)' }}>
-          <h3 className="text-base font-bold text-slate-200">📖 사용법 가이드</h3>
+          <h3 className="text-base font-bold text-slate-200">✏️ 드로잉 가이드</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg">✕</button>
         </div>
         <div className="flex gap-1 px-6 pt-3">
