@@ -76,9 +76,9 @@ export default function QualityDashboard() {
           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: barColor }} />
         </div>
         <div className="flex items-center gap-3 text-[10px] leading-none">
-          {pass > 0 && <span className="text-green-400">✓ {pass} 준수</span>}
-          {warn > 0 && <span className="text-amber-400">💡 {warn} 개선가능</span>}
-          {reject > 0 && <span className="text-[#f97316]">✏ {reject} 추천</span>}
+          {pass > 0 && <span className="flex items-center gap-1 text-green-400"><span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />{pass}</span>}
+          {warn > 0 && <span className="flex items-center gap-1 text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />{warn}</span>}
+          {reject > 0 && <span className="flex items-center gap-1 text-red-600"><span className="w-2 h-2 rounded-full bg-red-600 flex-shrink-0" />{reject}</span>}
           {unchecked > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500">○ {unchecked} 미검증</span>

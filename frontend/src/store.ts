@@ -420,7 +420,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
     const fail = items.filter(r => !r.pass).length;
-    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: ✓${ok} 준수 | 💡${warn} 개선 | ✏${fail} 추천`, timestamp: Date.now() });
+    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: 🟢${ok} 🟡${warn} 🔴${fail}`, timestamp: Date.now() });
     // v5.2: celebrate if all pass
     setTimeout(() => get().celebrateL7Success(), 500);
   },
@@ -559,7 +559,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
     let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: '플로우 분석 중...', startTime: Date.now(), elapsed: 0, requestCount: newCount } });
-    addMessage({ id: generateId('msg'), role: 'user', text: '🔍 플로우 분석 요청', timestamp: Date.now() });
+    addMessage({ id: generateId('msg'), role: 'user', text: '🔍 전체 흐름 검토 요청', timestamp: Date.now() });
     try {
       debugTrace('review:start', { nodeCount: nodes.length, edgeCount: edges.length });
       const { nodes: sn, edges: se } = serialize(nodes, edges);

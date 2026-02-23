@@ -182,12 +182,12 @@ export function validateL7Label(
     ));
   }
 
-  // ── R-08: 기준값 누락 (decision만) ──
+  // ── R-08: 기준값 누락 (decision만, suggestion으로 완화) ──
   if (nodeType === 'decision' && !hasDecisionCriteria(text)) {
     issues.push(issue(
-      'R-08', 'warning', '기준값 누락',
+      'R-08', 'suggestion', '기준값 참고',
       '분기 기준이 드러나지 않아 판단 조건이 모호할 수 있어요',
-      "Decision 5패턴 중 하나를 사용해보세요: '~여부'(범용), '~인가?'(유형 판별), '~가 있는가?'(존재 확인), '~되어 있는가?'(상태 확인), 'D-N 이전인가?'(기한 기준)",
+      "패턴 예시: '~여부'(범용), '~인가?/한가?'(유형 판별), '~가 있는가?'(존재 확인), '유형/종류'(분류형), 'D-N 이전인가?'(기한 기준)",
     ));
   }
 

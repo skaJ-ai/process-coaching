@@ -18,6 +18,7 @@ export default function Toolbar() {
 
   const saveStatus = useStore((s) => s.saveStatus);
   const lastSaved = useStore((s) => s.lastSaved);
+  const saveDraft = useStore((s) => s.saveDraft);
   const nodes = useStore((s) => s.nodes);
   const dividerYs = useStore((s) => s.dividerYs);
   const setDividerYs = useStore((s) => s.setDividerYs);
@@ -165,9 +166,11 @@ export default function Toolbar() {
 
     {/* 우측 상단 컨트롤 패널 */}
     <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
-      {/* 저장 상태 뱃지 */}
-      <div
-        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400"
+      {/* 저장 상태 뱃지 — 클릭 시 임시저장 (Ctrl+S와 동일) */}
+      <button
+        onClick={saveDraft}
+        title="임시저장 (Ctrl+S)"
+        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
         style={{
           background: 'rgba(22,32,50,0.95)',
           border: '1px solid var(--border-primary)',
@@ -182,7 +185,7 @@ export default function Toolbar() {
         </div>
         <div className="w-px h-4 bg-slate-700" />
         <span className="font-medium">{pc}P {dc}D {sc}S</span>
-      </div>
+      </button>
       {/* 처음으로 / TO-BE 전환 */}
       <div className="flex gap-1.5">
         <button

@@ -86,6 +86,9 @@ export const DECISION_HINTS: string[] = [
   '?',
   '인가',
   '인지',
+  '한가',
+  '있나',
+  '되나',
   '이상',
   '이하',
   '초과',
@@ -94,4 +97,8 @@ export const DECISION_HINTS: string[] = [
   '반려',
   '가능',
   '불가',
+  '유형',
+  '종류',
+  '경우',
+  '단계',
 ];
