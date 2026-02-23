@@ -12,6 +12,9 @@ export default function Toolbar() {
   const hi = useStore((s) => s.historyIndex);
   const hl = useStore((s) => s.history.length);
   const mode = useStore((s) => s.mode);
+  const setMode = useStore((s) => s.setMode);
+  const addMessage = useStore((s) => s.addMessage);
+  const resetToSetup = useStore((s) => s.resetToSetup);
 
   const saveStatus = useStore((s) => s.saveStatus);
   const lastSaved = useStore((s) => s.lastSaved);
@@ -23,6 +26,24 @@ export default function Toolbar() {
 
   const laneActive = dividerYs.length > 0;
   const workNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
+  const hasEnd = nodes.some((n) => n.data.nodeType === 'end');
+  const canSwitchToBe = mode === 'AS-IS' && hasEnd;
+
+  const handleGoHome = () => {
+    if (!confirm('처음 화면으로 돌아가시겠습니까?\n현재 작업은 자동 저장되며, 복구 화면에서 불러올 수 있습니다.')) return;
+    resetToSetup();
+  };
+
+  const handleSwitchToBe = () => {
+    setMode('TO-BE');
+    addMessage({
+      id: `mode-switch-${Date.now()}`,
+      role: 'bot',
+      timestamp: Date.now(),
+      text: '🎯 TO-BE 설계 모드로 전환되었습니다!\n\n이제 개선된 프로세스를 설계할 수 있어요. 노드를 선택하고 카테고리를 지정해보세요:\n• 🟢 현행 유지 (as_is)\n• 🔵 디지털 워커 (digital_worker)\n• 🟡 SSC 이관 (ssc_transfer)\n• 🔴 삭제 대상 (delete_target)\n• 🟣 신규 추가 (new_addition)',
+      quickQueries: ['자동화 가능한 업무는?', 'PDD 생성하기', 'TO-BE 설계 팁을 알려줘']
+    });
+  };
 
   const handleToggleLane = () => {
     setDividerYs(laneActive ? [] : [400]);
@@ -142,23 +163,55 @@ export default function Toolbar() {
       )}
     </div>
 
-    {/* 저장 상태 뱃지 (우측 상단) */}
-    <div
-      className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 text-xs text-slate-400"
-      style={{
-        background: 'rgba(22,32,50,0.95)',
-        border: '1px solid var(--border-primary)',
-        borderRadius: 10,
-        backdropFilter: 'blur(12px)',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
-      }}
-    >
-      <div className="flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />
-        {savedLabel && <span className="text-slate-500">{savedLabel}</span>}
+    {/* 우측 상단 컨트롤 패널 */}
+    <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+      {/* 저장 상태 뱃지 */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400"
+        style={{
+          background: 'rgba(22,32,50,0.95)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 10,
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusDot }} />
+          {savedLabel && <span className="text-slate-500">{savedLabel}</span>}
+        </div>
+        <div className="w-px h-4 bg-slate-700" />
+        <span className="font-medium">{pc}P {dc}D {sc}S</span>
       </div>
-      <div className="w-px h-4 bg-slate-700" />
-      <span className="font-medium">{pc}P {dc}D {sc}S</span>
+      {/* 처음으로 / TO-BE 전환 */}
+      <div className="flex gap-1.5">
+        <button
+          onClick={handleGoHome}
+          title="처음 화면으로"
+          className="px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
+          style={{
+            background: 'rgba(22,32,50,0.9)',
+            border: '1px solid var(--border-primary)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          ⌂ 처음으로
+        </button>
+        {canSwitchToBe && (
+          <button
+            onClick={handleSwitchToBe}
+            title="TO-BE 설계 모드로 전환"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-purple-300 hover:text-purple-200 transition-colors"
+            style={{
+              background: 'rgba(22,32,50,0.9)',
+              border: '1px solid rgba(168,85,247,0.4)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            🎯 TO-BE 전환
+          </button>
+        )}
+      </div>
     </div>
 
     {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
