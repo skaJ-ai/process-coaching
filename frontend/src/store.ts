@@ -381,6 +381,8 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!targets.length) { addMessage({ id: generateId('msg'), role: 'bot', text: '검증할 노드가 없습니다.', timestamp: Date.now() }); return; }
     let newCount = (loadingState.requestCount || 0) + 1;
     set({ loadingState: { active: true, message: `L7 검증 (0/${targets.length})`, startTime: Date.now(), elapsed: 0, requestCount: newCount } });
+    // React가 로딩 상태를 실제로 렌더할 수 있도록 한 프레임 양보
+    await new Promise(r => setTimeout(r, 0));
 
     // Parallel Execution (Batch 4)
     const BATCH_SIZE = 4;
@@ -418,7 +420,10 @@ export const useStore = create<AppStore>((set, get) => ({
     const ok = items.filter(r => r.pass && !r.issues.some(i => i.severity === 'warning')).length;
     const warn = items.filter(r => r.pass && r.issues.some(i => i.severity === 'warning')).length;
     const fail = items.filter(r => !r.pass).length;
-    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: 🟢${ok} 🟡${warn} 🔴${fail}`, timestamp: Date.now() });
+    // 플레이스홀더 라벨 등으로 검증 생략된 노드 수 안내
+    const skipped = targets.length - items.length;
+    const skippedNote = skipped > 0 ? ` · ⚪ ${skipped} 라벨 미입력(검증 생략)` : '';
+    addMessage({ id: generateId('msg'), role: 'bot', text: `✅ L7 검증 완료: 🟢${ok} 🟡${warn} 🔴${fail}${skippedNote}`, timestamp: Date.now() });
     // v5.2: celebrate if all pass
     setTimeout(() => get().celebrateL7Success(), 500);
   },
