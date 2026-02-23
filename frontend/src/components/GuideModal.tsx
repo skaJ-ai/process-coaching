@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface GuideModalProps {
   onClose: () => void;
@@ -25,7 +25,7 @@ const slides = [
     type: 'problem' as const,
     title: "지금 하는 일 중 '나만이 할 수 있는 일'은 얼마나 됩니까?",
     sections: [
-      { icon: '📄', label: 'Logs', text: 'HR 담당자의 하루는 반복/단순/비효율 업무로 가득 차 있습니다.' },
+      { label: 'Logs', text: 'HR 담당자의 하루는 반복·단순·비효율 업무로 가득 차 있습니다.' },
       { icon: '🧠', label: 'HR담당자', text: "그 안에서 정작 내가 '판단'하고 '기획'하는 시간은 얼마나 될까요?" },
       { icon: '✏️', label: 'Drawing', text: '이 툴은 그 비율을 바꾸기 위해 만들어졌습니다.' },
     ],
@@ -37,8 +37,8 @@ const slides = [
     values: [
       { icon: '👁️', title: 'Visibility', desc: '내 업무 전체를 처음으로 한 눈에 봅니다.' },
       { icon: '⚖️', title: 'Autonomy', desc: "'이 단계, 내가 해야 하나?' 스스로 판단할 수 있습니다." },
-      { icon: '🎯', title: 'Focus', desc: '반복/단순/비효율 업무는 AI, SSC가 맡고 나는 고부가가치 업무에 집중합니다.' },
-      { icon: '⚡', title: 'Efficiency', desc: 'AI 코칭을 통해 쉽고 빠르게 워크 플로우를 정리할 수 있습니다.' },
+      { icon: '🎯', title: 'Focus', desc: '반복·단순·비효율 업무는 AI, SSC가 맡고 나는 고부가가치 업무에 집중합니다.' },
+      { icon: '⚡', title: 'Efficiency', desc: 'AI 코칭을 통해 쉽고 빠르게 워크플로우를 정리할 수 있습니다.' },
     ],
   },
   {
@@ -47,9 +47,9 @@ const slides = [
     title: "기존 업무를 고치는 것이 아니라, '제로(0)'에서 다시 설계합니다",
     subtitle: 'AX 가속화를 위한 업무 프로세스 재설계',
     process: [
-      { label: 'HR 암묵지', sublabel: '(Implicit Knowledge)' },
-      { label: 'Zero Based Re-design', sublabel: '' },
-      { label: '데이터 자산', sublabel: '(Data Assets)' },
+      { label: 'HR 암묵지', sublabel: '(Implicit Knowledge)', icon: '🧠' },
+      { label: 'Zero Based Re-design', sublabel: '', icon: '⚙️' },
+      { label: '데이터 자산', sublabel: '(Data Assets)', icon: '📊' },
     ],
     methods: [
       { icon: '🔍', title: 'Micro Segmentation', desc: '업무 프로세스를 분해해야 비로소 불필요한 단계가 보입니다.' },
@@ -108,26 +108,10 @@ const slides = [
     type: 'tips' as const,
     title: '이것만 기억하세요',
     tips: [
-      {
-        icon: '✅',
-        title: 'One Shape, One Action',
-        desc: '한 셰이프 = 한 동작입니다. (두 가지 일을 한 칸에 넣지 마세요).',
-      },
-      {
-        icon: '✅',
-        title: 'Clear Criteria',
-        desc: '판단 노드엔 명확한 기준을 씁니다. 기준 없는 분기는 자동화가 불가능합니다.',
-      },
-      {
-        icon: '✅',
-        title: 'Ask AI',
-        desc: '막히면 챗봇에 즉시 질문하세요. AI가 다음 단계를 제안합니다.',
-      },
-      {
-        icon: '✅',
-        title: "Don't Stress",
-        desc: '완벽하게 그릴 필요는 없습니다. AI가 부족한 부분을 함께 채워줍니다.',
-      },
+      { icon: '☝️', title: 'One Shape, One Action', desc: '한 셰이프 = 한 동작입니다. 두 가지 일을 한 칸에 넣지 마세요.' },
+      { icon: '📐', title: 'Clear Criteria', desc: '판단 노드엔 명확한 기준을 씁니다. 기준 없는 분기는 자동화가 불가능합니다.' },
+      { icon: '🤖', title: 'Ask AI', desc: '막히면 챗봇에 즉시 질문하세요. AI가 다음 단계를 제안합니다.' },
+      { icon: '🌟', title: "Don't Stress", desc: '완벽하게 그릴 필요는 없습니다. AI가 부족한 부분을 함께 채워줍니다.' },
     ],
   },
   {
@@ -144,13 +128,18 @@ const slides = [
 export default function GuideModal({ onClose }: GuideModalProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const goNext = () => {
-    if (currentSlide < slides.length - 1) setCurrentSlide(currentSlide + 1);
-  };
+  // #1 방향키 네비게이션
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') setCurrentSlide(s => Math.min(s + 1, slides.length - 1));
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') setCurrentSlide(s => Math.max(s - 1, 0));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
-  const goPrev = () => {
-    if (currentSlide > 0) setCurrentSlide(currentSlide - 1);
-  };
+  const goNext = () => setCurrentSlide(s => Math.min(s + 1, slides.length - 1));
+  const goPrev = () => setCurrentSlide(s => Math.max(s - 1, 0));
 
   const slide = slides[currentSlide];
 
@@ -174,7 +163,10 @@ export default function GuideModal({ onClose }: GuideModalProps) {
               <p className="text-sm text-slate-500">Process Coaching AI Guide</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-xl px-2">✕</button>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-600">← → 방향키로 이동</span>
+            <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-xl px-2">✕</button>
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -186,18 +178,21 @@ export default function GuideModal({ onClose }: GuideModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-10 py-10">
+        <div className="flex-1 overflow-y-auto px-10 py-8">
+
+          {/* ── 1. Hero ── */}
           {slide.type === 'hero' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="text-8xl mb-8">🤖</div>
-              <h1 className="text-5xl font-bold text-slate-100 mb-4">{slide.title}</h1>
-              <p className="text-2xl text-slate-400">{slide.subtitle}</p>
+              <h1 className="text-5xl font-bold text-slate-100 mb-4" style={{ wordBreak: 'keep-all' }}>{slide.title}</h1>
+              <p className="text-xl text-slate-400" style={{ wordBreak: 'keep-all' }}>{slide.subtitle}</p>
             </div>
           )}
 
+          {/* ── 2. Agenda ── */}
           {slide.type === 'agenda' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
               <div className="grid grid-cols-2 gap-10 max-w-5xl mx-auto">
                 {slide.items.map(item => (
                   <div
@@ -208,83 +203,88 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                       border: item.number === '01' ? '2px solid rgba(59,130,246,0.3)' : '2px solid rgba(251,113,133,0.3)',
                     }}
                   >
-                    <div
-                      className="text-7xl font-bold mb-5"
-                      style={{ color: item.number === '01' ? '#3b82f6' : '#fb7185' }}
-                    >
+                    <div className="text-7xl font-bold mb-5" style={{ color: item.number === '01' ? '#3b82f6' : '#fb7185' }}>
                       {item.number}
                     </div>
-                    <h3 className="text-2xl font-bold text-slate-100 mb-3">{item.title}</h3>
-                    <p className="text-lg text-slate-400">{item.subtitle}</p>
+                    <h3 className="text-xl font-bold text-slate-100 mb-3" style={{ wordBreak: 'keep-all' }}>{item.title}</h3>
+                    <p className="text-base text-slate-400" style={{ wordBreak: 'keep-all' }}>{item.subtitle}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── 3. Problem ── */}
           {slide.type === 'problem' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center max-w-4xl mx-auto">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center max-w-4xl mx-auto" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
               <div className="flex items-center justify-center gap-8 max-w-6xl mx-auto">
-                {/* 왼쪽: Logs */}
+
+                {/* 왼쪽: Logs — 여러 종이 겹침 */}
                 <div className="flex flex-col items-center w-72 p-6 rounded-xl bg-slate-800/30 border border-slate-700/50">
-                  <div className="text-6xl mb-5">{slide.sections[0].icon}</div>
+                  <div className="relative w-20 h-16 mb-5">
+                    <span className="absolute text-5xl" style={{ top: 8, left: 8, opacity: 0.3, transform: 'rotate(-14deg)' }}>📄</span>
+                    <span className="absolute text-5xl" style={{ top: 4, left: 4, opacity: 0.55, transform: 'rotate(-7deg)' }}>📄</span>
+                    <span className="absolute text-5xl" style={{ top: 0, left: 0 }}>📄</span>
+                  </div>
                   <div className="text-xl font-bold text-slate-300 mb-3">{slide.sections[0].label}</div>
-                  <p className="text-lg text-slate-400 leading-relaxed text-center">{slide.sections[0].text}</p>
+                  <p className="text-base text-slate-400 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[0].text}</p>
                 </div>
 
-                {/* 화살표 */}
-                <div className="text-6xl text-blue-500/50 font-bold">→</div>
+                <div className="text-5xl text-blue-500/40 font-bold">→</div>
 
-                {/* 중앙: 사람 (크게) */}
+                {/* 중앙: HR담당자 */}
                 <div className="flex flex-col items-center w-96 p-8 rounded-2xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-2 border-blue-500/30 shadow-xl">
-                  <div className="text-9xl mb-6">{slide.sections[1].icon}</div>
-                  <div className="text-3xl font-bold text-blue-100 mb-4">{slide.sections[1].label}</div>
-                  <p className="text-xl text-blue-200 leading-relaxed text-center">{slide.sections[1].text}</p>
+                  <div className="text-8xl mb-5">{slide.sections[1].icon}</div>
+                  <div className="text-2xl font-bold text-blue-100 mb-3">{slide.sections[1].label}</div>
+                  <p className="text-lg text-blue-200 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[1].text}</p>
                 </div>
 
-                {/* 화살표 */}
-                <div className="text-6xl text-blue-500/50 font-bold">→</div>
+                <div className="text-5xl text-blue-500/40 font-bold">→</div>
 
                 {/* 오른쪽: Drawing */}
                 <div className="flex flex-col items-center w-72 p-6 rounded-xl bg-slate-800/30 border border-slate-700/50">
                   <div className="text-6xl mb-5">{slide.sections[2].icon}</div>
                   <div className="text-xl font-bold text-slate-300 mb-3">{slide.sections[2].label}</div>
-                  <p className="text-lg text-slate-400 leading-relaxed text-center">{slide.sections[2].text}</p>
+                  <p className="text-base text-slate-400 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.sections[2].text}</p>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ── 4. Value ── */}
           {slide.type === 'value' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
               <div className="grid grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {slide.values.map((val, idx) => (
                   <div key={idx} className="p-8 rounded-xl border border-slate-700 bg-slate-800/30">
                     <div className="text-5xl mb-4">{val.icon}</div>
-                    <h3 className="text-2xl font-bold text-slate-100 mb-3">{val.title}</h3>
-                    <p className="text-lg text-slate-400 leading-relaxed break-keep">{val.desc}</p>
+                    <h3 className="text-xl font-bold text-slate-100 mb-3">{val.title}</h3>
+                    <p className="text-base text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{val.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── 5. Method ── */}
           {slide.type === 'method' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-4 text-center max-w-4xl mx-auto">{slide.title}</h2>
-              <p className="text-lg text-slate-500 mb-12 text-center">{slide.subtitle}</p>
-              <div className="flex items-center justify-center gap-6 mb-12">
+              <h2 className="text-4xl font-bold text-slate-100 mb-3 text-center max-w-4xl mx-auto" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
+              <p className="text-base text-slate-500 mb-10 text-center">{slide.subtitle}</p>
+              {/* #5 process 박스에 큰 아이콘 추가 */}
+              <div className="flex items-center justify-center gap-6 mb-10">
                 {slide.process.map((p, idx) => (
                   <React.Fragment key={idx}>
                     <div className="text-center">
-                      <div className="px-8 py-6 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 shadow-lg">
-                        <div className="font-bold text-slate-100 text-lg break-keep">{p.label}</div>
-                        <div className="text-base text-slate-500 mt-2">{p.sublabel}</div>
+                      <div className="px-8 py-5 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 shadow-lg">
+                        <div className="text-4xl mb-2">{p.icon}</div>
+                        <div className="font-bold text-slate-100 text-base" style={{ wordBreak: 'keep-all' }}>{p.label}</div>
+                        {p.sublabel && <div className="text-sm text-slate-500 mt-1">{p.sublabel}</div>}
                       </div>
                     </div>
-                    {idx < slide.process.length - 1 && <div className="text-5xl text-slate-500 font-bold">→</div>}
+                    {idx < slide.process.length - 1 && <div className="text-4xl text-slate-500 font-bold">→</div>}
                   </React.Fragment>
                 ))}
               </div>
@@ -292,17 +292,18 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                 {slide.methods.map((m, idx) => (
                   <div key={idx} className="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
                     <div className="text-4xl mb-3">{m.icon}</div>
-                    <h4 className="text-lg font-bold text-slate-200 mb-2">{m.title}</h4>
-                    <p className="text-base text-slate-400 leading-relaxed break-keep">{m.desc}</p>
+                    <h4 className="text-base font-bold text-slate-200 mb-2">{m.title}</h4>
+                    <p className="text-sm text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{m.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── 6. Howto ── */}
           {slide.type === 'howto' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
               <div className="flex items-center justify-center gap-4 mb-10">
                 {slide.steps.map((s, idx) => (
                   <React.Fragment key={s.num}>
@@ -310,201 +311,167 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                       <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-3xl mb-3">
                         {s.icon}
                       </div>
-                      <div className="text-base font-medium text-slate-300 text-center max-w-[140px]">{s.label}</div>
+                      <div className="text-base font-medium text-slate-300 text-center max-w-[140px]" style={{ wordBreak: 'keep-all' }}>{s.label}</div>
                     </div>
                     {idx < slide.steps.length - 1 && <div className="text-3xl text-slate-600 mb-6">→</div>}
                   </React.Fragment>
                 ))}
               </div>
               <div className="max-w-3xl mx-auto p-8 rounded-xl bg-slate-800/40 border border-slate-700">
-                <p className="text-lg text-slate-300 leading-relaxed break-keep text-center">{slide.note}</p>
+                <p className="text-base text-slate-300 leading-relaxed text-center" style={{ wordBreak: 'keep-all' }}>{slide.note}</p>
               </div>
             </div>
           )}
 
+          {/* ── 7 & 8. Tutorial ── */}
           {slide.type === 'tutorial' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
-              <div className="grid grid-cols-2 gap-12 max-w-6xl mx-auto">
+              <h2 className="text-3xl font-bold text-slate-100 mb-8 text-center" style={{ wordBreak: 'keep-all' }}>{slide.title}</h2>
+              <div className="grid grid-cols-2 gap-10 max-w-6xl mx-auto">
                 {slide.steps.map(s => (
                   <div key={s.num} className="flex flex-col">
-                    <div className="mb-6 flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center text-white font-bold text-xl">
+                    <div className="mb-4 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
                         {s.num}
                       </div>
-                      <h3 className="text-2xl font-bold text-slate-100">{s.title}</h3>
+                      <h3 className="text-xl font-bold text-slate-100" style={{ wordBreak: 'keep-all' }}>{s.title}</h3>
                     </div>
-                    <p className="text-lg text-slate-400 leading-relaxed break-keep mb-6">{s.desc}</p>
-                    <div className="flex-1 min-h-[320px] rounded-xl bg-gradient-to-br from-slate-800/70 to-slate-900/70 border-2 border-slate-700/50 p-7 shadow-inner">
+                    <p className="text-base text-slate-400 leading-relaxed mb-5" style={{ wordBreak: 'keep-all' }}>{s.desc}</p>
+                    <div className="flex-1 min-h-[300px] rounded-xl bg-gradient-to-br from-slate-800/70 to-slate-900/70 border-2 border-slate-700/50 shadow-inner overflow-hidden">
+
+                      {/* Step 1: 셰이프 추가 */}
                       {s.num === 1 && (
-                        <svg viewBox="0 0 400 240" className="w-full h-full">
-                          {/* Canvas background */}
-                          <rect width="400" height="240" fill="#0f172a" rx="8"/>
-                          <rect width="400" height="240" fill="url(#dots)" opacity="0.3"/>
+                        <svg viewBox="0 0 400 260" className="w-full h-full">
                           <defs>
-                            <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <pattern id="dots1" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
                               <circle cx="2" cy="2" r="1" fill="#1e293b"/>
                             </pattern>
-                          </defs>
-
-                          {/* Start node */}
-                          <circle cx="200" cy="40" r="20" fill="none" stroke="#22c55e" strokeWidth="2"/>
-                          <text x="200" y="45" textAnchor="middle" fill="#22c55e" fontSize="12" fontWeight="600">시작</text>
-
-                          {/* Process node 1 */}
-                          <rect x="110" y="90" width="180" height="50" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="200" y="120" textAnchor="middle" fill="#93c5fd" fontSize="14" fontWeight="500">요청서를 접수한다</text>
-
-                          {/* Process node 2 (being added - dashed) */}
-                          <rect x="110" y="170" width="180" height="50" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4 2" opacity="0.6"/>
-                          <text x="200" y="200" textAnchor="middle" fill="#93c5fd" fontSize="14" fontWeight="500" opacity="0.6">요청 요건을 확인한다</text>
-
-                          {/* Arrow */}
-                          <path d="M 200 60 L 200 90" stroke="#334155" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-                          <defs>
-                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                              <polygon points="0 0, 10 3, 0 6" fill="#334155"/>
+                            <marker id="arr1" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                              <polygon points="0 0, 6 3, 0 6" fill="#475569"/>
                             </marker>
                           </defs>
-
-                          {/* Cursor/Hand icon */}
-                          <g transform="translate(320, 190)">
-                            <circle cx="0" cy="0" r="18" fill="#8b5cf6" opacity="0.2"/>
-                            <text x="0" y="6" textAnchor="middle" fill="#a78bfa" fontSize="20">👆</text>
-                          </g>
+                          <rect width="400" height="260" fill="#0f172a" rx="8"/>
+                          <rect width="400" height="260" fill="url(#dots1)" opacity="0.3"/>
+                          {/* Start */}
+                          <circle cx="200" cy="36" r="18" fill="none" stroke="#22c55e" strokeWidth="2"/>
+                          <text x="200" y="41" textAnchor="middle" fill="#22c55e" fontSize="11" fontWeight="600">시작</text>
+                          {/* Arrow */}
+                          <line x1="200" y1="54" x2="200" y2="82" stroke="#475569" strokeWidth="1.5" markerEnd="url(#arr1)"/>
+                          {/* P1 */}
+                          <rect x="110" y="82" width="180" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="200" y="110" textAnchor="middle" fill="#93c5fd" fontSize="13" fontWeight="500">요청서를 접수한다</text>
+                          {/* P2 (dashed, being added) */}
+                          <rect x="110" y="166" width="180" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2" strokeDasharray="5 3" opacity="0.5"/>
+                          <text x="200" y="194" textAnchor="middle" fill="#93c5fd" fontSize="13" fontWeight="500" opacity="0.5">요청 요건을 확인한다</text>
+                          {/* Hand cursor */}
+                          <circle cx="320" cy="195" r="18" fill="#8b5cf6" opacity="0.15"/>
+                          <text x="320" y="203" textAnchor="middle" fill="#a78bfa" fontSize="22">👆</text>
                         </svg>
                       )}
+
+                      {/* Step 2: 연결 */}
                       {s.num === 2 && (
-                        <svg viewBox="0 0 400 240" className="w-full h-full">
-                          <rect width="400" height="240" fill="#0f172a" rx="8"/>
-                          <rect width="400" height="240" fill="url(#dots2)" opacity="0.3"/>
+                        <svg viewBox="0 0 400 260" className="w-full h-full">
                           <defs>
                             <pattern id="dots2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
                               <circle cx="2" cy="2" r="1" fill="#1e293b"/>
                             </pattern>
-                          </defs>
-
-                          {/* Process node 1 */}
-                          <rect x="110" y="30" width="180" height="50" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="200" y="60" textAnchor="middle" fill="#93c5fd" fontSize="14" fontWeight="500">요청서를 접수한다</text>
-
-                          {/* Connection line */}
-                          <path d="M 200 80 L 200 110" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#arrow2)"/>
-                          <defs>
-                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                              <polygon points="0 0, 10 3, 0 6" fill="#3b82f6"/>
+                            <marker id="arr2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                              <polygon points="0 0, 6 3, 0 6" fill="#3b82f6"/>
                             </marker>
                           </defs>
-
-                          {/* Process node 2 */}
-                          <rect x="110" y="110" width="180" height="50" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="200" y="140" textAnchor="middle" fill="#93c5fd" fontSize="14" fontWeight="500">요청 요건을 확인한다</text>
-
-                          {/* Connection line 2 */}
-                          <path d="M 200 160 L 200 190" stroke="#3b82f6" strokeWidth="3" markerEnd="url(#arrow3)"/>
-                          <defs>
-                            <marker id="arrow3" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                              <polygon points="0 0, 10 3, 0 6" fill="#3b82f6"/>
-                            </marker>
-                          </defs>
-
-                          {/* Process node 3 */}
-                          <rect x="110" y="190" width="180" height="50" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="200" y="220" textAnchor="middle" fill="#93c5fd" fontSize="14" fontWeight="500">처리 결과를 안내한다</text>
-
-                          {/* Flow indicator */}
-                          <text x="320" y="130" fill="#a78bfa" fontSize="18">✓</text>
-                          <text x="310" y="155" fill="#94a3b8" fontSize="11">흐름 완성</text>
+                          <rect width="400" height="260" fill="#0f172a" rx="8"/>
+                          <rect width="400" height="260" fill="url(#dots2)" opacity="0.3"/>
+                          {/* P1 */}
+                          <rect x="110" y="22" width="180" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="200" y="50" textAnchor="middle" fill="#93c5fd" fontSize="13" fontWeight="500">요청서를 접수한다</text>
+                          {/* Arrow */}
+                          <line x1="200" y1="68" x2="200" y2="94" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr2)"/>
+                          {/* P2 */}
+                          <rect x="110" y="94" width="180" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="200" y="122" textAnchor="middle" fill="#93c5fd" fontSize="13" fontWeight="500">요청 요건을 확인한다</text>
+                          {/* Arrow */}
+                          <line x1="200" y1="140" x2="200" y2="166" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr2)"/>
+                          {/* P3 */}
+                          <rect x="110" y="166" width="180" height="46" rx="8" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="200" y="194" textAnchor="middle" fill="#93c5fd" fontSize="13" fontWeight="500">처리 결과를 안내한다</text>
+                          {/* 흐름 완성 badge */}
+                          <text x="318" y="122" fill="#a78bfa" fontSize="18">✓</text>
+                          <text x="308" y="140" fill="#94a3b8" fontSize="11">흐름 완성</text>
                         </svg>
                       )}
+
+                      {/* Step 3: 판단 기준 — #6,#7 수정: 통일된 화살표, 아니오 겹침 해결 */}
                       {s.num === 3 && (
-                        <svg viewBox="0 0 400 240" className="w-full h-full">
-                          <rect width="400" height="240" fill="#0f172a" rx="8"/>
-                          <rect width="400" height="240" fill="url(#dots3)" opacity="0.3"/>
+                        <svg viewBox="0 0 400 260" className="w-full h-full">
                           <defs>
                             <pattern id="dots3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
                               <circle cx="2" cy="2" r="1" fill="#1e293b"/>
                             </pattern>
-                          </defs>
-
-                          <g transform="translate(-55 0)">
-                            {/* Process node */}
-                            <rect x="120" y="20" width="160" height="40" rx="6" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                            <text x="200" y="45" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="500">요청 요건을 확인한다</text>
-
-                            {/* Arrow down */}
-                            <path d="M 200 60 L 200 85" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrow4)"/>
-                            <defs>
-                              <marker id="arrow4" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                                <polygon points="0 0, 10 3, 0 6" fill="#3b82f6"/>
-                              </marker>
-                            </defs>
-
-                            {/* Decision node (diamond) */}
-                            <path d="M 200 85 L 270 120 L 200 155 L 130 120 Z" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="2"/>
-                            <text x="200" y="126" textAnchor="middle" fill="#fbbf24" fontSize="11" fontWeight="600">승인 여부</text>
-
-                            {/* Branch Yes */}
-                            <path d="M 200 155 L 200 180" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrow5)"/>
-                            <text x="210" y="170" fill="#22c55e" fontSize="10" fontWeight="600">예</text>
-                            <rect x="120" y="180" width="160" height="40" rx="6" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                            <text x="200" y="205" textAnchor="middle" fill="#93c5fd" fontSize="12">요청서를 승인한다</text>
-
-                            {/* Branch No */}
-                            <path d="M 270 120 L 300 120" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrow6)"/>
-                            <text x="286" y="114" fill="#f87171" fontSize="12" fontWeight="700">아니오</text>
-                            <rect x="300" y="100" width="120" height="40" rx="6" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                            <text x="360" y="125" textAnchor="middle" fill="#93c5fd" fontSize="12">요청서를 반려한다</text>
-                          </g>
-
-                          <defs>
-                            <marker id="arrow5" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                              <polygon points="0 0, 10 3, 0 6" fill="#3b82f6"/>
-                            </marker>
-                            <marker id="arrow6" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                              <polygon points="0 0, 10 3, 0 6" fill="#3b82f6"/>
+                            <marker id="arr3" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                              <polygon points="0 0, 6 3, 0 6" fill="#3b82f6"/>
                             </marker>
                           </defs>
+                          <rect width="400" height="260" fill="#0f172a" rx="8"/>
+                          <rect width="400" height="260" fill="url(#dots3)" opacity="0.3"/>
+                          {/* Process: 요청 요건을 확인한다 */}
+                          <rect x="100" y="16" width="160" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="180" y="42" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="500">요청 요건을 확인한다</text>
+                          {/* Arrow down */}
+                          <line x1="180" y1="58" x2="180" y2="74" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          {/* Diamond: 승인 여부 — center (180,114) */}
+                          <polygon points="180,74 245,114 180,154 115,114" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="2"/>
+                          <text x="180" y="119" textAnchor="middle" fill="#fbbf24" fontSize="12" fontWeight="600">승인 여부</text>
+                          {/* Arrow Yes (down) */}
+                          <line x1="180" y1="154" x2="180" y2="174" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          <text x="189" y="167" fill="#22c55e" fontSize="10" fontWeight="600">예</text>
+                          {/* Yes node */}
+                          <rect x="100" y="174" width="160" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="180" y="200" textAnchor="middle" fill="#93c5fd" fontSize="12">요청서를 승인한다</text>
+                          {/* Arrow No (right) — 충분한 간격으로 아니오 텍스트 겹침 해결 */}
+                          <line x1="245" y1="114" x2="272" y2="114" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          <text x="249" y="107" fill="#f87171" fontSize="10" fontWeight="600">아니오</text>
+                          {/* No node */}
+                          <rect x="272" y="93" width="118" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="331" y="119" textAnchor="middle" fill="#93c5fd" fontSize="11">요청서를 반려한다</text>
                         </svg>
                       )}
+
+                      {/* Step 4: AI 검토 */}
                       {s.num === 4 && (
-                        <svg viewBox="0 0 400 240" className="w-full h-full">
-                          <rect width="400" height="240" fill="#0f172a" rx="8"/>
-
-                          {/* Chat panel on right */}
-                          <rect x="220" y="20" width="160" height="200" rx="8" fill="#1a1f2e" stroke="#475569" strokeWidth="2"/>
-                          <rect x="220" y="20" width="160" height="30" rx="8" fill="#334155"/>
-                          <text x="300" y="40" textAnchor="middle" fill="#cbd5e1" fontSize="12" fontWeight="600">💬 AI 코치</text>
-
+                        <svg viewBox="0 0 400 260" className="w-full h-full">
+                          <defs>
+                            <marker id="arr4" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+                              <polygon points="0 0, 5 2.5, 0 5" fill="#3b82f6"/>
+                            </marker>
+                          </defs>
+                          <rect width="400" height="260" fill="#0f172a" rx="8"/>
+                          {/* Chat panel */}
+                          <rect x="218" y="18" width="164" height="210" rx="8" fill="#1a1f2e" stroke="#475569" strokeWidth="1.5"/>
+                          <rect x="218" y="18" width="164" height="30" rx="8" fill="#334155"/>
+                          <rect x="218" y="36" width="164" height="12" fill="#334155"/>
+                          <text x="300" y="38" textAnchor="middle" fill="#cbd5e1" fontSize="12" fontWeight="600">💬 AI 코치</text>
                           {/* Chat messages */}
-                          <rect x="230" y="60" width="140" height="35" rx="6" fill="#3b82f6" opacity="0.2"/>
-                          <text x="240" y="75" fill="#93c5fd" fontSize="9">전체 흐름을 검토했습니다.</text>
-                          <text x="240" y="87" fill="#93c5fd" fontSize="9">빠진 단계가 있어요 👇</text>
-
-                          <rect x="230" y="102" width="140" height="25" rx="6" fill="#8b5cf6" opacity="0.2"/>
-                          <text x="240" y="115" fill="#c4b5fd" fontSize="8">"승인 후 결과 통보"</text>
-                          <text x="240" y="124" fill="#c4b5fd" fontSize="8">단계를 추가해보세요</text>
-
-                          <rect x="230" y="135" width="140" height="20" rx="6" fill="#f59e0b" opacity="0.2"/>
-                          <text x="240" y="148" fill="#fbbf24" fontSize="8">⚠️ 모호한 표현 발견</text>
-
-                          {/* Mini flow on left */}
-                          <rect x="20" y="60" width="120" height="30" rx="4" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1.5"/>
-                          <text x="80" y="80" textAnchor="middle" fill="#93c5fd" fontSize="10">요청서를 접수한다</text>
-
-                          <path d="M 80 90 L 80 105" stroke="#3b82f6" strokeWidth="1.5"/>
-
-                          <rect x="20" y="105" width="120" height="30" rx="4" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1.5"/>
-                          <text x="80" y="125" textAnchor="middle" fill="#93c5fd" fontSize="10">요청 요건을 확인한다</text>
-
-                          <path d="M 80 135 L 80 150" stroke="#3b82f6" strokeWidth="1.5"/>
-
-                          <path d="M 80 150 L 110 170 L 80 190 L 50 170 Z" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="1.5"/>
-                          <text x="80" y="175" textAnchor="middle" fill="#fbbf24" fontSize="9">승인 여부</text>
-
-                          {/* Check icon */}
-                          <circle cx="180" y="140" r="16" fill="#22c55e" opacity="0.2"/>
-                          <text x="180" y="147" textAnchor="middle" fill="#22c55e" fontSize="18">✓</text>
+                          <rect x="228" y="58" width="144" height="36" rx="6" fill="#3b82f6" opacity="0.18"/>
+                          <text x="238" y="73" fill="#93c5fd" fontSize="9">전체 흐름을 검토했습니다.</text>
+                          <text x="238" y="86" fill="#93c5fd" fontSize="9">빠진 단계가 있어요 👇</text>
+                          <rect x="228" y="100" width="144" height="26" rx="6" fill="#8b5cf6" opacity="0.18"/>
+                          <text x="238" y="113" fill="#c4b5fd" fontSize="8">"승인 후 결과 통보" 단계를</text>
+                          <text x="238" y="123" fill="#c4b5fd" fontSize="8">추가해보세요</text>
+                          <rect x="228" y="132" width="144" height="20" rx="6" fill="#f59e0b" opacity="0.18"/>
+                          <text x="238" y="146" fill="#fbbf24" fontSize="8">⚠️ 모호한 표현 발견</text>
+                          {/* Mini flow */}
+                          <rect x="18" y="56" width="126" height="30" rx="5" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1.5"/>
+                          <text x="81" y="76" textAnchor="middle" fill="#93c5fd" fontSize="10">요청서를 접수한다</text>
+                          <line x1="81" y1="86" x2="81" y2="100" stroke="#3b82f6" strokeWidth="1.5" markerEnd="url(#arr4)"/>
+                          <rect x="18" y="100" width="126" height="30" rx="5" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1.5"/>
+                          <text x="81" y="120" textAnchor="middle" fill="#93c5fd" fontSize="10">요청 요건을 확인한다</text>
+                          <line x1="81" y1="130" x2="81" y2="144" stroke="#3b82f6" strokeWidth="1.5" markerEnd="url(#arr4)"/>
+                          <polygon points="81,144 115,164 81,184 47,164" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="1.5"/>
+                          <text x="81" y="169" textAnchor="middle" fill="#fbbf24" fontSize="9">승인 여부</text>
+                          {/* check */}
+                          <circle cx="180" cy="140" r="14" fill="#22c55e" opacity="0.15"/>
+                          <text x="180" y="146" textAnchor="middle" fill="#22c55e" fontSize="16">✓</text>
                         </svg>
                       )}
                     </div>
@@ -514,25 +481,28 @@ export default function GuideModal({ onClose }: GuideModalProps) {
             </div>
           )}
 
+          {/* ── 9. Tips ── */}
           {slide.type === 'tips' && (
             <div className="h-full flex flex-col justify-center">
-              <h2 className="text-4xl font-bold text-slate-100 mb-16 text-center">{slide.title}</h2>
+              <h2 className="text-4xl font-bold text-slate-100 mb-12 text-center">{slide.title}</h2>
               <div className="grid grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {slide.tips.map((tip, idx) => (
                   <div key={idx} className="p-8 rounded-xl border border-green-700/30 bg-green-900/10">
+                    {/* #8 체크박스 대신 적합한 이모지 */}
                     <div className="text-5xl mb-4">{tip.icon}</div>
-                    <h3 className="text-2xl font-bold text-green-300 mb-3">{tip.title}</h3>
-                    <p className="text-lg text-slate-400 leading-relaxed break-keep">{tip.desc}</p>
+                    <h3 className="text-xl font-bold text-green-300 mb-3">{tip.title}</h3>
+                    <p className="text-base text-slate-400 leading-relaxed" style={{ wordBreak: 'keep-all' }}>{tip.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── 10. Closing ── */}
           {slide.type === 'closing' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <h1 className="text-5xl font-bold text-slate-100 mb-10">{slide.title}</h1>
-              <p className="text-2xl text-slate-300 leading-relaxed max-w-4xl whitespace-pre-line mb-16">{slide.message}</p>
+              <h1 className="text-5xl font-bold text-slate-100 mb-10" style={{ wordBreak: 'keep-all' }}>{slide.title}</h1>
+              <p className="text-xl text-slate-300 leading-relaxed max-w-4xl whitespace-pre-line mb-16" style={{ wordBreak: 'keep-all' }}>{slide.message}</p>
               <button
                 onClick={onClose}
                 className="px-12 py-5 rounded-xl text-xl font-bold text-white transition-all hover:scale-105"
@@ -553,8 +523,15 @@ export default function GuideModal({ onClose }: GuideModalProps) {
           >
             ← 이전
           </button>
-          <div className="text-sm text-slate-500">
-            {currentSlide + 1} / {slides.length}
+          <div className="flex items-center gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentSlide(i)}
+                className="rounded-full transition-all"
+                style={{ width: i === currentSlide ? 20 : 7, height: 7, background: i === currentSlide ? '#3b82f6' : '#334155' }}
+              />
+            ))}
           </div>
           <button
             onClick={goNext}
