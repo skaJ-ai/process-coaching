@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Mode } from '../types';
 
@@ -7,9 +7,29 @@ interface ModeSelectorProps {
 }
 
 export default function ModeSelector({ onSelect }: ModeSelectorProps) {
+  const [loadingExample, setLoadingExample] = useState<Mode | null>(null);
+
   const handleSelect = (mode: Mode) => {
     useStore.getState().setMode(mode);
     onSelect(mode);
+  };
+
+  const handleLoadExample = async (mode: Mode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadingExample(mode);
+    const filename = mode === 'AS-IS' ? 'AS-IS_example.json' : 'TO-BE_example.json';
+    try {
+      const res = await fetch(`/flowchart/examples/${filename}`);
+      if (!res.ok) throw new Error('not found');
+      const json = await res.text();
+      useStore.getState().setMode(mode);
+      useStore.getState().importFlow(json);
+      onSelect(mode);
+    } catch {
+      alert(`예시 파일(${filename})을 찾을 수 없습니다.\nfrontend/public/examples/ 폴더에 파일을 넣어주세요.`);
+    } finally {
+      setLoadingExample(null);
+    }
   };
 
   return (
@@ -52,8 +72,15 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-700">
+            <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between">
               <span className="text-sm text-slate-400">추천 대상: 현황 파악, 문서화, 개선점 분석</span>
+              <button
+                onClick={(e) => handleLoadExample('AS-IS', e)}
+                disabled={loadingExample !== null}
+                className="flex-shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 disabled:opacity-40 transition-colors"
+              >
+                {loadingExample === 'AS-IS' ? '불러오는 중...' : '📂 예시 확인하기'}
+              </button>
             </div>
           </div>
 
@@ -88,8 +115,15 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-700">
+            <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between">
               <span className="text-sm text-slate-400">추천 대상: 프로세스 혁신, 디지털 전환, 자동화</span>
+              <button
+                onClick={(e) => handleLoadExample('TO-BE', e)}
+                disabled={loadingExample !== null}
+                className="flex-shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 disabled:opacity-40 transition-colors"
+              >
+                {loadingExample === 'TO-BE' ? '불러오는 중...' : '📂 예시 확인하기'}
+              </button>
             </div>
           </div>
         </div>
