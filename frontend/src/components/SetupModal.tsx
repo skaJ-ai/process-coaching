@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { hrModules } from '../data/processData';
+import GuideModal from './GuideModal';
 
 export default function SetupModal() {
   const setCtx = useStore(s => s.setProcessContext);
@@ -11,6 +12,7 @@ export default function SetupModal() {
   const [l5, setL5] = useState('');
   const [l6, setL6] = useState('');
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const mod = useMemo(() => hrModules.find(m => m.l4 === l4), [l4]);
   const task = useMemo(() => mod?.tasks.find(t => t.l5 === l5), [mod, l5]);
@@ -80,6 +82,7 @@ export default function SetupModal() {
         )}
 
         <div className="flex gap-2 mb-6">
+          <button onClick={() => setShowGuide(true)} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30">🎓 툴 소개</button>
           <button onClick={handleImport} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-700/30 border border-slate-600/40 text-slate-300 hover:bg-slate-700/50">📂 JSON 가져오기</button>
         </div>
 
@@ -123,6 +126,7 @@ export default function SetupModal() {
           {!ok && <p className="text-xs text-slate-500 mt-2 text-center">3개 항목을 모두 선택해주세요</p>}
         </div>
       </div>
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import L7GuideModal from './L7GuideModal';
+import GuideModal from './GuideModal';
 
 export default function Toolbar() {
   const [showL7Guide, setShowL7Guide] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const applyAutoLayout = useStore((s) => s.applyAutoLayout);
@@ -128,6 +130,13 @@ export default function Toolbar() {
       >
         📝 작성 가이드
       </button>
+      <button
+        onClick={() => setShowGuide(true)}
+        title="툴 소개 및 사용법"
+        className="px-2 py-1.5 rounded-lg text-xs font-semibold text-indigo-300 hover:bg-indigo-600/20 border border-indigo-500/30"
+      >
+        🎓 툴 소개
+      </button>
     </div>
 
     {/* 저장 상태 뱃지 (우측 상단) */}
@@ -150,6 +159,7 @@ export default function Toolbar() {
     </div>
 
     {showL7Guide && <L7GuideModal onClose={() => setShowL7Guide(false)} />}
+    {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
     </>
   );
 }
