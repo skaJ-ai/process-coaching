@@ -483,6 +483,10 @@ export const useStore = create<AppStore>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context: processContext || {}, nodes: sn })
       });
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        throw new Error(`HTTP ${r.status}: ${errText.slice(0, 200)}`);
+      }
       const data = await r.json();
       if (data.categorizations && Array.isArray(data.categorizations)) {
         const updatedNodes = nodes.map(n => {
