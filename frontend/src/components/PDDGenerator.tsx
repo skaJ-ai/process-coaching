@@ -94,7 +94,7 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
       const r = await fetch(`${API_BASE_URL}/pdd-insights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentNodes: processNodes.map(n => ({ id: n.id, type: n.data.nodeType, label: n.data.label, category: n.data.category, swimLaneId: n.data.swimLaneId })), currentEdges: edges.map(e => ({ source: e.source, target: e.target, label: e.label })), context: ctx || {} }),
+        body: JSON.stringify({ currentNodes: processNodes.map(n => ({ id: n.id, type: n.data.nodeType, label: n.data.label, category: n.data.category, swimLaneId: n.data.swimLaneId })), currentEdges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, label: e.label })), context: ctx || {} }),
       });
       if (!r.ok) {
         const errText = await r.text().catch(() => '');
