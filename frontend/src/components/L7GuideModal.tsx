@@ -113,7 +113,7 @@ export default function L7GuideModal({ onClose }: Props) {
               <Section title="필수 구조">
                 <Row sev="warning" label="종료 노드 필수" desc="프로세스 범위를 명확히 하려면 종료 노드가 최소 1개 있어야 합니다." />
                 <Row sev="warning" label="빈 라벨 방치" desc="'새 태스크' 같은 기본값은 반드시 구체적인 라벨로 바꿔주세요." />
-                <Row sev="warning" label="고아 노드" desc="어느 단계와도 연결되지 않은 노드는 플로우에서 제외된 것과 같습니다." />
+                <Row sev="warning" label="고립 노드" desc="어느 단계와도 연결되지 않은 노드는 플로우에서 제외된 것과 같습니다." />
               </Section>
               <Section title="분기/연결 규칙">
                 <Row sev="warning" label="암묵적 분기" desc="프로세스 노드에서 2개 이상 분기할 경우 판단 노드로 조건을 명시하세요." />

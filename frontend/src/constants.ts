@@ -6,8 +6,8 @@ export const NODE_DIMENSIONS: Record<string, { width: number; height: number }> 
   process: { width: 280, height: 60 },
   decision: { width: 160, height: 160 },
   subprocess: { width: 280, height: 60 },
-  start: { width: 60, height: 60 },
-  end: { width: 60, height: 60 },
+  start: { width: 80, height: 80 },  // 동적 크기 평균값
+  end: { width: 80, height: 80 },    // 동적 크기 평균값
 };
 
 export const LAYOUT_CONFIG = {
