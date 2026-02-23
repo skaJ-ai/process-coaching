@@ -50,9 +50,9 @@ export const StartNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
   return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }} onDoubleClick={ie.startEdit}>
+    <AllHandles color="#4ade80" />
     {ie.editing ? <textarea id={`start-label-${id}`} name={`start_label_${id}`} aria-label="시작 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
-    {[Position.Bottom, Position.Right, Position.Left, Position.Top].map(p => <Handle key={p} type="source" position={p} id={p.toLowerCase() + '-source'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#4ade80', border: '2px solid #0f1729', borderRadius: '50%', opacity: 0.5 }} />)}
   </div>);
 });
 StartNode.displayName = 'StartNode';
@@ -62,9 +62,9 @@ export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
   return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }} onDoubleClick={ie.startEdit}>
+    <AllHandles color="#f87171" />
     {ie.editing ? <textarea id={`end-label-${id}`} name={`end_label_${id}`} aria-label="종료 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
-    {[Position.Top, Position.Bottom, Position.Left, Position.Right].map(p => <Handle key={p} type="target" position={p} id={p.toLowerCase() + '-target'} style={{ [p === Position.Top ? 'top' : p === Position.Bottom ? 'bottom' : p === Position.Left ? 'left' : 'right']: -5, width: 14, height: 14, background: '#f87171', border: '2px solid #0f1729', borderRadius: '50%' }} />)}
   </div>);
 });
 EndNode.displayName = 'EndNode';
