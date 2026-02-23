@@ -9,15 +9,15 @@ const slides = [
     id: 1,
     type: 'hero' as const,
     title: 'HR Process Coaching AI 안내',
-    subtitle: 'HR 업무 프로세스 재설계를 위한 드로잉 Tool',
+    subtitle: 'AI-Native✨ 업무 프로세스 재설계를 위한 드로잉 Tool',
   },
   {
     id: 2,
     type: 'agenda' as const,
     title: 'WHY & HOW',
     items: [
-      { number: '01', title: 'Phase 1. 왜 이 툴을 써야 하는가?', subtitle: "'업무 프로세스 재설계' 이점 공유" },
-      { number: '02', title: 'Phase 2. 어떻게 쓰는가?', subtitle: "즉시 시작하는 '실행' 가이드" },
+      { number: '01', title: 'Phase 1. 왜 이 Tool을 써야 하는가?', subtitle: "업무 프로세스 '재설계' 이점 공유" },
+      { number: '02', title: 'Phase 2. 어떻게 Tool을 써야 하는가?', subtitle: "즉시 시작하는 '실행' 가이드" },
     ],
   },
   {
@@ -25,7 +25,7 @@ const slides = [
     type: 'problem' as const,
     title: "지금 하는 일 중 '나만이 할 수 있는 일'은 얼마나 됩니까?",
     sections: [
-      { label: 'Logs', text: 'HR 담당자의 하루는 반복·단순·비효율 업무로 가득 차 있습니다.' },
+      { label: 'Logs', text: 'HR 담당자의 하루는 반복·단순,\n비효율 업무로 가득 차 있습니다.' },
       { icon: '🧠', label: 'HR담당자', text: "그 안에서 정작 내가 '판단'하고 '기획'하는 시간은 얼마나 될까요?" },
       { icon: '✏️', label: 'Drawing', text: '이 툴은 그 비율을 바꾸기 위해 만들어졌습니다.' },
     ],
@@ -33,28 +33,28 @@ const slides = [
   {
     id: 4,
     type: 'value' as const,
-    title: '이 툴로 내가 얻게 되는 것',
+    title: '이 Tool로 내가 얻게 되는 것은?',
     values: [
       { icon: '👁️', title: 'Visibility', desc: '내 업무 전체를 처음으로 한 눈에 봅니다.' },
-      { icon: '⚖️', title: 'Autonomy', desc: "'이 단계, 내가 해야 하나?' 스스로 판단할 수 있습니다." },
-      { icon: '🎯', title: 'Focus', desc: '반복·단순·비효율 업무는 AI, SSC가 맡고 나는 고부가가치 업무에 집중합니다.' },
-      { icon: '⚡', title: 'Efficiency', desc: 'AI 코칭을 통해 쉽고 빠르게 워크플로우를 정리할 수 있습니다.' },
+      { icon: '⚖️', title: 'Autonomy', desc: "'이 단계, 꼭 내가 해야 하나?'를 스스로 판단할 수 있습니다." },
+      { icon: '🎯', title: 'Focus', desc: '반복·단순·비효율 업무는 Digital Worker(AI), SSC가 맡고\n나는 고부가가치 업무에 집중합니다.' },
+      { icon: '⚡', title: 'Efficiency', desc: 'AI Coaching을 통해 쉽고 빠르게, 효과적으로\n워크플로우를 분해하고 재조립할 수 있습니다.' },
     ],
   },
   {
     id: 5,
     type: 'method' as const,
-    title: "기존 업무를 고치는 것이 아니라, '제로(0)'에서 다시 설계합니다",
+    title: "기존 업무를 단순 나열하여 고치는 것이 아니라,\n'제로(0)'에서 다시 설계합니다",
     subtitle: 'AX 가속화를 위한 업무 프로세스 재설계',
     process: [
       { label: 'HR 암묵지', sublabel: '(Implicit Knowledge)', icon: '🧠' },
       { label: 'Zero Based Re-design', sublabel: '', icon: '⚙️' },
-      { label: '데이터 자산', sublabel: '(Data Assets)', icon: '📊' },
+      { label: '데이터 자산화', sublabel: '(Data Assets)', icon: '📊' },
     ],
     methods: [
-      { icon: '🔍', title: 'Micro Segmentation', desc: '업무 프로세스를 분해해야 비로소 불필요한 단계가 보입니다.' },
-      { icon: '⚠️', title: 'Inefficiency Detection', desc: '전체 플로우를 그려내야 비로소 비효율을 찾아낼 수 있습니다.' },
-      { icon: '⚖️', title: 'Decision Making', desc: '내가 할 것인가 / AI(SSC)에게 맡길 것인가 / 없앨 것인가' },
+      { icon: '🔍', title: 'Micro Segmentation', desc: '업무 프로세스를 분해해야 비로소\n불필요한 단계가 보입니다.' },
+      { icon: '⚠️', title: 'Inefficiency Detection', desc: '전체 플로우를 그려내야 비로소\n비효율을 찾아낼 수 있습니다.' },
+      { icon: '⚖️', title: 'Decision Making', desc: '내가 할 것인가?, AI(SSC)에게 맡길 것인가?,\n아니면 아예 없앨 것인가?' },
     ],
   },
   {
@@ -67,7 +67,7 @@ const slides = [
       { num: 3, icon: '◇', label: '판단 기준을 쓴다' },
       { num: 4, icon: '✨', label: 'AI 검토를 받는다' },
     ],
-    note: "복잡한 프로세스 모델링 기법(BPMN)을 배울 필요가 없습니다. '내가 실제로 하는 일'을 순서대로 한 동작씩 적으면 됩니다. Coaching AI가 정석을 보완하고 빠진 단계를 찾아줍니다.",
+    note: "복잡한 프로세스 모델링 기법(BPMN)을 배울 필요가 없습니다.\n'내가 실제로 하는 일'을 순서대로 한 동작씩 적으면 됩니다.\nCoaching AI가 내용을 보완하고 빠진 단계를 찾아줍니다.",
   },
   {
     id: 7,
@@ -77,12 +77,12 @@ const slides = [
       {
         num: 1,
         title: '단계를 추가한다',
-        desc: "내가 하는 동작 하나 = 셰이프 하나입니다. '급여를 조회한다', '결재를 요청한다'처럼 한 동작씩 넣습니다.",
+        desc: "내가 하는 동작 하나 = 셰이프 하나입니다.\n'급여를 조회한다', '결재를 요청한다'처럼 한 동작씩 넣습니다.",
       },
       {
         num: 2,
         title: '순서대로 연결한다',
-        desc: '동작들을 실제 순서대로 연결합니다. 흐름이 보이기 시작합니다.',
+        desc: '동작들을 실제 순서대로 연결합니다.\n흐름이 보이기 시작합니다.',
       },
     ],
   },
@@ -94,12 +94,12 @@ const slides = [
       {
         num: 3,
         title: '판단 기준을 쓴다',
-        desc: '분기가 있는 곳엔 "~여부", "~인가?" 형태로 판단 기준을 명시합니다. 기준이 보여야 자동화 가능 여부를 판단할 수 있습니다.',
+        desc: '분기가 있는 곳엔 "~여부", "~인가?" 형태로 판단 기준을 명시합니다.\n기준이 보여야 AI도입 또는 SSC이관 가능 여부를 판단할 수 있습니다.',
       },
       {
         num: 4,
         title: 'AI 검토를 받는다',
-        desc: "'전체 흐름 검토'를 누르면 AI가 빠진 단계와 모호한 표현을 즉시 짚어줍니다.",
+        desc: "'전체 흐름 검토'를 누르면 AI가 빠진 단계와 모호한 표현을 즉시 짚어줍니다.\nProcess Coaching AI와 함께 완성해나가면 됩니다.",
       },
     ],
   },
@@ -108,20 +108,20 @@ const slides = [
     type: 'tips' as const,
     title: '이것만 기억하세요',
     tips: [
-      { icon: '☝️', title: 'One Shape, One Action', desc: '한 셰이프 = 한 동작입니다. 두 가지 일을 한 칸에 넣지 마세요.' },
-      { icon: '📐', title: 'Clear Criteria', desc: '판단 노드엔 명확한 기준을 씁니다. 기준 없는 분기는 자동화가 불가능합니다.' },
-      { icon: '🤖', title: 'Ask AI', desc: '막히면 챗봇에 즉시 질문하세요. AI가 다음 단계를 제안합니다.' },
-      { icon: '🌟', title: "Don't Stress", desc: '완벽하게 그릴 필요는 없습니다. AI가 부족한 부분을 함께 채워줍니다.' },
+      { icon: '☝️', title: 'One Shape, One Action', desc: '한 셰이프 = 한 동작입니다.\n두 가지 일을 한 칸에 넣지 마세요.' },
+      { icon: '📐', title: 'Clear Criteria', desc: '판단 노드엔 명확한 기준을 씁니다.\n기준 없는 분기는 자동화가 불가능합니다.' },
+      { icon: '🤖', title: 'Ask AI', desc: '막히면 챗봇에 즉시 질문하세요.\nAI가 다음 단계를 제안합니다.' },
+      { icon: '🌟', title: "Don't Stress", desc: '완벽하게 그릴 필요는 없습니다.\nAI가 부족한 부분을 함께 채워줍니다.' },
     ],
   },
   {
     id: 10,
     type: 'closing' as const,
     title: '처음으로, 내 업무 전체를 내가 설계합니다',
-    message: `이 도구는 그림을 예쁘게 그리는 도구가 아닙니다.
+    message: `이 도구는 단순히 업무 프로세스를 예쁘게 그리는 도구가 아닙니다.\n
 지금까지 당연하게 해왔던 일들을 펼쳐놓고,
-'이 일이 정말 필요한가? 내가 해야 하는가?'를 스스로 묻는 도구입니다.
-이 질문에서 HR의 일하는 방식이 바뀝니다.`,
+'이 일이 정말 필요한가? 내가 해야 하는가?'를 스스로 묻는 도구입니다.\n
+이 질문에서 HR과 여러분의 일하는 방식이 바뀝니다.`,
   },
 ];
 
@@ -476,9 +476,9 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                           <text x="238" y="86" fill="#93c5fd" fontSize="9">빠진 단계가 있어요 👇</text>
                           <rect x="228" y="100" width="144" height="26" rx="6" fill="#8b5cf6" opacity="0.18"/>
                           <text x="238" y="113" fill="#c4b5fd" fontSize="8">"승인 후 결과 통보" 단계를</text>
-                          <text x="238" y="123" fill="#c4b5fd" fontSize="8">추가해보세요</text>
+                          <text x="238" y="123" fill="#c4b5fd" fontSize="8">추가해 볼까요?</text>
                           <rect x="228" y="132" width="144" height="20" rx="6" fill="#f59e0b" opacity="0.18"/>
-                          <text x="238" y="146" fill="#fbbf24" fontSize="8">⚠️ 모호한 표현 발견</text>
+                          <text x="238" y="146" fill="#fbbf24" fontSize="8">⚠️ 모호한 표현을 발견했어요.</text>
                           {/* Mini flow */}
                           <rect x="18" y="56" width="126" height="30" rx="5" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="1.5"/>
                           <text x="81" y="76" textAnchor="middle" fill="#93c5fd" fontSize="10">요청서를 접수한다</text>
@@ -527,7 +527,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                 className="px-12 py-5 rounded-xl text-xl font-bold text-white transition-all hover:scale-105"
                 style={{ background: 'linear-gradient(135deg, #2563eb, #8b5cf6)', boxShadow: '0 8px 32px rgba(37,99,235,0.4)' }}
               >
-                🚀 지금 시작하기
+                🚀 HR AX를 위한 '발자취' 남기러 가기
               </button>
             </div>
           )}
