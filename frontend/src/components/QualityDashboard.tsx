@@ -6,6 +6,7 @@ import type { LoadingState } from '../types';
 export default function QualityDashboard() {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
+  const mode = useStore(s => s.mode);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const validateAllNodes = useStore(s => s.validateAllNodes);
   const ls = useStore(s => s.loadingState) as LoadingState;
@@ -34,7 +35,7 @@ export default function QualityDashboard() {
   const warn = processNodes.filter(n => n.data.l7Status === 'warning').length;
   const reject = processNodes.filter(n => n.data.l7Status === 'reject').length;
   const unchecked = processNodes.filter(n => !n.data.l7Status || n.data.l7Status === 'none').length;
-  const struct = analyzeStructure(nodes, edges);
+  const struct = analyzeStructure(nodes, edges, mode);
   const structIssues = struct.issues.filter(i => {
     if (i.ruleId === 'S-01') return false;
     if (i.ruleId === 'S-03' && !hasEnd) return false;

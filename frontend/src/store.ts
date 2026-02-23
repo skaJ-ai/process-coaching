@@ -356,8 +356,6 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges } = get();
     const node = nodes.find(n => n.id === id);
     if (!node || ['start', 'end', 'subprocess'].includes(node.data.nodeType)) return null;
-    // Skip validation for self-loops (rework/looping tasks)
-    if (edges.some(e => e.source === id && e.target === id)) return null;
     // 기본 플레이스홀더 라벨 → 검증 없이 'none' 유지 (아직 내용 미입력 상태)
     const PLACEHOLDER_LABELS = new Set(['새 태스크', '새 단계', '분기 조건?', '판단 조건', 'L6 프로세스', '하위 절차']);
     if (PLACEHOLDER_LABELS.has((node.data.label || '').trim())) {

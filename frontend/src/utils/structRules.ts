@@ -3,7 +3,7 @@ import { FlowNodeData } from '../types';
 
 export type StructRuleId =
   | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05'
-  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12';
+  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12' | 'S-13';
 
 export interface StructIssue {
   ruleId: StructRuleId;
@@ -19,9 +19,12 @@ export interface StructAnalysisResult {
 
 const DEFAULT_LABELS = ['새 태스크', '새 판단', '새 서브프로세스', 'New Task'];
 
-export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): StructAnalysisResult {
+export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mode?: string | null): StructAnalysisResult {
   const issues: StructIssue[] = [];
   const flowNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
+  const deleteTargetIds = new Set(
+    mode === 'TO-BE' ? nodes.filter((n) => n.data.category === 'delete_target').map((n) => n.id) : []
+  );
 
   // ── S-01: 종료 노드 필수 ──
   const hasEnd = nodes.some((n) => n.data.nodeType === 'end');
@@ -49,13 +52,15 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
     });
   }
 
-  // ── S-03: 고아 노드 (연결 없는 노드) ──
+  // ── S-03: 고아 노드 (연결 없는 노드) — delete_target 제외 (고립이 정상) ──
   const connected = new Set<string>();
   for (const e of edges) {
     connected.add(e.source);
     connected.add(e.target);
   }
-  const orphanIds = flowNodes.filter((n) => !connected.has(n.id)).map((n) => n.id);
+  const orphanIds = flowNodes
+    .filter((n) => !connected.has(n.id) && !deleteTargetIds.has(n.id))
+    .map((n) => n.id);
   if (orphanIds.length > 0) {
     issues.push({
       ruleId: 'S-03',
@@ -65,9 +70,10 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
     });
   }
 
-  // ── S-04: 흐름 끊김 (process/decision에 나가는 연결 없음) ──
+  // ── S-04: 흐름 끊김 (process/decision에 나가는 연결 없음) — delete_target 제외 ──
   const noOutgoingIds = flowNodes
     .filter((n) => ['process', 'decision', 'subprocess'].includes(n.data.nodeType))
+    .filter((n) => !deleteTargetIds.has(n.id))
     .filter((n) => connected.has(n.id)) // 고아가 아닌 노드만 (고아는 S-03에서 처리)
     .filter((n) => !edges.some((e) => e.source === n.id))
     .map((n) => n.id);
@@ -248,6 +254,21 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[]): St
         severity: 'warning',
         message: `탈출 조건이 없는 루프가 감지되었어요: ${cycleLabels}. 루프 내 판단 노드에 탈출 분기를 추가해주세요.`,
         nodeIds: cycle,
+      });
+    }
+  }
+
+  // ── S-13: TO-BE 삭제 대상 노드 연결 잔존 ──
+  if (mode === 'TO-BE' && deleteTargetIds.size > 0) {
+    const connectedDeleteIds = [...deleteTargetIds].filter((id) =>
+      edges.some((e) => e.source === id || e.target === id)
+    );
+    if (connectedDeleteIds.length > 0) {
+      issues.push({
+        ruleId: 'S-13',
+        severity: 'warning',
+        message: `삭제 대상 셰이프 ${connectedDeleteIds.length}개에 연결이 남아 있어요. 삭제 대상은 고립 노드여야 합니다. 연결된 엣지를 제거해주세요.`,
+        nodeIds: connectedDeleteIds,
       });
     }
   }
