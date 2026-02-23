@@ -279,7 +279,26 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                   <React.Fragment key={idx}>
                     <div className="text-center">
                       <div className="px-8 py-5 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 shadow-lg">
-                        <div className="text-4xl mb-2">{p.icon}</div>
+                        {p.label.includes('HR 암묵지') ? (
+                          <div className="flex justify-center mb-2">
+                            {/* 엉킨 실타래 SVG */}
+                            <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                              <circle cx="24" cy="24" r="19" fill="rgba(251,146,60,0.12)" stroke="rgba(251,146,60,0.35)" strokeWidth="1.5"/>
+                              {/* 외곽 큰 코일 */}
+                              <path d="M7 20 C12 8,30 6,35 16 C40 26,34 40,22 42 C10 44,4 32,8 22 C12 12,26 10,32 18 C38 26,36 38,24 40" stroke="#fb923c" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                              {/* 교차 실 */}
+                              <path d="M38 18 C30 6,14 8,10 18 C6 28,12 42,24 42 C36 42,44 30,40 20" stroke="#fdba74" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.65"/>
+                              {/* 내부 꼬임 */}
+                              <path d="M14 28 C16 22,24 20,28 26 C32 32,28 38,22 36" stroke="#c2410c" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.7"/>
+                              {/* 추가 교차선 */}
+                              <path d="M18 10 C28 14,34 22,26 30 C18 38,10 34,12 24" stroke="#fb923c" strokeWidth="1" fill="none" strokeLinecap="round" opacity="0.45"/>
+                              {/* 중심 매듭 */}
+                              <circle cx="24" cy="24" r="2.5" fill="#fb923c"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="text-4xl mb-2">{p.icon}</div>
+                        )}
                         <div className="font-bold text-slate-100 text-base" style={{ wordBreak: 'keep-all' }}>{p.label}</div>
                         {p.sublabel && <div className="text-sm text-slate-500 mt-1">{p.sublabel}</div>}
                       </div>
@@ -401,7 +420,7 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                         </svg>
                       )}
 
-                      {/* Step 3: 판단 기준 — #6,#7 수정: 통일된 화살표, 아니오 겹침 해결 */}
+                      {/* Step 3: 판단 기준 — 다이어그램 왼쪽 이동 + 아니오 간격 확보 */}
                       {s.num === 3 && (
                         <svg viewBox="0 0 400 260" className="w-full h-full">
                           <defs>
@@ -414,26 +433,26 @@ export default function GuideModal({ onClose }: GuideModalProps) {
                           </defs>
                           <rect width="400" height="260" fill="#0f172a" rx="8"/>
                           <rect width="400" height="260" fill="url(#dots3)" opacity="0.3"/>
-                          {/* Process: 요청 요건을 확인한다 */}
-                          <rect x="100" y="16" width="160" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="180" y="42" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="500">요청 요건을 확인한다</text>
+                          {/* Process: 요청 요건을 확인한다 — 중심 x=130으로 이동 */}
+                          <rect x="50" y="12" width="160" height="40" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="130" y="37" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="500">요청 요건을 확인한다</text>
                           {/* Arrow down */}
-                          <line x1="180" y1="58" x2="180" y2="74" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
-                          {/* Diamond: 승인 여부 — center (180,114) */}
-                          <polygon points="180,74 245,114 180,154 115,114" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="2"/>
-                          <text x="180" y="119" textAnchor="middle" fill="#fbbf24" fontSize="12" fontWeight="600">승인 여부</text>
+                          <line x1="130" y1="52" x2="130" y2="72" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          {/* Diamond: 승인 여부 — center (130,110), right point (190,110) */}
+                          <polygon points="130,72 190,110 130,148 70,110" fill="#2d1a0f" stroke="#f59e0b" strokeWidth="2"/>
+                          <text x="130" y="115" textAnchor="middle" fill="#fbbf24" fontSize="12" fontWeight="600">승인 여부</text>
                           {/* Arrow Yes (down) */}
-                          <line x1="180" y1="154" x2="180" y2="174" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
-                          <text x="189" y="167" fill="#22c55e" fontSize="10" fontWeight="600">예</text>
+                          <line x1="130" y1="148" x2="130" y2="170" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          <text x="138" y="163" fill="#22c55e" fontSize="10" fontWeight="600">예</text>
                           {/* Yes node */}
-                          <rect x="100" y="174" width="160" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="180" y="200" textAnchor="middle" fill="#93c5fd" fontSize="12">요청서를 승인한다</text>
-                          {/* Arrow No (right) — 충분한 간격으로 아니오 텍스트 겹침 해결 */}
-                          <line x1="245" y1="114" x2="272" y2="114" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
-                          <text x="249" y="107" fill="#f87171" fontSize="10" fontWeight="600">아니오</text>
-                          {/* No node */}
-                          <rect x="272" y="93" width="118" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
-                          <text x="331" y="119" textAnchor="middle" fill="#93c5fd" fontSize="11">요청서를 반려한다</text>
+                          <rect x="50" y="170" width="160" height="40" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="130" y="195" textAnchor="middle" fill="#93c5fd" fontSize="12">요청서를 승인한다</text>
+                          {/* Arrow No (right) — 50px 간격으로 엣지 명확히 표시 */}
+                          <line x1="190" y1="110" x2="238" y2="110" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arr3)"/>
+                          <text x="198" y="103" fill="#f87171" fontSize="10" fontWeight="600">아니오</text>
+                          {/* No node — 충분한 너비 확보 */}
+                          <rect x="240" y="89" width="152" height="42" rx="7" fill="#1e3a5f" stroke="#3b82f6" strokeWidth="2"/>
+                          <text x="316" y="115" textAnchor="middle" fill="#93c5fd" fontSize="11">요청서를 반려한다</text>
                         </svg>
                       )}
 
