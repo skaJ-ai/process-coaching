@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { analyzeStructure } from '../utils/structRules';
+import type { LoadingState } from '../types';
 
 export default function QualityDashboard() {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const validateAllNodes = useStore(s => s.validateAllNodes);
+  const ls = useStore(s => s.loadingState) as LoadingState;
 
   const [nodeNavIndex, setNodeNavIndex] = useState<Record<string, number>>({});
   const [dismissedRules, setDismissedRules] = useState<string[]>([]);
@@ -50,16 +52,22 @@ export default function QualityDashboard() {
   const pct = total > 0 ? Math.round(((pass + warn) / total) * 100) : 0;
   const barColor = reject > 0 ? '#f97316' : unchecked > 0 ? '#64748b' : '#22c55e';
   const hasIssues = structIssues.length > 0 || showMetaHint;
+  const hasAlert = reject > 0 || structIssues.length > 0;
 
   return (
-    <div style={{ background: 'rgba(15,23,41,0.5)', borderBottom: '1px solid var(--border-primary)' }}>
+    <div style={{ background: 'rgba(15,23,41,0.5)', borderBottom: '1px solid var(--border-primary)', borderLeft: hasAlert && !isExpanded ? '3px solid #f97316' : '3px solid transparent' }}>
       {/* 항상 표시: 헤더 + 게이지 + 뱃지 */}
       <div className="px-4 pt-2.5 pb-2">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">품질 대시보드</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">품질 대시보드</span>
+            {hasAlert && !isExpanded && (
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse flex-shrink-0" />
+            )}
+          </div>
           <button
             onClick={() => setIsExpanded(v => !v)}
-            className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1"
+            className={`text-[10px] transition-colors px-1 ${hasAlert && !isExpanded ? 'text-orange-400 hover:text-orange-300 font-semibold' : 'text-slate-500 hover:text-slate-300'}`}
           >
             {isExpanded ? '▲ 접기' : `▼ 상세${hasIssues ? ' ⚠' : ''}`}
           </button>
@@ -69,11 +77,15 @@ export default function QualityDashboard() {
         </div>
         <div className="flex gap-3 text-[10px]">
           {pass > 0 && <span className="text-green-400">✓ {pass} 준수</span>}
-          {warn > 0 && <span className="text-amber-400">💡 {warn} 개선</span>}
+          {warn > 0 && <span className="text-amber-400">💡 {warn} 개선가능</span>}
           {reject > 0 && <span className="text-[#f97316]">✏ {reject} 추천</span>}
           {unchecked > 0 && (
-            <button onClick={() => validateAllNodes()} className="text-slate-400 hover:text-violet-300 transition-colors">
-              ○ {unchecked} 미검증 →검증
+            <button
+              onClick={() => validateAllNodes()}
+              disabled={ls.active}
+              className="text-slate-400 hover:text-violet-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {ls.active ? '⚙ 검증 중...' : `⚙ ${unchecked}개 미검증 · 검증하기`}
             </button>
           )}
         </div>

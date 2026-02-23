@@ -51,6 +51,8 @@ function isSystemCandidate(text: string): boolean {
   if (NON_SYSTEM_TERMS.has(text)) return false;
   // 순수 숫자·날짜이면 제외
   if (/^[\d\s년월일.]+$/.test(text)) return false;
+  // D-7, T+3, D+1 같은 날짜 상대 표기 제외 (대문자 1자 + 부호 + 숫자)
+  if (/^[A-Za-z][-+]\d+$/.test(text)) return false;
   // 영문 대문자 포함 (SAP, Workday, HRIS 등) → 시스템명으로 판정
   if (/[A-Z]/.test(text)) return true;
   // 한국어 전용인 경우 → 시스템 키워드가 있어야만 판정
