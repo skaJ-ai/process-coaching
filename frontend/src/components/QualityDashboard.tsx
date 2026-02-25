@@ -37,7 +37,6 @@ export default function QualityDashboard() {
   const unchecked = processNodes.filter(n => !n.data.l7Status || n.data.l7Status === 'none').length;
   const struct = analyzeStructure(nodes, edges, mode);
   const structIssues = struct.issues.filter(i => {
-    if (i.ruleId === 'S-01') return false;
     if (i.ruleId === 'S-03' && !hasEnd) return false;
     if (i.ruleId === 'S-04') return false;
     if (dismissedRules.includes(i.ruleId)) return false;

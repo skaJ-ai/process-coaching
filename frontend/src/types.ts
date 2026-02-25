@@ -61,14 +61,6 @@ export interface L7ReportItem {
   warning?: string;
 }
 
-// ─── Node Change History ───
-export interface NodeChangeEntry {
-  before: string;
-  after: string;
-  timestamp: number;
-  source: 'user' | 'ai';
-}
-
 // ─── Chat ───
 export interface ChatMessage {
   id: string;
@@ -77,9 +69,10 @@ export interface ChatMessage {
   suggestions?: Suggestion[];
   l7Report?: L7ReportItem[];
   quickQueries?: string[];
-  quickActions?: { label: string; storeAction: 'toggleSwimLane' }[];
+  quickActions?: { label: string; storeAction: 'toggleSwimLane' | 'advanceOnboarding' | 'skipOnboarding' | 'addSwimLaneAndAdvance' | 'focusStartNode' | 'focusEndNode' | 'suggestPhases'; noActioned?: boolean }[];
   timestamp: number;
   dismissible?: boolean;
+  actioned?: boolean;
 }
 
 // ─── Flow Node Data ───
@@ -98,7 +91,6 @@ export interface FlowNodeData {
   l7Score?: number;
   l7Issues?: L7Issue[];
   l7Rewrite?: string;
-  changeHistory?: NodeChangeEntry[];
   // Issue 5: AI 추가 노드 보호 (재수정 제안 금지)
   addedBy?: 'ai' | 'user';
   // Position lock
@@ -163,6 +155,9 @@ export interface LoadingState {
 
 // ─── Save State ───
 export type SaveStatus = 'unsaved' | 'draft' | 'complete';
+
+// ─── Onboarding State Machine ───
+export type OnboardingStep = 'idle' | 'welcome' | 'ask_swimlane' | 'edit_swimlane' | 'set_scope' | 'define_phases' | 'phase_detail' | 'done';
 
 // ─── Theme ───
 

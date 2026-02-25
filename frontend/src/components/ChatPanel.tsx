@@ -21,6 +21,11 @@ export default function ChatPanel() {
   const validateAllNodes = useStore(s => s.validateAllNodes);
 
   const mode = useStore(s => s.mode);
+  const onboardingStep = useStore(s => s.onboardingStep);
+  const isActiveOnboarding = onboardingStep !== 'idle' && onboardingStep !== 'done';
+  const advanceOnboarding = useStore(s => s.advanceOnboarding);
+  const skipOnboarding = useStore(s => s.skipOnboarding);
+  const suggestPhases = useStore(s => s.suggestPhases);
 
   const dismissMessage = (msgId: string) => {
     useStore.setState(s => ({ messages: s.messages.filter(m => m.id !== msgId) }));
@@ -77,8 +82,13 @@ export default function ChatPanel() {
             ))}
           </div>
         </div>}
-        {messages.map(msg => (
-          <div key={msg.id} className={`animate-slide-up ${msg.role === 'user' ? 'flex justify-end' : ''}`}>
+        {(() => {
+          const lastBotMsg = isActiveOnboarding ? [...messages].reverse().find(m => m.role === 'bot') : null;
+          return messages.map(msg => {
+            const isGhosted = !!lastBotMsg && msg.id !== lastBotMsg.id;
+            return (
+          <div key={msg.id} className={`animate-slide-up transition-all duration-300 ${msg.role === 'user' ? 'flex justify-end' : ''} ${msg.actioned ? 'pointer-events-none' : ''}`}
+            style={{ opacity: msg.actioned ? 0.25 : isGhosted ? 0.15 : 1, pointerEvents: isGhosted ? 'none' : undefined }}>
             {msg.role === 'user' ? (
               <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md text-sm text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>{msg.text}</div>
             ) : (
@@ -103,9 +113,30 @@ export default function ChatPanel() {
                       <button
                         key={`${msg.id}-qa${i}`}
                         onClick={() => {
+                          if (!a.noActioned) {
+                            useStore.setState(s => ({ messages: s.messages.map(m => m.id === msg.id ? { ...m, actioned: true } : m) }));
+                          }
                           if (a.storeAction === 'toggleSwimLane') {
                             const { dividerYs, setDividerYs } = useStore.getState();
                             if (dividerYs.length === 0) setDividerYs([400]);
+                          } else if (a.storeAction === 'advanceOnboarding') {
+                            advanceOnboarding();
+                          } else if (a.storeAction === 'skipOnboarding') {
+                            skipOnboarding();
+                          } else if (a.storeAction === 'addSwimLaneAndAdvance') {
+                            const { dividerYs: dys, setDividerYs: sdys } = useStore.getState();
+                            if (dys.length === 0) sdys([400]);
+                            advanceOnboarding();
+                          } else if (a.storeAction === 'focusStartNode') {
+                            const { nodes, setFocusNodeId } = useStore.getState();
+                            const start = nodes.find(n => n.data.nodeType === 'start');
+                            if (start) setFocusNodeId(start.id);
+                          } else if (a.storeAction === 'focusEndNode') {
+                            const { nodes, setFocusNodeId } = useStore.getState();
+                            const end = nodes.find(n => n.data.nodeType === 'end');
+                            if (end) setFocusNodeId(end.id);
+                          } else if (a.storeAction === 'suggestPhases') {
+                            suggestPhases();
                           }
                         }}
                         className="px-3 py-1.5 rounded-full text-xs text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/20 hover:border-emerald-500/50 transition-colors"
@@ -118,7 +149,9 @@ export default function ChatPanel() {
               </div>
             )}
           </div>
-        ))}
+            );
+          });
+        })()}
         {ls.active && <LoadingIndicator />}
         <div ref={endRef} />
       </div>
@@ -127,11 +160,11 @@ export default function ChatPanel() {
           <label htmlFor="chat-input" className="sr-only">채팅 입력</label>
           <textarea data-tour="chat" id="chat-input" name="chat_input" aria-label="채팅 입력" ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={'질문하거나 아이디어를 요청하세요...'}
-            disabled={ls.active} rows={3}
+            placeholder={isActiveOnboarding ? '온보딩 진행 중에는 채팅을 사용할 수 없어요.' : '질문하거나 아이디어를 요청하세요...'}
+            disabled={ls.active || isActiveOnboarding} rows={3}
             className="flex-1 px-4 py-2.5 rounded-xl text-sm text-slate-200 placeholder-slate-500 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50 disabled:opacity-50 resize-none"
             style={{ minHeight: '72px', maxHeight: '150px' }} />
-          <button onClick={handleSend} disabled={ls.active || !input.trim()} className="px-4 self-end py-2.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500 h-10">전송</button>
+          <button onClick={handleSend} disabled={ls.active || isActiveOnboarding || !input.trim()} className="px-4 self-end py-2.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500 h-10">전송</button>
         </div>
         <div className="flex gap-2">
           <button onClick={handleSaveIntermediate} className="flex-1 px-4 py-2 rounded-xl text-sm font-medium border border-slate-600/40 text-slate-300 hover:bg-slate-700/30">💾 중간저장</button>

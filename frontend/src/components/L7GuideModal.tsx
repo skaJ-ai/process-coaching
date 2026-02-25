@@ -96,7 +96,7 @@ export default function L7GuideModal({ onClose }: Props) {
               <Section title="구조 규칙">
                 <Row sev="warning" label="시스템명 혼입" desc="괄호/브라켓 내 시스템명은 메타데이터로 분리하세요. 예: '(SAP)' → systemName 필드" />
                 <Row sev="reject"  label="복수 동작" desc="~하고, ~하며, ~한 후 패턴은 별도 단계로 분리해야 합니다. 하나의 L7 = 하나의 동작" />
-                <Row sev="suggest" label="주어 누락" desc="스윔레인 미사용 시, 목적어(을/를)가 있는데 주어(이/가/은/는)가 없으면 안내합니다." />
+                <Row sev="suggest" label="주어 누락" desc="역할 구분선 미사용 시, 목적어(을/를)가 있는데 주어(이/가/은/는)가 없으면 안내합니다." />
                 <Row sev="reject"  label="목적어 누락" desc="타동사(조회/입력/수정/전송 등)에는 을/를 조사가 필수입니다. 예: '급여를 조회한다'" />
                 <Row sev="warning" label="기준값 누락 (판단 노드)" desc="판단 노드에 여부·인가·이상·이하 등 판단 기준이 없으면 조건이 모호합니다." />
               </Section>

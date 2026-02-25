@@ -19,6 +19,8 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
   const setDividerYs = useStore(s => s.setDividerYs);
   const setSwimLaneLabels = useStore(s => s.setSwimLaneLabels);
   const removeDividerY = useStore(s => s.removeDividerY);
+  const addDividerY = useStore(s => s.addDividerY);
+  const swOnboardingStep = useStore(s => s.onboardingStep);
   const rfInstance = useReactFlow();
   useViewport(); // viewport 변화 시 컨트롤 위치 재계산
   const viewportNode = useRFStore((s) => s.domNode?.querySelector('.react-flow__viewport') as HTMLElement | null);
@@ -70,9 +72,8 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
     .sort((a, b) => a.y - b.y);
   const laneCount = sortedDividers.length + 1;
   const lineThickness = 3;
-  const handleWidth = 34;
-  const handleHeight = 48;
-  const removeSize = 22;
+  const handleWidth = 32;
+  const btnH = 22; const dragH = 42; const gap = 3;
 
   const handleDividerDragStart = (index: number, initialY: number) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -105,18 +106,24 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
       {sortedDividers.map(({ y, idx }) => {
         const lineScreenY = rfInstance.flowToScreenPosition({ x: 0, y }).y - rect.top;
         const handleLeft = rect.width - handleWidth - 10;
+        const hasAdd = dividerYs.length < 3;
+        const hasDel = dividerYs.length > 1;
+        const stackH = (hasAdd ? btnH + gap : 0) + dragH + (hasDel ? gap + btnH : 0);
         return (
-          <React.Fragment key={`ctrl-${idx}`}>
+          <div key={`ctrl-${idx}`} style={{ position: 'absolute', left: handleLeft, top: lineScreenY - stackH / 2, width: handleWidth, display: 'flex', flexDirection: 'column', gap, pointerEvents: 'auto', zIndex: 6 }}>
+            {hasAdd && (
+              <button onClick={() => addDividerY(y + 220)} style={{ width: handleWidth, height: btnH, borderRadius: 4, background: 'rgba(74,111,165,0.25)', border: '1px solid rgba(74,111,165,0.7)', color: '#93c5fd', cursor: 'pointer', fontSize: 15, fontWeight: 'bold', lineHeight: 1 }}>+</button>
+            )}
             <div
-              style={{ position: 'absolute', left: handleLeft, top: lineScreenY - handleHeight / 2, width: handleWidth, height: handleHeight, background: 'rgba(148, 163, 184, 0.2)', border: '1px solid rgba(148, 163, 184, 0.8)', borderRadius: 6, cursor: 'row-resize', pointerEvents: 'auto', zIndex: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ width: handleWidth, height: dragH, background: 'rgba(148,163,184,0.2)', border: '1px solid rgba(148,163,184,0.8)', borderRadius: 6, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               onMouseDown={handleDividerDragStart(idx, y)}
             >
               <span style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 'bold' }}>⋮⋮</span>
             </div>
-            {dividerYs.length > 1 && (
-              <button onClick={() => removeDividerY(idx)} style={{ position: 'absolute', left: handleLeft - removeSize - 6, top: lineScreenY - removeSize / 2, width: removeSize, height: removeSize, borderRadius: 4, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.5)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, fontWeight: 'bold', pointerEvents: 'auto', zIndex: 6 }}>×</button>
+            {hasDel && (
+              <button onClick={() => removeDividerY(idx)} style={{ width: handleWidth, height: btnH, borderRadius: 4, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.5)', color: '#fca5a5', cursor: 'pointer', fontSize: 15, fontWeight: 'bold', lineHeight: 1 }}>−</button>
             )}
-          </React.Fragment>
+          </div>
         );
       })}
 
@@ -125,15 +132,17 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
         const nextY = laneIdx === sortedDividers.length ? sortedDividers[sortedDividers.length - 1].y + 120 : sortedDividers[laneIdx].y;
         const midFlowY = (prevY + nextY) / 2;
         const midY = rfInstance.flowToScreenPosition({ x: 0, y: midFlowY }).y - rect.top;
+        const swDefaults = ['A 주체', 'B 주체', 'C 주체', 'D 주체'];
+        const needsPulse = swOnboardingStep === 'edit_swimlane' && swimLaneLabels[laneIdx] === swDefaults[laneIdx];
         return (
-          <div key={`label-${laneIdx}`} style={{ position: 'absolute', left: 8, top: midY - 12, fontSize: 12, fontWeight: 600, color: '#cbd5e1', background: 'rgba(15,23,41,0.88)', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(148,163,184,0.25)', pointerEvents: 'auto', cursor: editingIdx === laneIdx ? 'text' : 'pointer', zIndex: 6 }} onClick={() => { setEditingIdx(laneIdx); setTempLabel(swimLaneLabels[laneIdx]); }}>
+          <div key={`label-${laneIdx}`} className={needsPulse ? 'animate-pulse' : ''} style={{ position: 'absolute', left: 8, top: midY - 12, fontSize: 12, fontWeight: 600, color: needsPulse ? '#fff' : '#cbd5e1', background: needsPulse ? 'rgba(99,102,241,0.6)' : 'rgba(15,23,41,0.88)', padding: '4px 10px', borderRadius: 6, border: needsPulse ? '2px solid rgba(99,102,241,0.95)' : '1px solid rgba(148,163,184,0.25)', boxShadow: needsPulse ? '0 0 16px rgba(99,102,241,0.6), 0 0 32px rgba(99,102,241,0.3)' : 'none', pointerEvents: 'auto', cursor: editingIdx === laneIdx ? 'text' : 'pointer', zIndex: needsPulse ? 60 : 6 }} onClick={() => { setEditingIdx(laneIdx); setTempLabel(swimLaneLabels[laneIdx]); }}>
             {editingIdx === laneIdx ? (
               <input
                 autoFocus
                 type="text"
                 id={`swimlane-label-${laneIdx}`}
                 name={`swimlane_label_${laneIdx}`}
-                aria-label={`스윔레인 ${laneIdx + 1} 라벨`}
+                aria-label={`역할 구분선 ${laneIdx + 1} 라벨`}
                 value={tempLabel}
                 onChange={(e) => setTempLabel(e.target.value)}
                 onBlur={() => { handleLabelChange(laneIdx, tempLabel); setEditingIdx(null); }}
@@ -143,6 +152,135 @@ function SwimLaneOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivEl
             ) : (
               swimLaneLabels[laneIdx]
             )}
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
+
+  return (
+    <>
+      {createPortal(lines, viewportNode)}
+      {controls}
+    </>
+  );
+}
+
+function PhaseOverlay({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement> }) {
+  const dividerXs = useStore(s => s.dividerXs);
+  const phaseLabels = useStore(s => s.phaseLabels);
+  const setDividerXs = useStore(s => s.setDividerXs);
+  const setPhaseLabels = useStore(s => s.setPhaseLabels);
+  const removeDividerX = useStore(s => s.removeDividerX);
+  const addDividerX = useStore(s => s.addDividerX);
+  const phOnboardingStep = useStore(s => s.onboardingStep);
+  const rfInstance = useReactFlow();
+  useViewport();
+  const viewportNode = useRFStore((s) => s.domNode?.querySelector('.react-flow__viewport') as HTMLElement | null);
+  const [editingIdx, setEditingIdx] = React.useState<number | null>(null);
+  const [tempLabel, setTempLabel] = React.useState('');
+  const dividerXsRef = useRef(dividerXs);
+  const dragRef = useRef<{ index: number; startFlowX: number; initialX: number } | null>(null);
+
+  useEffect(() => { dividerXsRef.current = dividerXs; }, [dividerXs]);
+
+  const stopDrag = useCallback(() => {
+    dragRef.current = null;
+    window.removeEventListener('mousemove', onDragMove);
+    window.removeEventListener('mouseup', onDragEnd);
+  }, []);
+
+  const onDragMove = useCallback((ev: MouseEvent) => {
+    const state = dragRef.current;
+    if (!state) return;
+    if (ev.buttons === 0) { stopDrag(); return; }
+    const currentFlowX = rfInstance.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }).x;
+    const delta = currentFlowX - state.startFlowX;
+    const newXs = [...dividerXsRef.current];
+    newXs[state.index] = state.initialX + delta;
+    setDividerXs(newXs);
+  }, [rfInstance, setDividerXs, stopDrag]);
+
+  const onDragEnd = useCallback(() => { stopDrag(); }, [stopDrag]);
+
+  useEffect(() => { return () => { stopDrag(); }; }, [stopDrag]);
+
+  if (dividerXs.length === 0 || !viewportNode) return null;
+
+  const sortedDividers = [...dividerXs].map((x, idx) => ({ x, idx })).sort((a, b) => a.x - b.x);
+  const sectionCount = sortedDividers.length + 1;
+  const lineThickness = 2;
+  const phHandleW = 30; const phBtnH = 22; const phDragH = 42; const phGap = 3;
+
+  const handleDividerDragStart = (index: number, initialX: number) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { index, initialX, startFlowX: rfInstance.screenToFlowPosition({ x: e.clientX, y: e.clientY }).x };
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+  };
+
+  const handleLabelChange = (index: number, newLabel: string) => {
+    const newLabels = [...phaseLabels];
+    newLabels[index] = newLabel;
+    setPhaseLabels(newLabels);
+  };
+
+  const lines = (
+    <>
+      {sortedDividers.map(({ x, idx }) => (
+        <div key={`phase-line-${idx}`} style={{ position: 'absolute', top: -20000, height: 40000, left: x - lineThickness / 2, width: lineThickness, background: '#a855f7', opacity: 0.45, pointerEvents: 'none', zIndex: 5 }} />
+      ))}
+    </>
+  );
+
+  const rect = wrapperRef.current?.getBoundingClientRect();
+  const controls = rect ? (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20 }}>
+      {sortedDividers.map(({ x, idx }) => {
+        const lineScreenX = rfInstance.flowToScreenPosition({ x, y: 0 }).x - rect.left;
+        return (
+          <div key={`phase-ctrl-${idx}`} style={{ position: 'absolute', left: lineScreenX - phHandleW / 2, top: 70, width: phHandleW, display: 'flex', flexDirection: 'column', gap: phGap, pointerEvents: 'auto', zIndex: 6 }}>
+            {dividerXs.length < 4 && (
+              <button onClick={() => {
+                const endX = useStore.getState().nodes.find((n: any) => n.data.nodeType === 'end')?.position.x ?? x + 500;
+                addDividerX(Math.min(x + 400, endX - 100));
+              }} style={{ width: phHandleW, height: phBtnH, borderRadius: 4, background: 'rgba(168,85,247,0.2)', border: '1px solid rgba(168,85,247,0.6)', color: '#c4b5fd', cursor: 'pointer', fontSize: 15, fontWeight: 'bold', lineHeight: 1 }}>+</button>
+            )}
+            <div
+              style={{ width: phHandleW, height: phDragH, background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.6)', borderRadius: 6, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onMouseDown={handleDividerDragStart(idx, x)}
+            >
+              <span style={{ fontSize: 11, color: '#c4b5fd', fontWeight: 'bold', letterSpacing: 1 }}>⋮⋮</span>
+            </div>
+            {dividerXs.length > 1 && (
+              <button onClick={() => removeDividerX(idx)} style={{ width: phHandleW, height: phBtnH, borderRadius: 4, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.5)', color: '#fca5a5', cursor: 'pointer', fontSize: 15, fontWeight: 'bold', lineHeight: 1 }}>−</button>
+            )}
+          </div>
+        );
+      })}
+      {Array.from({ length: sectionCount }).map((_, sectionIdx) => {
+        const prevX = sectionIdx === 0 ? sortedDividers[0].x - 400 : sortedDividers[sectionIdx - 1].x;
+        const nextX = sectionIdx === sortedDividers.length ? sortedDividers[sortedDividers.length - 1].x + 400 : sortedDividers[sectionIdx].x;
+        const midFlowX = (prevX + nextX) / 2;
+        const midScreenX = rfInstance.flowToScreenPosition({ x: midFlowX, y: 0 }).x - rect.left;
+        const labelText = phaseLabels[sectionIdx] ?? `Phase ${sectionIdx + 1}`;
+        const phPulse = phOnboardingStep === 'define_phases' && sectionIdx === 0 && dividerXs.length > 0;
+        return (
+          <div
+            key={`phase-label-${sectionIdx}`}
+            className={phPulse ? 'animate-pulse' : ''}
+            style={{ position: 'absolute', left: midScreenX, top: 178, transform: 'translateX(-50%)', fontSize: 11, fontWeight: 600, color: '#c4b5fd', background: phPulse ? 'rgba(168,85,247,0.3)' : 'rgba(15,23,41,0.88)', padding: '3px 10px', borderRadius: 6, border: phPulse ? '1px solid rgba(168,85,247,0.7)' : '1px solid rgba(168,85,247,0.3)', pointerEvents: 'auto', cursor: 'pointer', zIndex: 6, whiteSpace: 'nowrap' }}
+            onClick={() => { setEditingIdx(sectionIdx); setTempLabel(labelText); }}
+          >
+            {editingIdx === sectionIdx ? (
+              <input
+                autoFocus type="text" value={tempLabel}
+                onChange={e => setTempLabel(e.target.value)}
+                onBlur={() => { handleLabelChange(sectionIdx, tempLabel); setEditingIdx(null); }}
+                onKeyDown={e => { if (e.key === 'Enter') { handleLabelChange(sectionIdx, tempLabel); setEditingIdx(null); } if (e.key === 'Escape') setEditingIdx(null); }}
+                style={{ background: 'transparent', border: 'none', color: '#e2e8f0', fontSize: 11, fontWeight: 600, outline: 'none', width: '72px', fontFamily: 'inherit' }}
+              />
+            ) : labelText}
           </div>
         );
       })}
@@ -213,6 +351,10 @@ function CanvasGuide({ rfInstance }: { rfInstance: ReturnType<typeof useReactFlo
   const addShape = useStore(s => s.addShape);
   const onConnect = useStore(s => s.onConnect);
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
+  const onboardingStep = useStore(s => s.onboardingStep);
+
+  // 온보딩 진행 중에는 ghost flow 안내 숨김
+  if (onboardingStep !== 'idle' && onboardingStep !== 'done') return null;
 
   const workNodes = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType));
 
@@ -343,6 +485,9 @@ function FlowCanvas() {
 
   const focusNodeId = useStore(s => s.focusNodeId);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
+  const onboardingStep = useStore(s => s.onboardingStep);
+  const dividerYs = useStore(s => s.dividerYs);
+  const prevDividerLenRef = useRef(0);
   useEffect(() => { const t = setTimeout(() => autoValidate(), 3000); return () => clearTimeout(t); }, [nodes, autoValidate]);
 
   useEffect(() => {
@@ -352,6 +497,66 @@ function FlowCanvas() {
       setFocusNodeId(null);
     }
   }, [focusNodeId, rfInstance, setSel, setFocusNodeId]);
+
+  // 온보딩 각 단계 진입 시 fitView / fitBounds
+  useEffect(() => {
+    if (onboardingStep === 'set_scope' || onboardingStep === 'define_phases') {
+      const t = setTimeout(() => rfInstance.fitView({ padding: 0.35, duration: 600 }), 500);
+      return () => clearTimeout(t);
+    }
+    if (onboardingStep === 'edit_swimlane') {
+      // 스윔레인 영역 전체가 보이도록 fitBounds (노드만 기준인 fitView 대신)
+      const t = setTimeout(() => {
+        const { nodes: ns, dividerYs: dys } = useStore.getState();
+        const startNode = ns.find((n: any) => n.data.nodeType === 'start');
+        const sx = startNode?.position.x ?? 200;
+        const sy = startNode?.position.y ?? 100;
+        const maxDivY = dys.length > 0 ? Math.max(...dys) : 400;
+        rfInstance.fitBounds(
+          { x: sx - 300, y: sy - 150, width: 1700, height: maxDivY - sy + 400 },
+          { padding: 0.18, duration: 700 }
+        );
+      }, 500);
+      return () => clearTimeout(t);
+    }
+    if (onboardingStep === 'phase_detail') {
+      // Phase 1 구간으로 줌인 (시작 노드 ~ 첫 Phase 구분선)
+      const t = setTimeout(() => {
+        const { nodes: ns, dividerXs: dxs } = useStore.getState();
+        const startNode = ns.find((n: any) => n.data.nodeType === 'start');
+        const sx = startNode?.position.x ?? 200;
+        const sy = startNode?.position.y ?? 100;
+        const firstDivX = dxs.length > 0 ? Math.min(...dxs) : sx + 500;
+        rfInstance.fitBounds(
+          { x: sx - 150, y: sy - 200, width: firstDivX - sx + 350, height: 700 },
+          { padding: 0.15, duration: 700 }
+        );
+      }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [onboardingStep, rfInstance]);
+
+  // 역할 구분선 첫 추가 시 fitView (전체 레이아웃 보이게)
+  useEffect(() => {
+    if (dividerYs.length > 0 && prevDividerLenRef.current === 0) {
+      const t = setTimeout(() => rfInstance.fitView({ padding: 0.25, duration: 500 }), 200);
+      prevDividerLenRef.current = dividerYs.length;
+      return () => clearTimeout(t);
+    }
+    prevDividerLenRef.current = dividerYs.length;
+  }, [dividerYs, rfInstance]);
+
+  // Phase 구분선 처음 추가(suggestPhases 등) 시 fitView
+  const dividerXs = useStore(s => s.dividerXs);
+  const prevDividerXLenRef = useRef(0);
+  useEffect(() => {
+    if (dividerXs.length > 0 && prevDividerXLenRef.current === 0) {
+      const t = setTimeout(() => rfInstance.fitView({ padding: 0.3, duration: 600 }), 300);
+      prevDividerXLenRef.current = dividerXs.length;
+      return () => clearTimeout(t);
+    }
+    prevDividerXLenRef.current = dividerXs.length;
+  }, [dividerXs, rfInstance]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -475,6 +680,7 @@ function FlowCanvas() {
         connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}
       >
         <SwimLaneOverlay wrapperRef={wrapperRef} />
+        <PhaseOverlay wrapperRef={wrapperRef} />
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
         <Controls position="bottom-right" />
         <MiniMap position="bottom-left" nodeColor={minimapNodeColor} maskColor="rgba(15,23,41,0.8)" style={{ border: '1px solid #2a3a52', borderRadius: 8 }} />

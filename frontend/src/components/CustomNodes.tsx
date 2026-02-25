@@ -47,9 +47,15 @@ const CircleHandle = ({ pos, id, color, size = 14, isConnectableStart, isConnect
 
 export const StartNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const ie = useInlineEdit(id, data.label);
+  const onboardingStep = useStore(s => s.onboardingStep);
+  const pulsing = onboardingStep === 'set_scope' && !ie.editing;
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
-  return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }} onDoubleClick={ie.startEdit}>
+  return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: pulsing ? '0 0 0 4px rgba(34,197,94,0.95), 0 0 32px rgba(34,197,94,0.8), 0 0 64px rgba(34,197,94,0.4)' : '0 0 20px rgba(34,197,94,0.3)', overflow: 'visible' }} onDoubleClick={ie.startEdit}>
+    {pulsing && <>
+      <div className="absolute rounded-full animate-ping pointer-events-none" style={{ top: -4, right: -4, bottom: -4, left: -4, background: 'rgba(34,197,94,0.55)', animationDuration: '1.1s' }} />
+      <div className="absolute rounded-full animate-ping pointer-events-none" style={{ top: -12, right: -12, bottom: -12, left: -12, background: 'rgba(34,197,94,0.25)', animationDuration: '1.7s', animationDelay: '0.45s' }} />
+    </>}
     <AllHandles color="#4ade80" />
     {ie.editing ? <textarea id={`start-label-${id}`} name={`start_label_${id}`} aria-label="시작 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}
@@ -59,9 +65,15 @@ StartNode.displayName = 'StartNode';
 
 export const EndNode = memo(({ id, data }: NodeProps<FlowNodeData>) => {
   const ie = useInlineEdit(id, data.label);
+  const onboardingStep = useStore(s => s.onboardingStep);
+  const pulsing = onboardingStep === 'set_scope' && !ie.editing;
   const size = Math.min(100, Math.max(60, data.label.length * 4));
   const innerSize = size - 4;
-  return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 0 20px rgba(239,68,68,0.3)' }} onDoubleClick={ie.startEdit}>
+  return (<div className="relative flex items-center justify-center rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: pulsing ? '0 0 0 4px rgba(239,68,68,0.95), 0 0 32px rgba(239,68,68,0.8), 0 0 64px rgba(239,68,68,0.4)' : '0 0 20px rgba(239,68,68,0.3)', overflow: 'visible' }} onDoubleClick={ie.startEdit}>
+    {pulsing && <>
+      <div className="absolute rounded-full animate-ping pointer-events-none" style={{ top: -4, right: -4, bottom: -4, left: -4, background: 'rgba(239,68,68,0.55)', animationDuration: '1.1s' }} />
+      <div className="absolute rounded-full animate-ping pointer-events-none" style={{ top: -12, right: -12, bottom: -12, left: -12, background: 'rgba(239,68,68,0.25)', animationDuration: '1.7s', animationDelay: '0.45s' }} />
+    </>}
     <AllHandles color="#f87171" />
     {ie.editing ? <textarea id={`end-label-${id}`} name={`end_label_${id}`} aria-label="종료 노드 라벨 편집" ref={ie.textRef} value={ie.editText} onChange={e => ie.setEditText(e.target.value)} onBlur={ie.commitEdit} onKeyDown={ie.handleKeyDown} className="bg-transparent text-white text-[10px] font-semibold text-center leading-tight outline-none resize-none" style={{ width: innerSize }} rows={2} />
       : <span className="text-white text-[10px] font-semibold text-center leading-tight px-1" style={{ wordBreak: 'break-all' }}>{data.label}</span>}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Node, Edge, Connection, addEdge, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from 'reactflow';
-import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeChangeEntry, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult, Mode } from './types';
+import { ProcessContext, ChatMessage, Suggestion, FlowNodeData, ContextMenuState, LoadingState, L7ReportItem, SwimLane, SaveStatus, ShapeType, NodeCategory, MetaEditTarget, L7Status, PDDAnalysisResult, Mode, OnboardingStep } from './types';
 import { applyDagreLayout, reindexByPosition, generateId } from './utils/layoutEngine';
 import { API_BASE_URL, SWIMLANE_COLORS } from './constants';
 import { detectCompoundAction } from './utils/labelUtils';
@@ -78,6 +78,13 @@ interface AppStore {
   setSwimLaneLabels: (labels: string[]) => void;
   addDividerY: (y: number) => void;
   removeDividerY: (index: number) => void;
+  // Phase lane system (vertical dividers)
+  dividerXs: number[];
+  phaseLabels: string[];
+  setDividerXs: (xs: number[]) => void;
+  setPhaseLabels: (labels: string[]) => void;
+  addDividerX: (x: number) => void;
+  removeDividerX: (index: number) => void;
   // Clipboard
   clipboard: { nodes: Node<FlowNodeData>[]; edges: Edge[] } | null;
   copySelected: () => void; pasteClipboard: () => void; deleteSelected: () => void;
@@ -86,6 +93,15 @@ interface AppStore {
   saveDraft: () => void; submitComplete: (force?: boolean) => { ok: boolean; issues: string[] };
   exportFlow: () => string; importFlow: (json: string) => void; loadFromLocalStorage: () => boolean;
   showOnboarding: boolean; hideOnboarding: () => void; dismissOnboarding: () => void; showOnboardingPanel: () => void;
+  // v6: onboarding state machine
+  onboardingStep: OnboardingStep;
+  setOnboardingStep: (step: OnboardingStep) => void;
+  advanceOnboarding: () => void;
+  skipOnboarding: () => void;
+  suggestPhases: () => Promise<void>;
+  // v6: PDD history
+  pddHistory: { content: string; timestamp: number }[];
+  addPddHistory: (content: string) => void;
   showGuide: boolean; toggleGuide: () => void;
   // Product Tour
   tourActive: boolean; tourStep: number;
@@ -123,13 +139,16 @@ export const useStore = create<AppStore>((set, get) => ({
   setMode: (mode) => set({ mode }),
   setProcessContext: (ctx, onReady?: () => void) => {
     const init = makeInitialNodes();
-    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), dividerYs: [], swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'] });
+    set({ processContext: ctx, nodes: init, edges: [], messages: [], history: [{ nodes: init, edges: [] }], historyIndex: 0, saveStatus: 'unsaved', lastSaved: null, showOnboarding: !localStorage.getItem('pm-v5-onboarding-dismissed'), onboardingStep: 'welcome' as OnboardingStep, pddHistory: [], dividerYs: [], swimLaneLabels: ['A 주체', 'B 주체', 'C 주체', 'D 주체'], dividerXs: [], phaseLabels: ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5'] });
     // 환영 메시지 추가
     setTimeout(() => {
       get().addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n캔버스에 우클릭해서 셰이프를 추가하거나, 아래 빠른 질문을 클릭해보세요.`,
-        quickQueries: ['어떻게 시작하면 좋을까요?', '일반적인 단계는 뭐가 있나요?', '예외 처리는 어떻게 표현하나요?']
+        text: `안녕하세요! "${ctx.processName}" 프로세스 설계를 함께 시작해볼까요?\n\n아래에서 온보딩을 시작하거나 바로 캔버스에 우클릭해서 셰이프를 추가해도 됩니다.`,
+        quickActions: [
+          { label: '온보딩 시작하기', storeAction: 'advanceOnboarding' },
+          { label: '건너뛰기', storeAction: 'skipOnboarding' }
+        ]
       });
       onReady?.();
       if (!localStorage.getItem('pm-v5-tour-done')) {
@@ -189,19 +208,33 @@ export const useStore = create<AppStore>((set, get) => ({
   addShape: (type, label, position) => {
     get().pushHistory();
     get().updateUserActivity();
-    const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type]);
-    const node: Node<FlowNodeData> = { id, type, position, draggable: true, data: { label, nodeType: type, category: 'as_is', addedBy: 'user', pendingEdit: true } };
+    const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type] ?? 'node');
+    // End 노드: 시작 노드와 수평으로 멀리 배치
+    let pos = position;
+    if (type === 'end') {
+      const startNode = get().nodes.find(n => n.data.nodeType === 'start');
+      if (startNode) {
+        pos = { x: startNode.position.x + 1500, y: startNode.position.y };
+      }
+    }
+    const node: Node<FlowNodeData> = {
+      id, type, position: pos, draggable: true,
+      data: { label, nodeType: type, category: 'as_is', addedBy: 'user', pendingEdit: true },
+    };
     let updated = reindexByPosition([...get().nodes, node]);
     const { dividerYs, swimLaneLabels } = get();
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, saveStatus: 'unsaved', pendingEditNodeId: id });
     debugTrace('addShape', { id, type, label, x: position.x, y: position.y, nodeCount: updated.length });
-    // v5.2: proactive coaching triggers
-    setTimeout(() => {
-      get().checkFirstShape();
-      get().checkDecisionLabels(id);
-      get().checkSwimLaneNeed();
-    }, 500);
+    // v5.2: proactive coaching triggers (온보딩 진행 중에는 억제)
+    const { onboardingStep: obs } = get();
+    if (obs === 'idle' || obs === 'done') {
+      setTimeout(() => {
+        get().checkFirstShape();
+        get().checkDecisionLabels(id);
+        get().checkSwimLaneNeed();
+      }, 500);
+    }
     // v5: contextual suggest on shape add
     get().triggerContextualSuggest();
     // auto L7 validation after label entry (6s delay to let user finish typing)
@@ -240,11 +273,17 @@ export const useStore = create<AppStore>((set, get) => ({
     return id;
   },
   updateNodeLabel: (id, label, source = 'user') => {
-    const prev = get().nodes.find(n => n.id === id)?.data.label;
+    const node = get().nodes.find(n => n.id === id);
+    const nodeType = node?.data.nodeType;
+    const prev = node?.data.label;
     get().pushHistory();
     get().updateUserActivity();
-    set({ nodes: get().nodes.map(n => n.id !== id ? n : { ...n, data: { ...n.data, label, pendingEdit: false, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined, changeHistory: [...(n.data.changeHistory || []), { before: n.data.label, after: label, timestamp: Date.now(), source }].slice(-10) } }), saveStatus: 'unsaved' });
+    set({ nodes: get().nodes.map(n => n.id !== id ? n : { ...n, data: { ...n.data, label, pendingEdit: false, l7Status: 'none' as L7Status, l7Issues: [], l7Rewrite: undefined } }), saveStatus: 'unsaved' });
     debugTrace('updateNodeLabel', { id, before: prev || null, after: label, source });
+    // 온보딩 set_scope: 종료 노드 라벨을 실제로 편집하면 define_phases로 자동 진행
+    if (get().onboardingStep === 'set_scope' && nodeType === 'end' && label.trim() && label !== '종료') {
+      setTimeout(() => get().advanceOnboarding(), 600);
+    }
   },
   updateNodeMeta: (id, meta) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...meta } } : n), saveStatus: 'unsaved' }); },
   setNodeCategory: (id, category) => { get().pushHistory(); set({ nodes: get().nodes.map(n => n.id === id ? { ...n, data: { ...n.data, category } } : n), saveStatus: 'unsaved' }); },
@@ -613,8 +652,20 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ dividerYs: clamped, nodes: updated });
   },
   setSwimLaneLabels: (labels) => {
-    const updated = assignSwimLanes(get().nodes, get().dividerYs, labels);
+    const { onboardingStep, swimLaneLabels: prev, nodes, dividerYs } = get();
+    const updated = assignSwimLanes(nodes, dividerYs, labels);
     set({ swimLaneLabels: labels, nodes: updated });
+    // 온보딩 edit_swimlane: A→B 순서로 편집 감지, 둘 다 바꾸면 자동 진행
+    if (onboardingStep === 'edit_swimlane') {
+      const defaults = ['A 주체', 'B 주체', 'C 주체', 'D 주체'];
+      const prevEdited = prev.filter((l, i) => l !== defaults[i]).length;
+      const nowEdited = labels.filter((l, i) => l !== defaults[i]).length;
+      if (prevEdited < 1 && nowEdited >= 1) {
+        get().addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: '👍 A주체 완료! 이제 B주체 이름도 바꿔보세요.', dismissible: true });
+      } else if (nowEdited >= 2) {
+        setTimeout(() => get().advanceOnboarding(), 400);
+      }
+    }
   },
   addDividerY: (y) => {
     if (get().dividerYs.length < 3) {
@@ -626,6 +677,14 @@ export const useStore = create<AppStore>((set, get) => ({
     const newYs = get().dividerYs.filter((_, i) => i !== index);
     get().setDividerYs(newYs);
   },
+
+  // Phase lane system (vertical dividers)
+  dividerXs: [],
+  phaseLabels: ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5'],
+  setDividerXs: (xs) => set({ dividerXs: xs.filter(x => Number.isFinite(x)) }),
+  setPhaseLabels: (labels) => set({ phaseLabels: labels }),
+  addDividerX: (x) => { if (get().dividerXs.length < 4) set(s => ({ dividerXs: [...s.dividerXs, x] })); },
+  removeDividerX: (index) => set(s => ({ dividerXs: s.dividerXs.filter((_, i) => i !== index) })),
 
   // Clipboard
   clipboard: null,
@@ -673,7 +732,7 @@ export const useStore = create<AppStore>((set, get) => ({
     return { ok: force || !issues.length, issues };
   },
   exportFlow: () => {
-    const { processContext, nodes, edges, dividerYs, swimLaneLabels } = get();
+    const { processContext, nodes, edges, dividerYs, swimLaneLabels, dividerXs, phaseLabels } = get();
     const { nodes: sn, edges: se } = serialize(nodes, edges);
     debugTrace('exportFlow', { nodeCount: sn.length, edgeCount: se.length, dividerCount: dividerYs.length });
     return JSON.stringify({
@@ -682,12 +741,16 @@ export const useStore = create<AppStore>((set, get) => ({
       edges: se,
       dividerYs,
       swimLaneLabels,
+      dividerXs,
+      phaseLabels,
     }, null, 2);
   },
   importFlow: (json) => {
     try {
       const d = JSON.parse(json); if (!d.nodes) return;
-      const ns: Node<FlowNodeData>[] = d.nodes.map((n: any) => ({ id: n.id, type: n.type, position: n.position || { x: 0, y: 0 }, draggable: true, data: { label: n.label, nodeType: n.type, inputLabel: n.inputLabel, outputLabel: n.outputLabel, systemName: n.systemName, duration: n.duration, category: n.category || 'as_is', swimLaneId: n.swimLaneId } }));
+      const ns: Node<FlowNodeData>[] = d.nodes
+        .filter((n: any) => n.type !== 'phase') // 구버전 Phase 노드 제거
+        .map((n: any) => ({ id: n.id, type: n.type, position: n.position || { x: 0, y: 0 }, draggable: true, data: { label: n.label, nodeType: n.type, inputLabel: n.inputLabel, outputLabel: n.outputLabel, systemName: n.systemName, duration: n.duration, category: n.category || 'as_is', swimLaneId: n.swimLaneId } }));
       const es: Edge[] = (d.edges || []).map((e: any) => makeEdge(e.source, e.target, e.label || undefined, undefined, e.sourceHandle || undefined, e.targetHandle || undefined));
 
       // 스윔레인 복원 — 신규 포맷(dividerYs 배열) 우선, 구버전 하위 호환
@@ -719,7 +782,9 @@ export const useStore = create<AppStore>((set, get) => ({
         laneLabels = [topLbl, botLbl];
       }
 
-      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divYs, swimLaneLabels: laneLabels });
+      const divXs: number[] = Array.isArray(d.dividerXs) ? d.dividerXs.filter((x: any) => Number.isFinite(x)) : [];
+      const pLabels: string[] = Array.isArray(d.phaseLabels) && d.phaseLabels.length >= 2 ? d.phaseLabels : ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5'];
+      set({ nodes: reindexByPosition(ns), edges: es, processContext: d.processContext || get().processContext, dividerYs: divYs, swimLaneLabels: laneLabels, dividerXs: divXs, phaseLabels: pLabels });
       debugTrace('importFlow:success', { nodeCount: ns.length, edgeCount: es.length, dividerYs: divYs });
     } catch (e) { debugTrace('importFlow:error', { error: String(e) }); console.error('Import failed:', e); }
   },
@@ -729,6 +794,163 @@ export const useStore = create<AppStore>((set, get) => ({
   hideOnboarding: () => set({ showOnboarding: false }),
   dismissOnboarding: () => { localStorage.setItem('pm-v5-onboarding-dismissed', '1'); set({ showOnboarding: false }); },
   showOnboardingPanel: () => set({ showOnboarding: true }),
+
+  // v6: onboarding state machine
+  onboardingStep: 'idle' as OnboardingStep,
+  setOnboardingStep: (step) => set({ onboardingStep: step }),
+  advanceOnboarding: () => {
+    const { onboardingStep, addMessage, dividerYs } = get();
+    const order: OnboardingStep[] = ['idle', 'welcome', 'ask_swimlane', 'edit_swimlane', 'set_scope', 'define_phases', 'phase_detail', 'done'];
+    const idx = order.indexOf(onboardingStep);
+    let next = order[idx + 1] ?? 'done';
+    // 역할 구분선 없으면 edit_swimlane 스킵
+    if (next === 'edit_swimlane' && dividerYs.length === 0) next = 'set_scope';
+    set({ onboardingStep: next });
+    if (next === 'ask_swimlane') {
+      const ctx = get().processContext;
+      const processName = ctx?.processName || '이 프로세스';
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: `"${processName}"에 등장하는 주체가 누구누구인가요?\n\n예: 담당자 + 면접위원, 담당자 + 임직원처럼 주체가 2인 이상이라면 역할 구분선이 필요합니다.\n한 명이 전부 처리한다면 없어도 됩니다.`,
+        quickActions: [
+          { label: '역할 구분선 추가하기', storeAction: 'addSwimLaneAndAdvance' },
+          { label: '단독 처리 - 다음', storeAction: 'advanceOnboarding' },
+        ],
+      });
+    } else if (next === 'edit_swimlane') {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '역할 구분선이 추가됐어요!\n\n캔버스 좌측에서 깜빡이는 라벨을 클릭해서 실제 담당자/역할명으로 바꿔보세요.\nA주체 → B주체 순서로 바꾸면 자동으로 다음 단계로 넘어갑니다.',
+      });
+    } else if (next === 'set_scope') {
+      // 종료 노드 없으면 자동 추가 (시작과 수평 정렬, 멀리 배치)
+      const endExists = get().nodes.find(n => n.data.nodeType === 'end');
+      if (!endExists) {
+        get().addShape('end', '종료', { x: 0, y: 0 }); // 스마트 포지셔닝이 실제 위치 결정
+        setTimeout(() => set({ pendingEditNodeId: null }), 10); // 자동 인라인 편집 억제
+      }
+      const scopeCtx = get().processContext;
+      const scopeName = scopeCtx?.processName || '이 프로세스';
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: `다음으로 '${scopeName}'의 프로세스 범위를 한정해볼게요.\n\n시작 노드에는 이 L6가 어떤 트리거에 의해 착수되는지, 종료 노드에는 어떤 결과물/산출물로 완수되는지를 입력해보세요.\n\n예: 시작 "채용 요청 접수" → 종료 "최종 합격자 결정"`,
+        quickActions: [
+          { label: '🟢 시작 노드 작성하기', storeAction: 'focusStartNode', noActioned: true },
+          { label: '🔴 종료 노드 작성하기', storeAction: 'focusEndNode', noActioned: true },
+        ],
+      });
+    } else if (next === 'define_phases') {
+      const dpCtx = get().processContext;
+      const dpName = dpCtx?.processName || '이 업무';
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: `좋아요! 이제 '${dpName}'을 3~5개의 Phase로 나눠볼게요.\n\nAI가 이 업무에 맞는 Phase를 자동 추천할 수 있어요. 생성 후 캔버스 위 라벨을 클릭하면 이름 수정이 가능하고, 구분선은 드래그로 위치를 조정할 수 있어요.`,
+        quickActions: [
+          { label: '✨ Phase 자동 생성', storeAction: 'suggestPhases', noActioned: true },
+          { label: '✅ Phase 확정 완료', storeAction: 'advanceOnboarding' },
+        ],
+      });
+    } else if (next === 'phase_detail') {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '각 Phase 안에 세부 단계를 채워볼게요.\n\n첫 번째 Phase부터 시작해서 그 구간에서 일어나는 일들을 Process 노드로 그려보세요.\n판단이 필요한 곳엔 Decision 노드를, 모르겠으면 챗봇에게 물어보세요.',
+        quickActions: [
+          { label: '완성 → L7 검증으로', storeAction: 'advanceOnboarding' },
+        ],
+      });
+    } else if (next === 'done') {
+      addMessage({
+        id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+        text: '🎉 기본 흐름 완성! 이제 L7 검증으로 각 단계의 표현이 적절한지 확인해봐요.\n위의 "L7 전체 검증" 버튼을 눌러보세요.',
+        dismissible: true,
+      });
+      set({ onboardingStep: 'done' });
+    }
+  },
+  skipOnboarding: () => {
+    set({ onboardingStep: 'done' });
+    get().addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: '온보딩을 건너뛰었습니다. 언제든 질문하거나 우클릭으로 셰이프를 추가하세요!', dismissible: true });
+  },
+
+  suggestPhases: async () => {
+    const { processContext, nodes } = get();
+    if (!processContext) return;
+    set({ loadingState: { active: true, message: 'Phase 구간 분석 중...', startTime: Date.now(), elapsed: 0 } });
+    const prompt = `"${processContext.processName}" 업무(L4: ${processContext.l4}, L5: ${processContext.l5})를 논리적인 3~5개 Phase로 나눠줘.\nPhase 이름은 2~6글자로 간결하게. 아래처럼 JSON 배열만 출력해 (다른 텍스트 없이):\n["Phase1", "Phase2", "Phase3"]`;
+    // LLM 응답에서 Phase 배열을 추출하는 헬퍼
+    const extractPhaseNames = (text: string): string[] => {
+      // 1차: JSON 배열 직접 파싱
+      const jsonMatch = text.match(/\[[\s\S]*?\]/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length >= 2) return parsed.map(String).map(s => s.trim()).filter(Boolean);
+        } catch {
+          const items = jsonMatch[0].replace(/[\[\]"'「」【】]/g, '').split(/[,，、]/).map((s: string) => s.trim()).filter(Boolean);
+          if (items.length >= 2) return items;
+        }
+      }
+      // 2차: 번호 목록 (1. 접수 / ① 검토 형식)
+      const listItems = [...text.matchAll(/[①②③④⑤1-5][.\s、]\s*([가-힣a-zA-Z]{2,6})/g)].map(m => m[1]);
+      if (listItems.length >= 2) return listItems;
+      // 3차: 화살표 구분 텍스트 ("접수 → 검토 → 처리")
+      const arrowMatch = text.match(/([가-힣a-zA-Z]{2,6})\s*[→>→]\s*([가-힣a-zA-Z]{2,6})/);
+      if (arrowMatch) {
+        const arrows = text.match(/[가-힣a-zA-Z]{2,6}(?=\s*[→>→])|(?<=[→>→]\s*)[가-힣a-zA-Z]{2,6}/g);
+        if (arrows && arrows.length >= 2) return arrows;
+      }
+      return [];
+    };
+    // 업무명 기반 휴리스틱 폴백 (LLM 실패 시)
+    const heuristicFallback = (name: string): string[] => {
+      if (/심사|검토|평가|사정/.test(name)) return ['접수', '심사', '결정', '통보'];
+      if (/채용|선발|모집|지원/.test(name)) return ['공고', '접수', '선발', '합격'];
+      if (/지급|정산|급여|수당/.test(name)) return ['신청', '검토', '승인', '지급'];
+      if (/등록|신고|신청/.test(name)) return ['신청', '접수', '처리', '완료'];
+      if (/교육|연수|훈련/.test(name)) return ['계획', '신청', '운영', '평가'];
+      return ['접수', '검토', '처리', '완료'];
+    };
+    try {
+      const resp = await fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prompt, processContext, nodes: [], edges: [], recentTurns: [] }),
+      });
+      if (!resp.ok) throw new Error('API error');
+      const data = await resp.json();
+      const text = extractBotText(data);
+      let phaseNames = extractPhaseNames(text);
+      if (phaseNames.length < 2) phaseNames = heuristicFallback(processContext.processName);
+      if (phaseNames.length > 5) phaseNames = phaseNames.slice(0, 5);
+      // 시작/종료 노드 X 기준으로 dividerXs 배치
+      const startX = nodes.find(n => n.data.nodeType === 'start')?.position.x ?? 300;
+      const endX = nodes.find(n => n.data.nodeType === 'end')?.position.x ?? (startX + 1500);
+      const count = phaseNames.length;
+      const dividers = Array.from({ length: count - 1 }, (_, i) => startX + (endX - startX) * (i + 1) / count);
+      const newLabels = [...get().phaseLabels];
+      phaseNames.forEach((name, i) => { newLabels[i] = name; });
+      get().setDividerXs(dividers);
+      get().setPhaseLabels(newLabels);
+      get().addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `${count}단계 Phase를 그렸어요: ${phaseNames.join(' → ')}\n\n라벨을 클릭해서 이름을 수정하거나, 구분선을 드래그해서 범위를 조정하세요.`, dismissible: true });
+    } catch {
+      // 폴백: 업무명 기반 추론
+      const fallback = heuristicFallback(processContext.processName);
+      const startX = get().nodes.find(n => n.data.nodeType === 'start')?.position.x ?? 300;
+      const endX = get().nodes.find(n => n.data.nodeType === 'end')?.position.x ?? (startX + 1500);
+      const count = fallback.length;
+      get().setDividerXs(Array.from({ length: count - 1 }, (_, i) => startX + (endX - startX) * (i + 1) / count));
+      const fl = [...get().phaseLabels];
+      fallback.forEach((name, i) => { fl[i] = name; });
+      get().setPhaseLabels(fl);
+      get().addMessage({ id: generateId('msg'), role: 'bot', timestamp: Date.now(), text: `연결이 원활하지 않아 '${processContext.processName}' 기반으로 ${count}단계 Phase를 추천했어요: ${fallback.join(' → ')}\n\n라벨을 클릭해서 수정할 수 있어요.`, dismissible: true });
+    } finally {
+      set({ loadingState: { active: false, message: '', startTime: 0, elapsed: 0 } });
+    }
+  },
+
+  // v6: PDD history
+  pddHistory: [],
+  addPddHistory: (content) => set(s => ({ pddHistory: [...s.pddHistory, { content, timestamp: Date.now() }] })),
+
   showGuide: false, toggleGuide: () => set(s => ({ showGuide: !s.showGuide })),
   tourActive: false, tourStep: 0,
   startTour: () => set({ tourActive: true, tourStep: 0 }),
@@ -892,8 +1114,8 @@ export const useStore = create<AppStore>((set, get) => ({
       set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, swimLane: now } });
       addMessage({
         id: generateId('msg'), role: 'bot', timestamp: Date.now(),
-        text: '🏊 6개 이상의 단계가 있으시면, 역할별로 구분선을 추가하면 프로세스가 더 명확해질 수 있어요.',
-        quickActions: [{ label: '스윔레인 설정하기', storeAction: 'toggleSwimLane' }],
+        text: '🏊 주체가 2명 이상이라면 역할 구분선을 추가해보세요. 단독 처리라면 없어도 됩니다.',
+        quickActions: [{ label: '역할 구분선 설정하기', storeAction: 'toggleSwimLane' }],
         dismissible: true
       });
     }
@@ -937,7 +1159,7 @@ export const useStore = create<AppStore>((set, get) => ({
   resetToSetup: () => {
     // 현재 작업을 로컬 스토리지에 저장 후 초기 화면으로 복귀
     get().saveDraft();
-    set({ processContext: null, mode: null });
+    set({ processContext: null, mode: null, pddHistory: [], onboardingStep: 'idle' as OnboardingStep, dividerXs: [], phaseLabels: ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5'] });
   },
 
   celebrateL7Success: () => {

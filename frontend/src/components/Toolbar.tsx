@@ -21,9 +21,28 @@ export default function Toolbar() {
   const dividerYs = useStore((s) => s.dividerYs);
   const setDividerYs = useStore((s) => s.setDividerYs);
   const addDividerY = useStore((s) => s.addDividerY);
+  const dividerXs = useStore((s) => s.dividerXs);
+  const setDividerXs = useStore((s) => s.setDividerXs);
+  const addDividerX = useStore((s) => s.addDividerX);
   const toggleGuide = useStore((s) => s.toggleGuide);
 
   const laneActive = dividerYs.length > 0;
+  const phaseActive = dividerXs.length > 0;
+
+  const handleTogglePhase = () => {
+    if (phaseActive) { setDividerXs([]); return; }
+    const { nodes: ns } = useStore.getState();
+    const sx = ns.find(n => n.data.nodeType === 'start')?.position.x ?? 200;
+    const ex = ns.find(n => n.data.nodeType === 'end')?.position.x ?? sx + 1500;
+    addDividerX(Math.round((sx + ex) / 2));
+  };
+  const handleAddPhaseSection = () => {
+    if (dividerXs.length >= 4) return;
+    const { nodes: ns } = useStore.getState();
+    const ex = ns.find(n => n.data.nodeType === 'end')?.position.x ?? 1700;
+    const lastX = Math.max(...dividerXs);
+    addDividerX(Math.min(lastX + 400, ex - 100));
+  };
   const workNodes = nodes.filter((n) => !['start', 'end'].includes(n.data.nodeType));
   const hasEnd = nodes.some((n) => n.data.nodeType === 'end');
 
@@ -124,7 +143,7 @@ export default function Toolbar() {
 
       <button
         onClick={handleToggleLane}
-        title="역할 구분선 (스윔레인)"
+        title="역할 구분선"
         className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 hover:bg-slate-600/20 ${laneActive ? 'text-blue-400' : 'text-slate-400'}`}
       >
         <svg width="13" height="11" viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -141,6 +160,27 @@ export default function Toolbar() {
       {laneActive && dividerYs.length < 3 && (
         <button onClick={handleAddLane} className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20">
           + 레인
+        </button>
+      )}
+
+      <div className="w-px h-5 bg-slate-700" />
+
+      <button
+        onClick={handleTogglePhase}
+        title="Phase 구분선"
+        className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 hover:bg-slate-600/20 ${phaseActive ? 'text-purple-400' : 'text-slate-400'}`}
+      >
+        <svg width="13" height="11" viewBox="0 0 13 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="1" y1="0" x2="1" y2="11" stroke="currentColor" strokeWidth="1.5"/>
+          <line x1="6.5" y1="0" x2="6.5" y2="11" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2.5 1.5"/>
+          <line x1="12" y1="0" x2="12" y2="11" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+        Phase 구분선
+        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: phaseActive ? '#a855f7' : '#475569' }} />
+      </button>
+      {phaseActive && dividerXs.length < 4 && (
+        <button onClick={handleAddPhaseSection} className="px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-600/20">
+          + 구간
         </button>
       )}
 

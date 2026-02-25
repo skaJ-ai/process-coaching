@@ -20,7 +20,7 @@ export default function NodeDetailPanel() {
   const [editRewriteText, setEditRewriteText] = useState('');
   const node = nodes.find(n => n.id === sel);
   if (!node || node.data.nodeType === 'start' || node.data.nodeType === 'end') return null;
-  const { l7Status, l7Issues, l7Rewrite, changeHistory } = node.data;
+  const { l7Status, l7Issues, l7Rewrite } = node.data;
   const sc = { none: { c: '#64748b', l: '미검증' }, checking: { c: '#a855f7', l: '검증 중...' }, pass: { c: '#22c55e', l: '표준 준수' }, warning: { c: '#f59e0b', l: '개선 가능' }, reject: { c: '#f59e0b', l: 'AI 추천 있음' } }[l7Status || 'none']!;
   return (
     <div className="absolute bottom-0 left-0 right-0 z-20 animate-slide-up" style={{ background: 'linear-gradient(180deg, #1a2744, #0f1729)', borderTop: '1px solid #2a3a52', maxHeight: '40vh', overflow: 'auto' }}>
@@ -77,22 +77,7 @@ export default function NodeDetailPanel() {
             </>
           )}
         </div>}
-        {/* Change History */}
-        {changeHistory && changeHistory.length > 0 && <div>
-          <div className="text-xs text-slate-500 font-medium mb-2">변경 이력</div>
-          {changeHistory.slice().reverse().slice(0, 5).map((h, i) => (
-            <div key={i} className="flex items-start gap-2 text-[11px] mb-2">
-              <span className="text-slate-600 flex-shrink-0">{new Date(h.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-              <span className="px-1 py-0.5 rounded text-[9px] flex-shrink-0" style={{ background: h.source === 'ai' ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)', color: h.source === 'ai' ? '#c084fc' : '#60a5fa' }}>{h.source === 'ai' ? 'AI' : '사용자'}</span>
-              <div className="flex-1 flex flex-wrap items-baseline gap-1">
-                <span className="text-slate-500 line-through break-all">{h.before}</span>
-                <span className="text-slate-500 flex-shrink-0">→</span>
-                <span className="text-slate-300 break-all">{h.after}</span>
-              </div>
-            </div>
-          ))}
-        </div>}
-        {l7Status === 'none' && !changeHistory?.length && <div className="text-xs text-slate-500 text-center py-4">L7 검증을 실행하면 결과가 여기에 표시됩니다.</div>}
+        {l7Status === 'none' && <div className="text-xs text-slate-500 text-center py-4">L7 검증을 실행하면 결과가 여기에 표시됩니다.</div>}
         {/* TO-BE 모드: 카테고리 분류 */}
         {mode === 'TO-BE' && (
           <div>

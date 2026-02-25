@@ -11,12 +11,16 @@ export default function SetupModal() {
   const [l4, setL4] = useState('');
   const [l5, setL5] = useState('');
   const [l6, setL6] = useState('');
+  const [l5Custom, setL5Custom] = useState('');
+  const [l6Custom, setL6Custom] = useState('');
   const [showRecovery, setShowRecovery] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
   const mod = useMemo(() => hrModules.find(m => m.l4 === l4), [l4]);
   const task = useMemo(() => mod?.tasks.find(t => t.l5 === l5), [mod, l5]);
-  const ok = l4 && l5 && l6;
+  const effectiveL5 = l5 === '__custom__' ? l5Custom.trim() : l5;
+  const effectiveL6 = l6 === '__custom__' ? l6Custom.trim() : l6;
+  const ok = l4 && effectiveL5 && effectiveL6;
 
   useEffect(() => {
     const saved = localStorage.getItem('pm-v5-save');
@@ -25,7 +29,7 @@ export default function SetupModal() {
 
   const handleStart = () => {
     if (!ok) return;
-    setCtx({ l4, l5, processName: l6 });
+    setCtx({ l4, l5: effectiveL5, processName: effectiveL6 });
   };
 
 
@@ -103,17 +107,31 @@ export default function SetupModal() {
           </div>
           {l4 && mod && <div className="animate-fade-in">
             <label htmlFor="setup-l5" className="block text-xs font-medium text-slate-400 mb-1.5">L5 단위업무</label>
-            <select id="setup-l5" name="l5" value={l5} onChange={e => { setL5(e.target.value); setL6(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
+            <select id="setup-l5" name="l5" value={l5} onChange={e => { setL5(e.target.value); setL5Custom(''); setL6(''); setL6Custom(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
               <option value="">선택...</option>
               {mod.tasks.map(t => <option key={t.l5} value={t.l5}>{t.l5}</option>)}
+              <option value="__custom__">✏️ 직접 입력</option>
             </select>
+            {l5 === '__custom__' && (
+              <input type="text" value={l5Custom} onChange={e => setL5Custom(e.target.value)} placeholder="L5 단위업무를 직접 입력하세요" className="mt-2 w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-blue-500/40 focus:outline-none focus:border-blue-500/70 placeholder:text-slate-600" />
+            )}
           </div>}
-          {l5 && task && <div className="animate-fade-in">
+          {l5 && (task || l5 === '__custom__') && <div className="animate-fade-in">
             <label htmlFor="setup-l6" className="block text-xs font-medium text-slate-400 mb-1.5">L6 상세활동</label>
-            <select id="setup-l6" name="l6" value={l6} onChange={e => setL6(e.target.value)} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
-              <option value="">선택...</option>
-              {task.l6_activities.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+            {l5 === '__custom__' ? (
+              <input type="text" id="setup-l6" value={l6Custom} onChange={e => setL6Custom(e.target.value)} placeholder="L6 상세활동을 직접 입력하세요" className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-blue-500/40 focus:outline-none focus:border-blue-500/70 placeholder:text-slate-600" />
+            ) : (
+              <>
+                <select id="setup-l6" name="l6" value={l6} onChange={e => { setL6(e.target.value); setL6Custom(''); }} className="w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-slate-700/50 focus:outline-none focus:border-blue-500/50">
+                  <option value="">선택...</option>
+                  {task!.l6_activities.map(a => <option key={a} value={a}>{a}</option>)}
+                  <option value="__custom__">✏️ 직접 입력</option>
+                </select>
+                {l6 === '__custom__' && (
+                  <input type="text" value={l6Custom} onChange={e => setL6Custom(e.target.value)} placeholder="L6 상세활동을 직접 입력하세요" className="mt-2 w-full px-4 py-2.5 rounded-lg text-sm text-slate-200 bg-slate-800/60 border border-blue-500/40 focus:outline-none focus:border-blue-500/70 placeholder:text-slate-600" />
+                )}
+              </>
+            )}
           </div>}
         </div>
         <div>

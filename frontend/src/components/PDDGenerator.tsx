@@ -15,11 +15,14 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
   const ctx = useStore(s => s.processContext);
+  const pddHistory = useStore(s => s.pddHistory);
+  const addPddHistory = useStore(s => s.addPddHistory);
+  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const swimLanes = useMemo(() => {
     const laneIds = [...new Set(nodes.map(n => n.data.swimLaneId).filter(Boolean))];
     return laneIds.map(id => ({ id: id!, label: id! }));
   }, [nodes]);
-  const [pddContent, setPddContent] = useState('');
+  const [pddContent, setPddContent] = useState(() => pddHistory[pddHistory.length - 1]?.content || '');
   const [insights, setInsights] = useState<PddInsights | null>(() => {
     // 이전 인사이트 복원
     try {
@@ -93,6 +96,8 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
     if (systems.length > 0) { md += `## 관련 시스템\n\n`; systems.forEach(s => { md += `- ${s}\n`; }); md += `\n`; }
 
     setPddContent(md);
+    addPddHistory(md);
+    setHistoryIndex(null); // 최신 항목 표시
   };
 
   const generateInsights = async () => {
@@ -127,10 +132,20 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
-      <div className="w-[700px] max-h-[80vh] rounded-xl overflow-hidden flex flex-col animate-fade-in"
+      <div className="w-[780px] max-h-[85vh] rounded-xl overflow-hidden flex flex-col animate-fade-in"
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-primary)' }}>
-          <h3 className="text-sm font-bold text-slate-200">📄 프로세스 정의서 (PDD) 생성</h3>
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-primary)' }}>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold text-slate-200">📄 프로세스 정의서 (PDD) 생성</h3>
+            {pddHistory.length > 1 && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => { const idx = historyIndex === null ? pddHistory.length - 2 : Math.max(0, historyIndex - 1); setHistoryIndex(idx); setPddContent(pddHistory[idx].content); }} disabled={historyIndex === 0} className="px-1.5 py-0.5 rounded text-[10px] text-slate-500 hover:text-slate-300 disabled:opacity-30">◀</button>
+                <span className="text-[10px] text-slate-500">{(historyIndex === null ? pddHistory.length : historyIndex + 1)}/{pddHistory.length}</span>
+                <button onClick={() => { if (historyIndex === null || historyIndex >= pddHistory.length - 1) return; const idx = historyIndex + 1; const isLatest = idx === pddHistory.length - 1; setHistoryIndex(isLatest ? null : idx); setPddContent(pddHistory[idx].content); }} disabled={historyIndex === null} className="px-1.5 py-0.5 rounded text-[10px] text-slate-500 hover:text-slate-300 disabled:opacity-30">▶</button>
+                {historyIndex !== null && <span className="text-[9px] text-amber-400/70">{new Date(pddHistory[historyIndex].timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>}
+              </div>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300">✕</button>
         </div>
         {!pddContent ? (
@@ -145,7 +160,7 @@ export default function PDDGenerator({ onClose }: { onClose: () => void }) {
               <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{pddContent}</pre>
             </div>
             {insights && (
-              <div className="px-6 py-4 space-y-3 max-h-[300px] overflow-y-auto" style={{ borderTop: '1px solid var(--border-primary)' }}>
+              <div className="px-6 py-4 space-y-3 flex-shrink-0 overflow-y-auto" style={{ borderTop: '1px solid var(--border-primary)', maxHeight: '35vh' }}>
                 <p className="text-xs font-semibold text-indigo-300 mb-1">🔍 AI 전략 인사이트</p>
                 <p className="text-xs text-slate-400 leading-relaxed">{insights.summary}</p>
                 {insights.inefficiencies.length > 0 && (
