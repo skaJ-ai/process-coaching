@@ -22,7 +22,7 @@ export default function ChatPanel() {
 
   const mode = useStore(s => s.mode);
   const onboardingStep = useStore(s => s.onboardingStep);
-  const isActiveOnboarding = onboardingStep !== 'idle' && onboardingStep !== 'done';
+  const isActiveOnboarding = onboardingStep !== 'idle' && onboardingStep !== 'done' && onboardingStep !== 'phase_detail';
   const advanceOnboarding = useStore(s => s.advanceOnboarding);
   const skipOnboarding = useStore(s => s.skipOnboarding);
   const suggestPhases = useStore(s => s.suggestPhases);
