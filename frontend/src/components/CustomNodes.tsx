@@ -10,14 +10,18 @@ const statusMap: Record<L7Status, { color: string; badge: string }> = {
 };
 
 const AllHandles = ({ color = '#60a5fa' }: { color?: string }) => (<>
-  <Handle type="target" position={Position.Top} id="top-target" style={{ top: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Top} id="top-source" style={{ top: -7, left: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ bottom: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Bottom} id="bottom-source" style={{ bottom: -7, left: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Left} id="left-target" style={{ left: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Left} id="left-source" style={{ left: -7, top: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
-  <Handle type="target" position={Position.Right} id="right-target" style={{ right: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
-  <Handle type="source" position={Position.Right} id="right-source" style={{ right: -7, top: '50%', width: 14, height: 14, background: 'transparent', border: 'none', zIndex: 11 }} />
+  {/* target handles — visible dot, drop-only (isConnectableStart=false) */}
+  <Handle type="target" position={Position.Top}    id="top-target"    isConnectableStart={false} style={{ top: -7,  left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
+  <Handle type="target" position={Position.Bottom} id="bottom-target" isConnectableStart={false} style={{ bottom: -7, left: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
+  <Handle type="target" position={Position.Left}   id="left-target"   isConnectableStart={false} style={{ left: -7,  top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
+  <Handle type="target" position={Position.Right}  id="right-target"  isConnectableStart={false} style={{ right: -7, top: '50%', width: 14, height: 14, background: color, border: '2px solid #0f1729', borderRadius: '50%', zIndex: 10 }} />
+  {/* source handles — 28×28 drag zone, valid drop target (ConnectionMode.Loose allows source→source).
+      NO isConnectableEnd=false: keeps 'connectableend' class → isConnectable=true → drop is valid.
+      elementsFromPoint finds this first (z-11), but now it's a VALID target in Loose mode. */}
+  <Handle type="source" position={Position.Top}    id="top-source"    style={{ top: -14,  left: '50%', width: 28, height: 28, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Bottom} id="bottom-source" style={{ bottom: -14, left: '50%', width: 28, height: 28, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Left}   id="left-source"   style={{ left: -14,  top: '50%', width: 28, height: 28, background: 'transparent', border: 'none', zIndex: 11 }} />
+  <Handle type="source" position={Position.Right}  id="right-source"  style={{ right: -14, top: '50%', width: 28, height: 28, background: 'transparent', border: 'none', zIndex: 11 }} />
 </>);
 
 function useInlineEdit(nodeId: string, currentLabel: string, autoPending?: boolean) {
@@ -158,6 +162,25 @@ export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeDa
 });
 SubprocessNode.displayName = 'SubprocessNode';
 
+export const ParallelNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
+  const DIAMOND = 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)';
+  const borderColor = selected ? '#2dd4bf' : '#0d9488';
+  const bg = selected ? 'linear-gradient(135deg,#134e4a,#0f766e)' : 'linear-gradient(135deg,#0f3d3d,#0a2525)';
+  return (
+    <div className="relative" style={{ width: 72, height: 72 }}>
+      <AllHandles color={selected ? '#2dd4bf' : '#14b8a6'} />
+      {/* 테두리 레이어 */}
+      <div className="absolute inset-0" style={{ clipPath: DIAMOND, background: borderColor }} />
+      {/* 콘텐츠 레이어 */}
+      <div className="absolute flex items-center justify-center"
+        style={{ clipPath: DIAMOND, background: bg, top: 3, right: 3, bottom: 3, left: 3 }}>
+        <span style={{ fontSize: 22, fontWeight: 700, color: '#2dd4bf', lineHeight: 1, userSelect: 'none' }}>+</span>
+      </div>
+    </div>
+  );
+});
+ParallelNode.displayName = 'ParallelNode';
+
 export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHandleId, targetHandleId, style, markerEnd, label }: EdgeProps) {
   // Orthogonal Polyline Self Loop: Start -> P2 -> P3 -> P4 -> End
   const M = 40; // Margin
@@ -256,5 +279,5 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
   </>);
 }
 
-export const nodeTypes = { start: StartNode, end: EndNode, process: ProcessNode, decision: DecisionNode, subprocess: SubprocessNode };
+export const nodeTypes = { start: StartNode, end: EndNode, process: ProcessNode, decision: DecisionNode, subprocess: SubprocessNode, parallel: ParallelNode };
 export const edgeTypes = { selfLoop: SelfLoopEdge, spread: SpreadEdge };

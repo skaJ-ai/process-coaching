@@ -34,13 +34,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothi
 .react-flow__controls-button:hover { background: var(--bg-tertiary) !important; fill: var(--text-primary) !important; }
 .react-flow__edge-path { stroke-width: 2 !important; }
 
-/* v5: larger handles */
-.react-flow__handle { width: 14px !important; height: 14px !important; background: var(--accent-blue) !important; border: 2px solid var(--bg-primary) !important; border-radius: 50% !important; opacity: 0.5; transition: all 0.15s ease; }
-.react-flow__handle:hover { width: 18px !important; height: 18px !important; background: var(--accent-green) !important; opacity: 1; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-.react-flow__handle.connectingto, .react-flow__handle.valid { background: var(--accent-green) !important; opacity: 1; box-shadow: 0 0 12px rgba(34,197,94,0.6); width: 18px !important; height: 18px !important; }
-/* v5: show handles on node hover */
-.react-flow__node:hover .react-flow__handle { opacity: 0.8; }
-.react-flow__node.selected .react-flow__handle { opacity: 1; }
+/* v5: handles — target=visible dot / source=invisible 28×28 drag+drop zone (ConnectionMode.Loose) */
+.react-flow__handle { opacity: 0; transition: opacity 0.15s ease; }
+/* target handles: colored dot indicator */
+.react-flow__handle.target { width: 14px !important; height: 14px !important; border: 2px solid var(--bg-primary) !important; border-radius: 50% !important; opacity: 0.5; }
+/* source handles: 28×28 invisible zone — valid drop target in Loose mode */
+.react-flow__handle.source { width: 28px !important; height: 28px !important; background: transparent !important; border: none !important; border-radius: 0 !important; opacity: 0 !important; }
+/* show target dot on node hover / selection */
+.react-flow__node:hover .react-flow__handle.target { opacity: 0.8; }
+.react-flow__node.selected .react-flow__handle.target { opacity: 1; }
+/* target handle hover */
+.react-flow__handle.target:hover { width: 18px !important; height: 18px !important; background: var(--accent-green) !important; opacity: 1 !important; box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+/* valid drop target: source handle flashes green dot at node edge */
+.react-flow__handle-valid { background: var(--accent-green) !important; opacity: 1 !important; box-shadow: 0 0 12px rgba(34,197,94,0.6); width: 14px !important; height: 14px !important; border-radius: 50% !important; }
 
 .react-flow__selection { background: rgba(59,130,246,0.08) !important; border: 1.5px solid rgba(59,130,246,0.4) !important; border-radius: 4px; }
 .react-flow__node.selected { filter: drop-shadow(0 0 10px rgba(59,130,246,0.5)); }

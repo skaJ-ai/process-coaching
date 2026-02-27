@@ -46,7 +46,7 @@ export default function ContextMenu() {
   const node = cm.nodeId ? useStore.getState().nodes.find(n => n.id === cm.nodeId) : null;
 
   const placeShape = (type: ShapeType) => {
-    const defaults: Record<ShapeType, string> = { process: '새 태스크', decision: '분기 조건?', subprocess: 'L6 프로세스', start: '시작', end: '종료' };
+    const defaults: Record<ShapeType, string> = { process: '새 태스크', decision: '분기 조건?', subprocess: 'L6 프로세스', start: '시작', end: '종료', parallel: '' };
     if (isN && cm.nodeId) addShapeAfter(type, defaults[type], cm.nodeId);
     else addShape(type, defaults[type], { x: cm.flowX ?? 300, y: cm.flowY ?? 300 });
     hide();
@@ -61,6 +61,7 @@ export default function ContextMenu() {
         <div className="context-menu-item" onClick={() => placeShape('process')}><span style={{ color: '#60a5fa' }}>▢</span> 프로세스</div>
         <div className="context-menu-item" onClick={() => placeShape('decision')}><span style={{ color: '#fbbf24' }}>◇</span> 판단(분기)</div>
         <div className="context-menu-item" onClick={() => placeShape('subprocess')}><span style={{ color: '#2dd4bf' }}>▣</span> L6 프로세스</div>
+        <div className="context-menu-item" onClick={() => placeShape('parallel')}><span style={{ color: '#14b8a6' }}>⊕</span> 병렬(+)</div>
         <div className="context-menu-item" onClick={() => placeShape('start')}><span style={{ color: '#22c55e' }}>●</span> 시작</div>
         <div className="context-menu-item" onClick={() => placeShape('end')}><span style={{ color: '#ef4444' }}>●</span> 끝</div>
       </>)}

@@ -467,7 +467,7 @@ export const useStore = create<AppStore>((set, get) => ({
   addShape: (type, label, position) => {
     get().pushHistory();
     get().updateUserActivity();
-    const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end' }[type] ?? 'node');
+    const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end', parallel: 'par' }[type] ?? 'node');
     // End 노드: 시작 노드와 수평으로 멀리 배치
     let pos = position;
     if (type === 'end') {
@@ -554,7 +554,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
   addShapeAfter: (type, label, afterNodeId) => {
     const { nodes, edges } = get(); get().pushHistory();
-    const id = generateId(type === 'decision' ? 'dec' : type === 'subprocess' ? 'sub' : 'proc');
+    const id = generateId(type === 'decision' ? 'dec' : type === 'subprocess' ? 'sub' : type === 'parallel' ? 'par' : 'proc');
     const after = nodes.find(n => n.id === afterNodeId);
     // ⚠️ x 좌표를 start 노드와 수직 정렬 (엣지 꺾임 방지)
     const startNode = nodes.find(n => n.data.nodeType === 'start');
@@ -604,6 +604,11 @@ export const useStore = create<AppStore>((set, get) => ({
     if (!node) return;
     if (node.data.nodeType === 'start') { if (nodes.filter(n => n.data.nodeType === 'start').length <= 1) return; }
     get().pushHistory();
+    // parallel 노드: Split/Join 구조가 복잡하므로 재연결 없이 단순 제거
+    if (node.data.nodeType === 'parallel') {
+      set({ nodes: reindexByPosition(nodes.filter(n => n.id !== id)), edges: edges.filter(e => e.source !== id && e.target !== id), saveStatus: 'unsaved' });
+      return;
+    }
     const inE = edges.filter(e => e.target === id), outE = edges.filter(e => e.source === id);
     let newEdges = edges.filter(e => e.source !== id && e.target !== id);
     for (const i of inE) for (const o of outE) newEdges.push(makeEdge(i.source, o.target));
@@ -677,6 +682,7 @@ export const useStore = create<AppStore>((set, get) => ({
       : suggestionType === 'END' ? 'end'
       : suggestionType === 'DECISION' ? 'decision'
       : suggestionType === 'SUBPROCESS' ? 'subprocess'
+      : suggestionType === 'PARALLEL' ? 'parallel'
       : /종료|완료|끝|finish/.test(labelText) ? 'end'
       : /시작|start|begin/.test(labelText) ? 'start'
       : /판단|결정|여부|분기|승인|반려/.test(labelText) ? 'decision'

@@ -35,7 +35,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
     validateNode: async (id: string) => {
       const { nodes } = get();
       const node = nodes.find((n) => n.id === id);
-      if (!node || ['start', 'end', 'subprocess'].includes(node.data.nodeType)) return null;
+      if (!node || ['start', 'end', 'subprocess', 'parallel'].includes(node.data.nodeType)) return null;
       if (PLACEHOLDER_LABELS.has((node.data.label || '').trim())) {
         set({
           nodes: get().nodes.map((n) =>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, useViewport, useStore as useRFStore, BackgroundVariant } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, useViewport, useStore as useRFStore, BackgroundVariant, ConnectionMode } from 'reactflow';
 import { createPortal } from 'react-dom';
 import 'reactflow/dist/style.css';
 import { useStore } from '../store';
@@ -661,7 +661,8 @@ function FlowCanvas() {
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         nodeTypes={nodeTypes} edgeTypes={memoEdgeTypes}
         multiSelectionKeyCode="Shift"
-        connectionRadius={30}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={20}
         onPaneClick={() => { hideCM(); setSel(null); setSelEdge(null); }}
         onNodeClick={(_e, n) => { setSel(n.id); setSelEdge(null); }}
         onEdgeClick={(_e, edge) => { setSelEdge(edge.id); setSel(null); }}

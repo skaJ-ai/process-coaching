@@ -9,7 +9,7 @@ export interface ProcessContext {
 }
 
 // ─── Node Types ───
-export type ShapeType = 'start' | 'end' | 'process' | 'decision' | 'subprocess';
+export type ShapeType = 'start' | 'end' | 'process' | 'decision' | 'subprocess' | 'parallel';
 
 // ─── Mode (투트랙) ───
 export type Mode = 'AS-IS' | 'TO-BE' | null;
@@ -23,7 +23,7 @@ export type L7Status = 'none' | 'checking' | 'pass' | 'warning' | 'reject';
 // ─── Suggestion from LLM ───
 export interface Suggestion {
   action: 'ADD' | 'MODIFY' | 'DELETE';
-  type: 'PROCESS' | 'DECISION' | 'SUBPROCESS';
+  type: 'PROCESS' | 'DECISION' | 'SUBPROCESS' | 'PARALLEL';
   summary: string;
   reason: string;
   confidence?: 'high' | 'medium' | 'low';

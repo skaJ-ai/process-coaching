@@ -3,7 +3,8 @@ import { FlowNodeData } from '../types';
 
 export type StructRuleId =
   | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05'
-  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12' | 'S-13';
+  | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12' | 'S-13'
+  | 'S-14' | 'S-15';
 
 export interface StructIssue {
   ruleId: StructRuleId;
@@ -72,7 +73,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
 
   // ── S-04: 흐름 끊김 (process/decision에 나가는 연결 없음) — delete_target 제외 ──
   const noOutgoingIds = flowNodes
-    .filter((n) => ['process', 'decision', 'subprocess'].includes(n.data.nodeType))
+    .filter((n) => ['process', 'decision', 'subprocess', 'parallel'].includes(n.data.nodeType))
     .filter((n) => !deleteTargetIds.has(n.id))
     .filter((n) => connected.has(n.id)) // 고아가 아닌 노드만 (고아는 S-03에서 처리)
     .filter((n) => !edges.some((e) => e.source === n.id))
@@ -269,6 +270,30 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
         severity: 'warning',
         message: `삭제 대상 셰이프 ${connectedDeleteIds.length}개에 연결이 남아 있어요. 삭제 대상은 고립 노드여야 합니다. 연결된 엣지를 제거해주세요.`,
         nodeIds: connectedDeleteIds,
+      });
+    }
+  }
+
+  // ── S-14: 병렬 Split without Join ──
+  // ── S-15: 병렬 Join without Split ──
+  const parallelNodes = nodes.filter((n) => n.data.nodeType === 'parallel');
+  if (parallelNodes.length > 0) {
+    const parallelSplits = parallelNodes.filter((n) => edges.filter((e) => e.source === n.id).length >= 2);
+    const parallelJoins = parallelNodes.filter((n) => edges.filter((e) => e.target === n.id).length >= 2);
+    if (parallelSplits.length > parallelJoins.length) {
+      issues.push({
+        ruleId: 'S-14',
+        severity: 'warning',
+        message: `병렬 분기(Split) 게이트웨이 ${parallelSplits.length}개에 대응하는 병렬 합류(Join)가 부족해요. Split/Join은 반드시 쌍으로 사용해야 합니다.`,
+        nodeIds: parallelSplits.map((n) => n.id),
+      });
+    }
+    if (parallelJoins.length > parallelSplits.length) {
+      issues.push({
+        ruleId: 'S-15',
+        severity: 'warning',
+        message: `병렬 합류(Join) 게이트웨이 ${parallelJoins.length}개에 대응하는 병렬 분기(Split)가 부족해요. Join에는 반드시 선행 Split이 있어야 합니다.`,
+        nodeIds: parallelJoins.map((n) => n.id),
       });
     }
   }
