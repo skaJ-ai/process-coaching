@@ -8,8 +8,8 @@ backend/__pycache__/
 frontend/dist/
 frontend/.vite/
 
-# Local data (process samples, user data)
-frontend/src/data/
+# Local data (process samples, user data) — processData.ts는 추적
+frontend/src/data/*
 !frontend/src/data/processData.ts
 
 # Logs
