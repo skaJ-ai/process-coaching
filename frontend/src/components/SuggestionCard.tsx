@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Suggestion } from '../types';
 import { useStore } from '../store';
 import { detectCompoundAction } from '../utils/labelUtils';
+import { DRAFT_LANE_ENABLED } from '../constants';
 
 export default function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const applySuggestion = useStore(s => s.applySuggestion);
   const applySuggestionWithEdit = useStore(s => s.applySuggestionWithEdit);
+  const addToDraft = useStore(s => s.addToDraft);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const nodes = useStore(s => s.nodes);
   const action = suggestion.action || 'ADD';
@@ -121,9 +123,19 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
         )}
         {!editing ? (
           <>
-            <button onClick={handleApply} className="px-2.5 py-1 rounded text-[11px] font-medium transition-all" style={{ background: `${cfg.text}20`, color: cfg.text, border: `1px solid ${cfg.border}` }}>
-              {action === 'MODIFY' ? 'AI 추천 적용' : action === 'DELETE' ? '삭제' : '추가'}
-            </button>
+            {DRAFT_LANE_ENABLED && action === 'ADD' ? (
+              <button
+                onClick={() => addToDraft(suggestion)}
+                className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
+                style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.35)' }}
+              >
+                📥 임시 보관
+              </button>
+            ) : (
+              <button onClick={handleApply} className="px-2.5 py-1 rounded text-[11px] font-medium transition-all" style={{ background: `${cfg.text}20`, color: cfg.text, border: `1px solid ${cfg.border}` }}>
+                {action === 'MODIFY' ? 'AI 추천 적용' : action === 'DELETE' ? '삭제' : '추가'}
+              </button>
+            )}
             {action !== 'DELETE' && (
               <button onClick={() => setEditing(true)} className="px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">
                 ✏ 직접 수정

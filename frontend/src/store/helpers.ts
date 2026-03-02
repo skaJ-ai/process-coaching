@@ -4,8 +4,7 @@ import { NODE_DIMENSIONS } from '../constants';
 
 export function makeInitialNodes(): Node<FlowNodeData>[] {
   return [
-    // y: 40 → 20으로 상향 (온보딩 가이드와 겹침 방지)
-    { id: 'start', type: 'start', position: { x: 300, y: 20 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
+    { id: 'start', type: 'start', position: { x: 320, y: 50 }, data: { label: '시작', nodeType: 'start' }, draggable: true },
   ];
 }
 

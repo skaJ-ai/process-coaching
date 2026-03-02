@@ -1,5 +1,6 @@
 // ─── Process Context ───
 export interface ProcessContext {
+  l3: string;
   l4: string;
   l5: string;
   processName: string;
@@ -69,7 +70,7 @@ export interface ChatMessage {
   suggestions?: Suggestion[];
   l7Report?: L7ReportItem[];
   quickQueries?: string[];
-  quickActions?: { label: string; storeAction: 'toggleSwimLane' | 'advanceOnboarding' | 'skipOnboarding' | 'addSwimLaneAndAdvance' | 'focusStartNode' | 'focusEndNode' | 'suggestPhases'; noActioned?: boolean }[];
+  quickActions?: { label: string; storeAction: 'toggleSwimLane' | 'advanceOnboarding' | 'skipOnboarding' | 'addSwimLaneAndAdvance' | 'focusStartNode' | 'focusEndNode' | 'startInterviewFlow'; noActioned?: boolean }[];
   timestamp: number;
   dismissible?: boolean;
   actioned?: boolean;
@@ -153,11 +154,18 @@ export interface LoadingState {
   requestCount?: number;
 }
 
+// ─── Draft Lane ───
+export interface DraftItem {
+  id: string;
+  suggestion: Suggestion;
+  stagedAt: number;
+}
+
 // ─── Save State ───
 export type SaveStatus = 'unsaved' | 'draft' | 'complete';
 
 // ─── Onboarding State Machine ───
-export type OnboardingStep = 'idle' | 'welcome' | 'ask_swimlane' | 'edit_swimlane' | 'set_scope' | 'define_phases' | 'phase_detail' | 'done';
+export type OnboardingStep = 'idle' | 'welcome' | 'ask_swimlane' | 'edit_swimlane' | 'set_scope' | 'done' | 'skipped';
 
 // ─── Theme ───
 
@@ -174,11 +182,18 @@ export interface HRModuleTemplate {
   commonIssues?: string[];
 }
 
-export interface HRModule {
+export interface ProcessL5 {
+  l5: string;
+  l6_activities: string[];
+  template?: HRModuleTemplate;
+}
+
+export interface ProcessL4 {
   l4: string;
-  tasks: {
-    l5: string;
-    l6_activities: string[];
-    template?: HRModuleTemplate;
-  }[];
+  tasks: ProcessL5[];
+}
+
+export interface HRModule {
+  l3: string;
+  l4_list: ProcessL4[];
 }

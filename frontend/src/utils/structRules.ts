@@ -274,26 +274,71 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
     }
   }
 
-  // ── S-14: 병렬 Split without Join ──
-  // ── S-15: 병렬 Join without Split ──
+  // ── S-14: 병렬 Split에 대응하는 Join 없음 or degree 불일치 ──
+  // ── S-15: 병렬 Join에 선행 Split 없음 ──
   const parallelNodes = nodes.filter((n) => n.data.nodeType === 'parallel');
   if (parallelNodes.length > 0) {
     const parallelSplits = parallelNodes.filter((n) => edges.filter((e) => e.source === n.id).length >= 2);
     const parallelJoins = parallelNodes.filter((n) => edges.filter((e) => e.target === n.id).length >= 2);
-    if (parallelSplits.length > parallelJoins.length) {
-      issues.push({
-        ruleId: 'S-14',
-        severity: 'warning',
-        message: `병렬 분기(Split) 게이트웨이 ${parallelSplits.length}개에 대응하는 병렬 합류(Join)가 부족해요. Split/Join은 반드시 쌍으로 사용해야 합니다.`,
-        nodeIds: parallelSplits.map((n) => n.id),
+    const parallelNodeIds = new Set(parallelNodes.map((n) => n.id));
+
+    // 각 Split에 대해 경로 BFS로 대응 Join 탐색 + degree 비교
+    const matchedJoinIds = new Set<string>();
+    for (const split of parallelSplits) {
+      const splitOutDeg = edges.filter((e) => e.source === split.id).length;
+      const outTargets = edges.filter((e) => e.source === split.id).map((e) => e.target);
+
+      // BFS: 각 branch에서 reachable한 parallel 노드 집합 구하기
+      const reachableSets: Set<string>[] = outTargets.map((startId) => {
+        const reachable = new Set<string>();
+        const queue = [startId];
+        const visited = new Set<string>();
+        while (queue.length > 0) {
+          const cur = queue.shift()!;
+          if (visited.has(cur)) continue;
+          visited.add(cur);
+          if (parallelNodeIds.has(cur) && cur !== split.id) reachable.add(cur);
+          for (const e of edges.filter((e) => e.source === cur)) {
+            if (!visited.has(e.target)) queue.push(e.target);
+          }
+        }
+        return reachable;
       });
+
+      // 모든 branch에서 공통으로 도달 가능한 parallel 노드 = 대응 Join 후보
+      const correspondingJoin = reachableSets.length > 0
+        ? [...reachableSets[0]].find((id) => reachableSets.every((s) => s.has(id)))
+        : undefined;
+
+      if (!correspondingJoin) {
+        issues.push({
+          ruleId: 'S-14',
+          severity: 'warning',
+          message: `병렬 분기(+) 게이트웨이에 대응하는 합류(Join)가 없어요. Split/Join은 반드시 쌍으로 사용해야 합니다.`,
+          nodeIds: [split.id],
+        });
+      } else {
+        matchedJoinIds.add(correspondingJoin);
+        const joinInDeg = edges.filter((e) => e.target === correspondingJoin).length;
+        if (splitOutDeg !== joinInDeg) {
+          issues.push({
+            ruleId: 'S-14',
+            severity: 'warning',
+            message: `병렬 분기(Split)에서 ${splitOutDeg}개로 나눴지만 합류(Join)로 들어오는 경로가 ${joinInDeg}개예요. 쪼갠 수만큼 Join으로 들어와야 합니다.`,
+            nodeIds: [split.id, correspondingJoin],
+          });
+        }
+      }
     }
-    if (parallelJoins.length > parallelSplits.length) {
+
+    // Join이 있는데 대응하는 Split이 없는 경우
+    const unmatchedJoins = parallelJoins.filter((n) => !matchedJoinIds.has(n.id));
+    if (unmatchedJoins.length > 0) {
       issues.push({
         ruleId: 'S-15',
         severity: 'warning',
-        message: `병렬 합류(Join) 게이트웨이 ${parallelJoins.length}개에 대응하는 병렬 분기(Split)가 부족해요. Join에는 반드시 선행 Split이 있어야 합니다.`,
-        nodeIds: parallelJoins.map((n) => n.id),
+        message: `병렬 합류(Join) 게이트웨이 ${unmatchedJoins.length}개에 대응하는 분기(Split)가 없어요. Join에는 반드시 선행 Split이 있어야 합니다.`,
+        nodeIds: unmatchedJoins.map((n) => n.id),
       });
     }
   }

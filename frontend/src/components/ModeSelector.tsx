@@ -54,7 +54,7 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
             </div>
 
             <p className="text-slate-300 mb-6 leading-relaxed">
-              현재 운영 중인 프로세스를 있는 그대로 문서화하고 분석합니다.
+              현재의 HR 프로세스를 있는 AI와 함께 분석합니다.
             </p>
 
             <div className="space-y-3">
@@ -73,7 +73,7 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
             </div>
 
             <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between">
-              <span className="text-sm text-slate-400">추천 대상: 현황 파악, 문서화, 개선점 분석</span>
+              <span className="text-sm text-slate-400"></span>
               <button
                 onClick={(e) => handleLoadExample('AS-IS', e)}
                 disabled={loadingExample !== null}
@@ -97,17 +97,17 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
             </div>
 
             <p className="text-slate-300 mb-6 leading-relaxed">
-              이상적인 미래 프로세스를 설계하고 개선 방향을 제시합니다.
+              이상적인 미래 HR 프로세스를 새롭게 설계합니다.
             </p>
 
             <div className="space-y-3">
               <div className="flex items-start gap-2">
                 <span className="text-purple-400 mt-1">✓</span>
-                <span className="text-slate-300 text-sm">개선된 프로세스 설계</span>
+                <span className="text-slate-300 text-sm">클렌징 기반 TO-BE 프로세스 설계</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-purple-400 mt-1">✓</span>
-                <span className="text-slate-300 text-sm">자동화·디지털 전환 영역 표시</span>
+                <span className="text-slate-300 text-sm">Digital Worker·SSC 이관 영역 표시</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-purple-400 mt-1">✓</span>
@@ -116,7 +116,7 @@ export default function ModeSelector({ onSelect }: ModeSelectorProps) {
             </div>
 
             <div className="mt-6 pt-6 border-t border-slate-700 flex items-center justify-between">
-              <span className="text-sm text-slate-400">추천 대상: 프로세스 혁신, 디지털 전환, 자동화</span>
+              <span className="text-sm text-slate-400"></span>
               <button
                 onClick={(e) => handleLoadExample('TO-BE', e)}
                 disabled={loadingExample !== null}

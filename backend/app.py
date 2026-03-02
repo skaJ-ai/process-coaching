@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,16 +37,87 @@ try:
     from .schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest, CategorizeNodesRequest
     from .llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from .chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
-    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
+    from .prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT, INTERVIEW_START_SYSTEM, FLOW_OVERVIEW_SYSTEM
     from .flow_services import describe_flow, mock_review, mock_validate
     from .l345_reference import get_l345_context
 except ImportError:
     from schemas import ReviewRequest, ChatRequest, ValidateL7Request, ContextualSuggestRequest, CategorizeNodesRequest
     from llm_service import check_llm, call_llm, close_http_client, get_llm_debug_status
     from chat_orchestrator import orchestrate_chat, get_chain_status, _classify_intent
-    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT
+    from prompt_templates import REVIEW_SYSTEM, COACH_TEMPLATE, CONTEXTUAL_SUGGEST_SYSTEM, FIRST_SHAPE_SYSTEM, PDD_ANALYSIS, PDD_INSIGHTS_SYSTEM, KNOWLEDGE_PROMPT, CATEGORIZE_PROMPT, INTERVIEW_START_SYSTEM, FLOW_OVERVIEW_SYSTEM
     from flow_services import describe_flow, mock_review, mock_validate
     from l345_reference import get_l345_context
+
+
+# ── 인터뷰 응답 TTL 캐시 (동일 컨텍스트 반복 호출 방지, TTL=5분) ──
+_INTERVIEW_CACHE: dict[str, tuple[float, dict]] = {}
+_INTERVIEW_CACHE_TTL = 300  # seconds
+
+
+def _interview_cache_key(context: dict, start_label: str = "", end_label: str = "") -> str:
+    base = f"{context.get('l4','')}/{context.get('l5','')}/{context.get('processName','')}".lower()
+    _defaults = {"시작", "시작 노드", "종료", "종료 노드", "start", "end", ""}
+    if start_label.strip() not in _defaults:
+        base += f"/{start_label.strip()}".lower()
+    if end_label.strip() not in _defaults:
+        base += f"/{end_label.strip()}".lower()
+    return base
+
+
+def _get_interview_cache(key: str) -> dict | None:
+    entry = _INTERVIEW_CACHE.get(key)
+    if entry and (time.time() - entry[0]) < _INTERVIEW_CACHE_TTL:
+        return entry[1]
+    if key in _INTERVIEW_CACHE:
+        del _INTERVIEW_CACHE[key]
+    return None
+
+
+def _set_interview_cache(key: str, value: dict) -> None:
+    _INTERVIEW_CACHE[key] = (time.time(), value)
+
+
+def _calc_flow_metrics(nodes, edges) -> dict:
+    """플로우 품질 메트릭 계산. contextual-suggest 진단 블록에 사용."""
+    total = len(nodes)
+    decision_count = sum(1 for n in nodes if n.type == "decision")
+    node_ids = {n.id for n in nodes}
+    connected = {e.source for e in edges} | {e.target for e in edges}
+    orphan_count = len(node_ids - connected)
+    decision_ratio = round(decision_count / total, 2) if total > 0 else 0.0
+    return {
+        "total": total,
+        "decision_count": decision_count,
+        "decision_ratio": decision_ratio,
+        "orphan_count": orphan_count,
+    }
+
+
+_LANE_DEFAULTS = {"A 주체", "B 주체", "C 주체", "D 주체", ""}
+_SCOPE_DEFAULTS = {"시작", "시작 노드", "종료", "종료 노드", "start", "end", ""}
+
+
+def _append_actor_scope(ctx_lines: str, nodes, swim_lane_labels: list[str]) -> str:
+    """스윔레인 역할명 + 시작/종료 노드 범위를 ctx_lines에 추가."""
+    extras = []
+
+    custom_labels = [l for l in swim_lane_labels if l.strip() and l.strip() not in _LANE_DEFAULTS]
+    if custom_labels:
+        extras.append(f"[역할]\n주체: {', '.join(custom_labels)}")
+
+    start_label = next((n.label for n in nodes if n.type == "start"), "")
+    end_label = next((n.label for n in nodes if n.type == "end"), "")
+    scope_parts = []
+    if start_label.strip() not in _SCOPE_DEFAULTS:
+        scope_parts.append(f"시작: {start_label}")
+    if end_label.strip() not in _SCOPE_DEFAULTS:
+        scope_parts.append(f"종료: {end_label}")
+    if scope_parts:
+        extras.append("[범위]\n" + "\n".join(scope_parts))
+
+    if extras:
+        return ctx_lines + "\n" + "\n".join(extras) + "\n"
+    return ctx_lines
 
 
 def _build_l345_block(context: dict) -> str:
@@ -71,6 +143,7 @@ async def review_flow(req: ReviewRequest):
     )
     if l345:
         ctx_block += f"\n{l345}\n"
+    ctx_block = _append_actor_scope(ctx_block, req.currentNodes, req.swimLaneLabels)
     r = await call_llm(REVIEW_SYSTEM, f"{ctx_block}\n플로우:\n{fd}",
                        max_tokens=1200, temperature=0.3)
     return r or mock_review(req.currentNodes, req.currentEdges)
@@ -110,7 +183,44 @@ async def chat(req: ChatRequest):
         if l345:
             ctx_lines += f"\n{l345}\n"
 
-        if intent == "knowledge":
+        ctx_lines = _append_actor_scope(ctx_lines, req.currentNodes, req.swimLaneLabels)
+
+        if intent == "flow_overview":
+            process_name = req.context.get("processName", "이 업무") if isinstance(req.context, dict) else "이 업무"
+            start_label = next((n.label for n in req.currentNodes if n.type == "start"), "시작")
+            end_label = next((n.label for n in req.currentNodes if n.type == "end"), "종료")
+            ov_prompt = (
+                f"{ctx_lines}\n"
+                f"시작 노드: {start_label} / 종료 노드: {end_label}\n"
+                f"현재 노드 수: {len(req.currentNodes)}개\n"
+                f"\n질문: {req.message}"
+            )
+            _default_qq = [
+                "첫 단계부터 같이 그려볼까요?",
+                "예외 처리는 어떻게 표현하나요?",
+                "어떤 분기점이 있을까요?",
+            ]
+            ov_r = await call_llm(FLOW_OVERVIEW_SYSTEM, ov_prompt, allow_text_fallback=True, max_tokens=700, temperature=0.4)
+            ov_text = ""
+            ov_qq = _default_qq
+            if ov_r:
+                if isinstance(ov_r, dict):
+                    ov_text = ov_r.get("speech") or ov_r.get("message") or ov_r.get("text") or ov_r.get("content") or ""
+                    ov_qq = ov_r.get("quickQueries") or _default_qq
+                elif isinstance(ov_r, str):
+                    ov_text = ov_r
+            if not ov_text:
+                ov_text = f"'{process_name}' 업무의 흐름에 대해 질문해 주시면 함께 생각해볼게요."
+            return {
+                "message": ov_text,
+                "speech": ov_text,
+                "suggestions": [],
+                "quickQueries": ov_qq,
+                "intent": "flow_overview",
+                "source": "llm" if ov_r else "fallback",
+                "fallbackLevel": 0,
+            }
+        elif intent == "knowledge":
             # 지식 질문: 플로우 상세 생략, 노드 수만 전달하여 토큰 절약
             node_count = len(req.currentNodes)
             prompt = (
@@ -146,7 +256,17 @@ async def validate_l7(req: ValidateL7Request):
 async def contextual_suggest(req: ContextualSuggestRequest):
     # 초기 가이드용이므로 요약 모드로 토큰 절약
     fd = describe_flow(req.currentNodes, req.currentEdges, summary=True)
-    r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}")
+
+    # 플로우 품질 메트릭 계산 → 이슈 있을 때만 진단 블록 삽입
+    m = _calc_flow_metrics(req.currentNodes, req.currentEdges)
+    diag_lines = []
+    if m["total"] >= 5 and m["decision_ratio"] < 0.1:
+        diag_lines.append(f"Decision 부족: 노드 {m['total']}개 중 분기점 {m['decision_count']}개")
+    if m["orphan_count"] > 0:
+        diag_lines.append(f"독립 노드: {m['orphan_count']}개 (연결 없음)")
+    diag_block = ("\n[플로우 진단]\n" + "\n".join(diag_lines) + "\n") if diag_lines else ""
+
+    r = await call_llm(CONTEXTUAL_SUGGEST_SYSTEM, f"컨텍스트: {req.context}\n플로우:\n{fd}{diag_block}")
     if r:
         guidance = r.get("guidance", "")
         return {
@@ -171,16 +291,88 @@ async def first_shape_welcome(req: ContextualSuggestRequest):
     if r:
         text = f"👋 {r.get('greeting', '')}\n\n{r.get('processFlowExample', '')}\n\n{r.get('guidanceText', '')}"
         return {
-            "message": text,  # 표준 필드
-            "text": text,  # 하위 호환
+            "message": text,
+            "text": text,
+            "suggestions": r.get("suggestions", []),
             "quickQueries": r.get("quickQueries", []),
         }
-    text = f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음 단계를 추가하거나 아래 질문으로 프로세스 구조를 생각해보세요."
+    text = f"👋 첫 단계가 추가되었네요! \"{process_name}\" 프로세스를 함께 완성해보겠습니다.\n\n다음에 이어질 단계를 추가하거나 아래 질문으로 흐름을 구체화해보세요."
     return {
-        "message": text,  # 표준 필드
-        "text": text,  # 하위 호환
-        "quickQueries": ["일반적인 단계는 뭐가 있나요?", "어떤 분기점이 필요할까요?", "이 프로세스의 주요 역할은 누구인가요?"],
+        "message": text,
+        "text": text,
+        "suggestions": [],
+        "quickQueries": ["다음 단계는 어떻게 되나요?", "어떤 분기점이 필요할까요?"],
     }
+
+
+@app.post("/api/interview-start")
+async def interview_start(req: ContextualSuggestRequest):
+    """AI 인터뷰 시작: 4섹션 산문(FLOW_OVERVIEW_SYSTEM)으로 전체 흐름을 첫 버블에 바로 표시"""
+    ctx = req.context if isinstance(req.context, dict) else {}
+    process_name = ctx.get("processName", "HR 프로세스") or "HR 프로세스"
+    l4 = ctx.get("l4", "")
+    l5 = ctx.get("l5", "")
+
+    start_label = next((n.label for n in req.currentNodes if n.type == "start"), "")
+    end_label = next((n.label for n in req.currentNodes if n.type == "end"), "")
+
+    cache_key = _interview_cache_key(ctx, start_label, end_label)
+    cached = _get_interview_cache(cache_key)
+    if cached:
+        return cached
+
+    l345 = _build_l345_block(ctx)
+    ctx_lines = (
+        f"[프로세스 컨텍스트]\n"
+        f"L4: {l4 or '미설정'}\n"
+        f"L5: {l5 or '미설정'}\n"
+        f"L6(활동): {process_name}\n"
+    )
+    if l345:
+        ctx_lines += f"\n{l345}\n"
+
+    _scope_defaults = {"시작", "시작 노드", "종료", "종료 노드", "start", "end", ""}
+    scope_hint = ""
+    if start_label.strip() not in _scope_defaults:
+        scope_hint += f"사용자 지정 시작 노드: '{start_label}'\n"
+    if end_label.strip() not in _scope_defaults:
+        scope_hint += f"사용자 지정 종료 노드: '{end_label}'\n"
+
+    ov_prompt = f"{ctx_lines}{scope_hint}\n질문: {process_name}의 전체 흐름을 설명해주세요."
+
+    _default_qq = [
+        "첫 단계부터 같이 그려볼까요?",
+        "예외 처리는 어떻게 표현하나요?",
+        "어떤 분기점이 있을까요?",
+    ]
+
+    r = await call_llm(FLOW_OVERVIEW_SYSTEM, ov_prompt, allow_text_fallback=True, max_tokens=700, temperature=0.4)
+
+    text = ""
+    qq = _default_qq
+    if r:
+        if isinstance(r, dict):
+            text = r.get("speech") or r.get("message") or r.get("text") or r.get("content") or ""
+            qq = r.get("quickQueries") or _default_qq
+        elif isinstance(r, str):
+            text = r
+
+    if not text:
+        text = (
+            f"▶ 이 업무의 범위\n'{process_name}' 업무의 흐름을 함께 그려봐요.\n\n"
+            f"▶ 흐름의 줄기\n아직 참조 데이터가 없어요. 첫 단계부터 직접 알려주세요.\n\n"
+            f"▶ 놓치기 쉬운 갈림길\n예외 상황이나 분기점을 함께 찾아볼게요.\n\n"
+            f"▶ 다음으로 이어지는 것\n이 업무 이후 흐름은 진행하면서 파악해봐요."
+        )
+
+    result = {
+        "message": text,
+        "text": text,
+        "suggestions": [],
+        "quickQueries": qq,
+    }
+    _set_interview_cache(cache_key, result)
+    return result
 
 
 @app.post("/api/analyze-pdd")
@@ -277,6 +469,49 @@ L5 단위업무: {req.context.get('l5', 'Unknown')}
     return result
 
 
+@app.post("/api/suggest-phases")
+async def suggest_phases(req: dict):
+    """Phase AI 자동 추천 전용 엔드포인트.
+    orchestrate_chat 를 거치지 않으므로 Circuit Breaker에 영향을 주지 않는다.
+    Qwen3 등이 JSON 배열을 직접 반환해도 정상 처리.
+    """
+    context = req.get("context", {}) if isinstance(req, dict) else {}
+    process_name = context.get("processName", "")
+    l4 = context.get("l4", "")
+    l5 = context.get("l5", "")
+
+    system = "당신은 HR 업무 프로세스 전문가입니다. 요청한 형식(JSON 배열)으로만 응답하세요."
+    prompt = (
+        f'HR 업무 "{process_name}"(L4: {l4}, L5: {l5})의 내부를 논리적으로 3~4개 Phase로 분해해줘.\n\n'
+        f'【중요 제약】이 L6 업무 자체의 내부 흐름만 Phase로 나눠야 해. '
+        f'이 업무의 선행·후행에 해당하는 다른 L6(예: 신청접수, 결과통보 등)는 포함하지 마.\n\n'
+        f'각 Phase 이름은 4~6글자 명사형(예: "심사기준파악", "서류검토", "합부판정"). '
+        f'아래처럼 JSON 배열만 출력해 (설명 없이):\n["Phase1", "Phase2", "Phase3"]'
+    )
+
+    import json as _json
+    try:
+        result = await call_llm(system, prompt, allow_text_fallback=True, max_tokens=200, temperature=0.3)
+    except Exception:
+        logger.exception("/api/suggest-phases call_llm 실패")
+        return {"text": ""}
+
+    if result is None:
+        return {"text": ""}
+    # Qwen3 등이 JSON 배열을 직접 반환하는 경우
+    if isinstance(result, list):
+        return {"text": _json.dumps(result, ensure_ascii=False)}
+    # dict 반환 (일반 LLM 응답)
+    if isinstance(result, dict):
+        for key in ("speech", "message", "text", "content"):
+            v = result.get(key)
+            if isinstance(v, str) and v.strip():
+                return {"text": v}
+        return {"text": ""}
+    # 그 외 (str 등)
+    return {"text": str(result) if result else ""}
+
+
 @app.get("/api/health")
 async def health():
     llm = await check_llm()
@@ -293,6 +528,7 @@ async def health():
 @app.on_event("shutdown")
 async def shutdown():
     await close_http_client()
+
 
 
 if __name__ == "__main__":

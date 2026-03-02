@@ -23,15 +23,28 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 export default function App() {
   const ctx = useStore(s => s.processContext);
   const mode = useStore(s => s.mode);
-  const [chatW, setChatW] = useState(380);
+  const [chatW, setChatW] = useState(420);
   const [drag, setDrag] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [prevChatW, setPrevChatW] = useState(420);
 
   const onDown = useCallback((e: React.MouseEvent) => {
+    if (chatCollapsed) return;
     e.preventDefault(); setDrag(true);
     const move = (e: MouseEvent) => setChatW(Math.max(300, Math.min(600, e.clientX)));
     const up = () => { setDrag(false); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
-  }, []);
+  }, [chatCollapsed]);
+
+  const toggleChat = useCallback(() => {
+    if (chatCollapsed) {
+      setChatW(prevChatW);
+      setChatCollapsed(false);
+    } else {
+      setPrevChatW(chatW);
+      setChatCollapsed(true);
+    }
+  }, [chatCollapsed, chatW, prevChatW]);
 
 
 
@@ -47,8 +60,16 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
-        <div style={{ width: chatW, height: '100vh', flexShrink: 0 }}><ChatPanel /></div>
-        <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: 'col-resize', background: drag ? '#3b82f6' : '#1e293b', transition: 'background 0.15s' }} onMouseDown={onDown} />
+        <div style={{ width: chatCollapsed ? 0 : chatW, height: '100vh', flexShrink: 0, overflow: 'hidden', transition: chatCollapsed ? 'width 0.2s ease' : undefined }}><ChatPanel /></div>
+        <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: chatCollapsed ? 'default' : 'col-resize', background: drag ? '#3b82f6' : '#1e293b', transition: 'background 0.15s', position: 'relative' }} onMouseDown={onDown}>
+          <button
+            onClick={toggleChat}
+            title={chatCollapsed ? '채팅 패널 열기' : '채팅 패널 접기'}
+            style={{ position: 'absolute', top: 16, left: -12, width: 20, height: 36, background: '#334155', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', color: '#94a3b8', fontSize: 10, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          >
+            {chatCollapsed ? '▶' : '◀'}
+          </button>
+        </div>
         <div style={{ flex: 1, height: '100vh', position: 'relative' }}><FlowChart /></div>
       </div>
     </ErrorBoundary>

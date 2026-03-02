@@ -10,6 +10,7 @@ frontend/.vite/
 
 # Local data (process samples, user data)
 frontend/src/data/
+!frontend/src/data/processData.ts
 
 # Logs
 *.log

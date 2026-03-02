@@ -20,6 +20,10 @@ export const LAYOUT_CONFIG = {
 };
 
 export const L7_CONCURRENCY = 4;
+
+// Draft Lane: SuggestionCard → 임시 보관 → append → 캔버스
+// false(기본): 기존 [추가] 버튼 동작 유지 / true: Draft Lane 파이프라인 활성화
+export const DRAFT_LANE_ENABLED = false;
 export const SWIMLANE_MIN_HEIGHT = 200;
 
 export const SWIMLANE_COLORS = [

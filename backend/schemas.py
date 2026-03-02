@@ -29,6 +29,7 @@ class ReviewRequest(BaseModel):
     currentEdges: list[FlowEdge]
     userMessage: str = ""
     context: dict
+    swimLaneLabels: list[str] = []
 
 
 class ChatRequest(BaseModel):
@@ -38,6 +39,7 @@ class ChatRequest(BaseModel):
     currentEdges: list[FlowEdge] = []
     recentTurns: list[dict] = []
     conversationSummary: Optional[str] = None
+    swimLaneLabels: list[str] = []
 
 
 class ValidateL7Request(BaseModel):

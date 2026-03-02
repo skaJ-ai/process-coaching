@@ -12,6 +12,7 @@ interface StoreSlice {
   edges: Edge[];
   messages: ChatMessage[];
   dividerYs: number[];
+  swimLaneLabels: string[];
   loadingState: LoadingState;
   addMessage: AddMessage;
 }
@@ -100,7 +101,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
     },
 
     sendChat: async (msg: string) => {
-      const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
+      const { processContext: ctx, nodes, edges, addMessage, loadingState, dividerYs, swimLaneLabels } = get();
       addMessage({ id: generateId('msg'), role: 'user', text: msg, timestamp: Date.now() });
       let newCount = (loadingState.requestCount || 0) + 1;
       set({
@@ -118,6 +119,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
         const { nodes: serializedNodes, edges: serializedEdges } = serialize(nodes, edges);
         const recentTurns = buildRecentTurns(get().messages);
         const conversationSummary = buildConversationSummary(get().messages);
+        const activeLaneLabels = dividerYs.length > 0 ? swimLaneLabels.slice(0, dividerYs.length + 1) : [];
         const response = await fetch(`${API_BASE_URL}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,6 +130,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
             currentEdges: serializedEdges,
             recentTurns,
             conversationSummary,
+            swimLaneLabels: activeLaneLabels,
           }),
         });
 
@@ -172,7 +175,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
     },
 
     requestReview: async () => {
-      const { processContext: ctx, nodes, edges, addMessage, loadingState } = get();
+      const { processContext: ctx, nodes, edges, addMessage, loadingState, dividerYs, swimLaneLabels } = get();
       let newCount = (loadingState.requestCount || 0) + 1;
       set({
         loadingState: {
@@ -188,6 +191,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
       try {
         debugTrace('review:start', { nodeCount: nodes.length, edgeCount: edges.length });
         const { nodes: serializedNodes, edges: serializedEdges } = serialize(nodes, edges);
+        const activeLaneLabels = dividerYs.length > 0 ? swimLaneLabels.slice(0, dividerYs.length + 1) : [];
         const response = await fetch(`${API_BASE_URL}/review`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -196,6 +200,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
             currentEdges: serializedEdges,
             userMessage: '프로세스 분석 + 제안',
             context: ctx || {},
+            swimLaneLabels: activeLaneLabels,
           }),
         });
 

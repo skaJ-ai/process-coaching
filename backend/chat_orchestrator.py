@@ -73,6 +73,11 @@ def _normalize(payload: Any) -> dict:
     }
 
 
+_OVERVIEW_KEYWORDS = [
+    "일반적인 단계", "어떤 단계", "단계는 뭐", "단계가 뭐",
+    "전체 흐름", "어떤 활동", "단계를 알려", "흐름은 어떻게",
+]
+
 _KNOWLEDGE_KEYWORDS = [
     "뭐야", "뭔가", "무엇", "무슨", "어떤", "왜", "어떻게", "언제",
     "의미", "차이", "종류", "개념", "정의", "설명", "알려",
@@ -91,8 +96,12 @@ _FLOW_ACTION_KEYWORDS = [
 
 
 def _classify_intent(message: str) -> str:
-    """1차 의도 분류: knowledge / flow_action / coaching"""
+    """1차 의도 분류: flow_overview / knowledge / flow_action / coaching"""
     q = (message or "").strip()
+
+    # flow_overview 최우선 (knowledge 키워드보다 먼저)
+    if any(k in q for k in _OVERVIEW_KEYWORDS):
+        return "flow_overview"
 
     has_knowledge_kw = any(k in q for k in _KNOWLEDGE_KEYWORDS)
     has_flow_action_kw = any(k in q for k in _FLOW_ACTION_KEYWORDS)

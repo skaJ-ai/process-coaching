@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Process-Coaching BPMN/L7 가이드북</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #dbe2ea;
+      --soft: #f1f5f9;
+      --warn-bg: #fff1f2;
+      --warn-bd: #fecdd3;
+      --warn-tx: #9f1239;
+      --info-bg: #eff6ff;
+      --info-bd: #bfdbfe;
+      --info-tx: #1e3a8a;
+      --ok-bg: #ecfdf5;
+      --ok-bd: #bbf7d0;
+      --ok-tx: #166534;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.68;
+    }
+    .layout {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+    }
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .toc h2 { margin: 0 0 10px; font-size: 15px; }
+    .toc ul { margin: 0; padding-left: 18px; }
+    .toc li { margin: 7px 0; color: var(--muted); font-size: 13px; }
+    .toc a { color: var(--muted); text-decoration: none; }
+    .toc a:hover { color: var(--text); text-decoration: underline; }
+    .content-wrap { display: flex; justify-content: center; }
+    .doc {
+      width: 100%;
+      max-width: 800px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 30px;
+    }
+    h1, h2, h3 { line-height: 1.35; margin: 0 0 12px; }
+    h1 { font-size: 30px; }
+    h2 { font-size: 22px; margin-top: 34px; }
+    h3 { font-size: 18px; margin-top: 22px; }
+    p, li { color: var(--muted); }
+    strong { color: var(--text); }
+    code {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #0b3a75;
+    }
+    .kicker { font-size: 13px; color: #64748b; margin-top: -2px; }
+    .callout {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .callout.warning { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn-tx); }
+    .callout.info { background: var(--info-bg); border-color: var(--info-bd); color: var(--info-tx); }
+    .callout.success { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok-tx); }
+    .svg-box {
+      margin: 12px 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th { background: #f1f5f9; color: #334155; font-weight: 700; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    .list-tight li { margin: 5px 0; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; max-height: none; }
+      .content-wrap { justify-content: stretch; }
+      .doc { max-width: none; }
+    }
+    @media print {
+      body { background: #fff; }
+      .layout { display: block; max-width: none; padding: 0; }
+      .toc { display: none; }
+      .doc { max-width: none; border: none; border-radius: 0; padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc" aria-label="목차">
+      <h2>목차</h2>
+      <ul>
+        <li><a href="#purpose">1. 프로젝트 목적</a></li>
+        <li><a href="#rationale">2. 설계 근거 (BPMN 표준)</a></li>
+        <li><a href="#profile">3. 우리 툴 모델링 프로파일</a></li>
+        <li><a href="#elements">4. 요소별 작성 가이드</a></li>
+        <li><a href="#workflow">5. 빈 캔버스 작성 절차</a></li>
+        <li><a href="#l7">6. L7 품질 기준 (First Guideline 반영)</a></li>
+        <li><a href="#product">7. 제품 기능/모드</a></li>
+        <li><a href="#tech">8. 기술 운영 정보</a></li>
+        <li><a href="#sources">9. 근거 링크</a></li>
+      </ul>
+    </aside>
+
+    <div class="content-wrap">
+      <main class="doc">
+        <h1>Process-Coaching BPMN/L7 가이드북</h1>
+        <p class="kicker">버전: 2026-02-26 · Single HTML · 내부 SVG 포함</p>
+        <div class="callout info">문서 원칙: 1) BPMN 글로벌 표준은 가공 없이 우선 제시, 2) 우리 툴 해석/제약은 후술, 3) 미구현 기능은 제외(병렬 게이트웨이는 가이드 선반영 예외).</div>
+
+        <section id="purpose">
+          <h2>1) 프로젝트 목적</h2>
+          <p>본 프로젝트의 목적은 HR 업무를 <strong>L7 단위(한 셰이프=한 동작)</strong>로 분해해 AS-IS를 명확히 문서화하고, TO-BE 설계까지 이어지는 코칭 체계를 제공하는 것이다.</p>
+          <ul class="list-tight">
+            <li>핵심 질문: 유지/자동화/이관/삭제 가능성을 구조적으로 판단할 수 있는가</li>
+            <li>산출물: 이해 가능한 프로세스 모델 + 검증 가능한 라벨/구조 품질</li>
+            <li>운영 원칙: 현업이 직접 작성 가능해야 하며, 규칙 엔진으로 품질을 일관되게 관리</li>
+          </ul>
+          <div class="callout info">그림 자체가 목적이 아니라, 업무 전환 의사결정을 가능하게 하는 구조화가 목적이다.</div>
+        </section>
+
+        <section id="rationale">
+          <h2>2) 설계 근거 (BPMN 표준)</h2>
+          <h3>2.1 글로벌 표준 기준</h3>
+          <ul class="list-tight">
+            <li>기준 문서: OMG BPMN 2.0.2 (Conformance/Process Modeling)</li>
+            <li>Conformance는 모델링 계열과 실행 계열을 포괄</li>
+            <li>Process Modeling은 Descriptive / Analytic / Common Executable 하위 클래스로 구분</li>
+          </ul>
+
+          <h3>2.2 Descriptive Sub-Class 핵심</h3>
+          <table>
+            <thead><tr><th>분류</th><th>대표 요소 (OMG Table 2.1 기반)</th></tr></thead>
+            <tbody>
+              <tr><td>흐름</td><td><code>sequenceFlow</code>, <code>messageFlow</code></td></tr>
+              <tr><td>게이트웨이</td><td><code>exclusiveGateway</code>, <code>parallelGateway</code></td></tr>
+              <tr><td>활동</td><td><code>task</code>, <code>userTask</code>, <code>serviceTask</code>, <code>subProcess</code></td></tr>
+              <tr><td>이벤트</td><td><code>startEvent</code>, <code>endEvent</code></td></tr>
+              <tr><td>구조</td><td><code>participant</code>, <code>lane</code>, <code>DataObject</code>, <code>TextAnnotation</code></td></tr>
+            </tbody>
+          </table>
+          <div class="callout info">ISO/IEC 19510:2013은 OMG 2.0.1과 정합성을 명시한다. 실무 적용은 OMG 2.0.2와 교차 확인한다.</div>
+
+          <h3>2.3 왜 이 표준이 우리 목적에 맞는가</h3>
+          <table>
+            <thead><tr><th>관점</th><th>적합 이유</th><th>프로젝트 효과</th></tr></thead>
+            <tbody>
+              <tr><td>현업 작성성</td><td>가시 요소 중심으로 해석이 쉬움</td><td>작성 진입장벽 감소</td></tr>
+              <tr><td>품질 관리</td><td>구조/라벨 규칙화가 용이</td><td>L7 자동 검증 안정화</td></tr>
+              <tr><td>확장성</td><td>필요 시 Analytic/Executable 방향 확장 가능</td><td>단계적 고도화 가능</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="profile">
+          <h2>3) 우리 툴 모델링 프로파일</h2>
+          <p>우리는 Descriptive 철학을 차용하되, 제품 목적에 맞게 요소를 선별한 실무 프로파일로 운영한다.</p>
+          <div class="svg-box">
+            <svg xmlns="http://www.w3.org/2000/svg" width="760" height="410" viewBox="0 0 760 410" role="img" aria-label="표준 대비 툴 지원 범위">
+              <defs>
+                <style>
+                  .title { font:700 21px 'Segoe UI'; fill:#0f172a; }
+                  .h { font:700 15px 'Segoe UI'; fill:#0f172a; }
+                  .t { font:500 13px 'Segoe UI'; fill:#0f172a; }
+                  .card { fill:#fff; stroke:#cbd5e1; stroke-width:2; rx:10; }
+                </style>
+              </defs>
+              <rect x="0" y="0" width="760" height="410" fill="#f8fafc"/>
+              <text x="16" y="30" class="title">BPMN 2.0 vs Process-Coaching Scope</text>
+
+              <rect x="14" y="46" width="236" height="344" class="card"/>
+              <text x="28" y="72" class="h">지원</text>
+              <text x="28" y="98" class="t">• Start / End</text>
+              <text x="28" y="121" class="t">• process / decision / subprocess</text>
+              <text x="28" y="144" class="t">• sequence flow + edge label</text>
+              <text x="28" y="167" class="t">• 역할 구분선(Y), Phase 구분선(X)</text>
+              <text x="28" y="190" class="t">• 병렬 노드(+, 가이드 선반영)</text>
+
+              <rect x="262" y="46" width="236" height="344" class="card"/>
+              <text x="276" y="72" class="h">부분 지원</text>
+              <text x="276" y="98" class="t">• Pool 간 Message Flow (설명 레벨)</text>
+              <text x="276" y="121" class="t">• Timer/Error 등 상세 이벤트 표현</text>
+
+              <rect x="510" y="46" width="236" height="344" class="card"/>
+              <text x="524" y="72" class="h">제외</text>
+              <text x="524" y="98" class="t">• Inclusive/Event-based/Complex GW</text>
+              <text x="524" y="121" class="t">• Choreography/Conversation Diagram</text>
+              <text x="524" y="144" class="t">• 실행 엔진용 세부 의미론 모델</text>
+            </svg>
+          </div>
+          <div class="callout success">정리: 표준 기반(Descriptive) + 제품 맞춤 제한(가독성/검증성 우선) 조합이다.</div>
+        </section>
+
+        <section id="elements">
+          <h2>4) 요소별 작성 가이드</h2>
+
+          <h3>4.1 시작/종료 노드</h3>
+          <ul class="list-tight">
+            <li>Start는 진입점, End는 완료 조건을 명확히 닫는다.</li>
+            <li>Start 다중 사용은 의도적 구조일 때만 허용, End는 최소 1개 필수.</li>
+          </ul>
+
+          <h3>4.2 프로세스 노드 (Task)</h3>
+          <ul class="list-tight">
+            <li><code>동사 + 목적어</code>로 작성: 예) <code>결재 요청서를 검토한다</code></li>
+            <li>한 셰이프=한 동작 원칙 준수</li>
+          </ul>
+          <div class="callout warning">금지 예: "검토하고 승인한다"(복수 동작), "업무를 처리한다"(모호 동사)</div>
+
+          <h3>4.3 판단 노드 (Decision / XOR)</h3>
+          <ul class="list-tight">
+            <li>조건 분기점에서만 사용</li>
+            <li>분기 엣지 라벨(Yes/No 또는 조건) 필수</li>
+            <li>마름모 꼭지점에서 엣지가 나가도록 배치</li>
+          </ul>
+
+          <h3>4.4 병렬 노드 (Parallel / +)</h3>
+          <ul class="list-tight">
+            <li><code>+</code> Split/Join 쌍으로 사용</li>
+            <li>Split 후 모든 경로는 Join으로 회수</li>
+          </ul>
+          <div class="callout info">병렬 노드는 본 문서에서 표기/작성 원칙을 먼저 고정하고, 제품 동작 반영 시점에는 UI/검증 규칙과 함께 동기화한다.</div>
+          <div class="callout warning">Split만 있고 Join이 없거나, Join 없이 End로 가는 구조는 금지.</div>
+
+          <h3>4.5 역할 구분선/Phase 구분선</h3>
+          <ul class="list-tight">
+            <li>역할 구분선(Y): 누가 수행하는지 표시</li>
+            <li>Phase 구분선(X): 어느 단계에서 수행되는지 표시</li>
+          </ul>
+
+          <div class="svg-box">
+            <svg width="760" height="230" viewBox="0 0 760 230" role="img" aria-label="요소 조합 예시">
+              <defs>
+                <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+              </defs>
+              <rect width="760" height="230" fill="#f8fafc"/>
+              <rect x="84" y="20" width="620" height="170" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+              <line x1="84" y1="106" x2="704" y2="106" stroke="#cbd5e1" stroke-width="2"/>
+              <line x1="310" y1="20" x2="310" y2="190" stroke="#64748b" stroke-width="2" stroke-dasharray="7 7"/>
+              <line x1="520" y1="20" x2="520" y2="190" stroke="#64748b" stroke-width="2" stroke-dasharray="7 7"/>
+              <text x="16" y="70" font-size="12" fill="#0f172a" font-weight="600">담당자</text>
+              <text x="24" y="154" font-size="12" fill="#0f172a" font-weight="600">팀장</text>
+              <text x="134" y="16" font-size="11" fill="#334155" font-weight="700">Phase 1</text>
+              <text x="364" y="16" font-size="11" fill="#334155" font-weight="700">Phase 2</text>
+              <text x="572" y="16" font-size="11" fill="#334155" font-weight="700">Phase 3</text>
+
+              <circle cx="118" cy="62" r="14" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+              <rect x="160" y="36" width="190" height="50" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+              <text x="184" y="65" font-size="12" fill="#0f172a" font-weight="600">요청서를 접수한다</text>
+              <path d="M132 62 L160 62" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+
+              <polygon points="420,40 452,62 420,84 388,62" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+              <text x="414" y="66" font-size="12" fill="#0f172a" font-weight="700">X</text>
+              <text x="388" y="96" font-size="10" fill="#0f172a">결재가 필요한가?</text>
+              <rect x="546" y="36" width="150" height="50" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+              <rect x="546" y="122" width="150" height="50" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+              <text x="566" y="65" font-size="11" fill="#0f172a" font-weight="600">결재를 요청한다</text>
+              <text x="554" y="151" font-size="11" fill="#0f172a" font-weight="600">요청을 자동처리한다</text>
+              <path d="M452 62 L546 58" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+              <path d="M452 62 L546 146" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+            </svg>
+          </div>
+        </section>
+
+        <section id="workflow">
+          <h2>5) 빈 캔버스 작성 절차</h2>
+          <ol>
+            <li>범위를 고정하고 Start/End 먼저 배치</li>
+            <li>역할 구분선(Y) 여부 결정, 역할 라벨 입력</li>
+            <li>Phase 구분선(X) 3~5개로 단계 먼저 분리</li>
+            <li>화살표 없이 태스크 후보를 먼저 배치 (Top-down)</li>
+            <li>Happy Path를 Start→End로 연결</li>
+            <li>Decision/Parallel을 필요한 지점에만 추가</li>
+            <li>예외/루프를 추가하되 탈출 경로 확인</li>
+            <li>L7 규칙 + 구조 규칙으로 최종 검증</li>
+          </ol>
+          <div class="callout success">작성 순서의 핵심은 "상세보다 구조 먼저"다.</div>
+        </section>
+
+        <section id="l7">
+          <h2>6) L7 품질 기준 (First_Guideline 반영)</h2>
+          <p>아래는 <code>First_Guideline.md</code> 체크리스트를 현재 엔진 기준과 맞춰 통합한 운영 규칙이다.</p>
+
+          <h3>6.1 원칙</h3>
+          <ul class="list-tight">
+            <li>필수 항목 100% 충족을 목표로 작성</li>
+            <li>문장 단독으로 제3자가 수행 가능해야 함</li>
+            <li>AS-IS 문서화 기준(개선 제안 문구는 분리)</li>
+          </ul>
+
+          <h3>6.2 체크 축 (First Guideline 통합)</h3>
+          <table>
+            <thead><tr><th>축</th><th>핵심 체크</th><th>운영 방식</th></tr></thead>
+            <tbody>
+              <tr><td>구조·형식</td><td>단일 행동, 목적어 명확성, 문장 독립성</td><td>R-05/R-07 중심</td></tr>
+              <tr><td>수행 맥락</td><td>위치/화면/채널/입력 대상 명시</td><td>라벨+메타데이터(systemName/input/output)</td></tr>
+              <tr><td>판단</td><td>판단 기준/결과/분기 표현</td><td>Decision 라벨 + edge 라벨(S-08, R-08)</td></tr>
+              <tr><td>산출물/예외</td><td>결과물, 완료 기준, 예외 대응</td><td>End 명시 + 예외 경로/루프 설계</td></tr>
+            </tbody>
+          </table>
+
+          <h3>6.3 현재 코드 기준 규칙</h3>
+          <table>
+            <thead><tr><th>규칙군</th><th>요약</th></tr></thead>
+            <tbody>
+              <tr><td>라벨 규칙 R</td><td>R-01~R-09 (Reject/Warning/Suggestion), 핵심: 금지동사/복수동작/목적어 누락</td></tr>
+              <tr><td>구조 규칙 S</td><td>S-01~S-13, 핵심: 종료노드/고립/단절/조건라벨/루프/TO-BE 삭제연결</td></tr>
+            </tbody>
+          </table>
+          <div class="callout warning">참고: First Guideline의 일부 항목(예: 주어 강제)은 현재 엔진에서 직접 강제하지 않으므로 작성 가이드로 운영한다.</div>
+        </section>
+
+        <section id="product">
+          <h2>7) 제품 기능/모드</h2>
+          <h3>7.1 구현 확인된 기능 (MD 전수검토 반영)</h3>
+          <table>
+            <thead><tr><th>영역</th><th>구현 상태</th><th>핵심 내용</th></tr></thead>
+            <tbody>
+              <tr><td>캔버스</td><td>구현</td><td>Start/End/Process/Decision/Subprocess, 엣지 라벨, 스윔레인(Y), Phase(X), undo/redo, JSON import/export</td></tr>
+              <tr><td>L7/구조 검증</td><td>구현</td><td>R-01~R-09, S-01~S-13 실시간/배치 검증, 이슈 포커싱, 원클릭 수정(R-04/R-05)</td></tr>
+              <tr><td>AI 코칭</td><td>구현</td><td><code>/api/chat</code>, <code>/api/review</code>, <code>/api/contextual-suggest</code>, <code>/api/first-shape-welcome</code></td></tr>
+              <tr><td>의도 분류</td><td>구현</td><td><code>knowledge</code> / <code>flow_action</code> / <code>coaching</code> + 세부 의도(next/missing/decision/summary/review/general)</td></tr>
+              <tr><td>L345 참조 주입</td><td>구현</td><td><code>/api/chat</code>, <code>/api/review</code>, <code>/api/first-shape-welcome</code>, <code>/api/pdd-insights</code>에 동적 컨텍스트 삽입</td></tr>
+              <tr><td>온보딩</td><td>구현</td><td>SetupModal, 온보딩 상태머신, 5단계 Product Tour, 빈 캔버스 가이드</td></tr>
+              <tr><td>모드</td><td>구현</td><td>AS-IS / TO-BE 2모드, TO-BE 카테고리 UI는 TO-BE 모드에서만 노출</td></tr>
+            </tbody>
+          </table>
+
+          <h3>7.2 모드별 사용 원칙</h3>
+          <ul class="list-tight">
+            <li><strong>AS-IS:</strong> 현재 프로세스 문서화와 품질 진단(L7/구조 규칙 중심)</li>
+            <li><strong>TO-BE:</strong> 카테고리 기반 재설계(<code>as_is</code>/<code>digital_worker</code>/<code>ssc_transfer</code>/<code>delete_target</code>/<code>new_addition</code>)</li>
+            <li><strong>예외:</strong> 병렬 게이트웨이(+)는 본 가이드에서 선반영하며, 상세 구현은 후속 반영 대상으로 관리</li>
+          </ul>
+
+          <div class="callout info">FEATURE_INVENTORY, USER_JOURNEY, GAP_ANALYSIS 등에서 계획/미구현으로 표시된 항목은 본 가이드 범위에서 제외했다.</div>
+        </section>
+
+        <section id="tech">
+          <h2>8) 기술 운영 정보</h2>
+          <h3>8.1 빠른 실행</h3>
+          <table>
+            <thead><tr><th>구성</th><th>명령</th></tr></thead>
+            <tbody>
+              <tr><td>Backend</td><td><code>cd backend</code> → <code>pip install -r requirements.txt</code> → <code>py -3 app.py</code></td></tr>
+              <tr><td>Frontend</td><td><code>cd frontend</code> → <code>npm install</code> → <code>npm run dev</code></td></tr>
+            </tbody>
+          </table>
+
+          <h3>8.2 환경 변수</h3>
+          <ul class="list-tight">
+            <li>로딩 순서: <code>backend/.env</code> → <code>backend/environment.txt</code> → 루트 <code>.env</code> → 루트 <code>environment.txt</code></li>
+            <li>핵심 키: <code>LLM_BASE_URL</code>, <code>LLM_MODEL</code>, <code>USE_MOCK</code></li>
+          </ul>
+
+          <h3>8.3 API 요약</h3>
+          <table>
+            <thead><tr><th>엔드포인트</th><th>역할</th></tr></thead>
+            <tbody>
+              <tr><td><code>POST /api/chat</code></td><td>챗봇 질의/응답</td></tr>
+              <tr><td><code>POST /api/review</code></td><td>AS-IS 품질 점검 + 개선 제안</td></tr>
+              <tr><td><code>POST /api/validate-l7</code></td><td>노드 L7 규칙 검증</td></tr>
+              <tr><td><code>POST /api/contextual-suggest</code></td><td>맥락 기반 한 줄 코칭</td></tr>
+              <tr><td><code>POST /api/first-shape-welcome</code></td><td>첫 셰이프 온보딩</td></tr>
+              <tr><td><code>POST /api/analyze-pdd</code></td><td>PDD 카테고리 분석</td></tr>
+              <tr><td><code>POST /api/pdd-insights</code></td><td>전략 인사이트</td></tr>
+              <tr><td><code>GET /api/health</code></td><td>헬스 체크</td></tr>
+            </tbody>
+          </table>
+
+          <h3>8.4 개발 팁/문제 해결</h3>
+          <table>
+            <thead><tr><th>항목</th><th>현재 동작 기준</th></tr></thead>
+            <tbody>
+              <tr><td>완료 처리(<code>submitComplete</code>)</td><td>End 노드 존재 + 고아 노드 없음 + Process/Decision 미검증 없음일 때 완료 권장</td></tr>
+              <tr><td>임시저장/복구</td><td><code>pm-v5-save</code> 키로 로컬 저장/복구</td></tr>
+              <tr><td>온보딩 상태</td><td><code>pm-v5-onboarding-dismissed</code>, <code>pm-v5-tour-done</code> 키로 재노출 여부 제어</td></tr>
+            </tbody>
+          </table>
+          <ul class="list-tight">
+            <li>타입 검사: <code>cd frontend && npx tsc --noEmit</code></li>
+            <li>골든셋: <code>cd frontend && npm run test:goldenset</code></li>
+            <li>규칙 동기화: <code>cd frontend && npm run sync:check</code></li>
+          </ul>
+          <table>
+            <thead><tr><th>증상</th><th>대응</th></tr></thead>
+            <tbody>
+              <tr><td><code>spawn EPERM</code></td><td>샌드박스/보안 정책 확인</td></tr>
+              <tr><td>PowerShell npm 차단</td><td><code>npm.cmd</code> 사용</td></tr>
+              <tr><td>LLM 지연/실패</td><td><code>USE_MOCK=true</code>로 기능 점검</td></tr>
+              <tr><td>ReactFlow handle 오류</td><td>handle ID 정규화 로직 확인</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="sources">
+          <h2>9) 근거 링크</h2>
+          <ol>
+            <li>OMG BPMN 2.0.2: https://www.omg.org/spec/BPMN/2.0.2</li>
+            <li>OMG BPMN 2.0.2 PDF: https://www.omg.org/spec/BPMN/2.0.2/PDF</li>
+            <li>ISO/IEC 19510: https://www.iso.org/standard/62652.html</li>
+            <li>7PMG DOI: https://doi.org/10.1007/978-3-642-12186-9_1</li>
+            <li>Camunda BPMN Reference: https://camunda.com/bpmn/reference/</li>
+            <li>bpmnlint: https://github.com/bpmn-io/bpmnlint</li>
+          </ol>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

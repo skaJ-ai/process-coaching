@@ -17,7 +17,6 @@ export default function ContextMenu() {
   const applyRewrite = useStore(s => s.applyL7Rewrite);
   const updateEdgeLabel = useStore(s => s.updateEdgeLabel);
   const deleteEdge = useStore(s => s.deleteEdge);
-  const addDividerX = useStore(s => s.addDividerX);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -56,7 +55,6 @@ export default function ContextMenu() {
     <div ref={menuRef} className="context-menu" style={{ left: pos.x, top: pos.y }} onClick={e => e.stopPropagation()}>
       {(!isE) && (<>
         <div className="context-menu-header">셰이프 추가</div>
-        <div className="context-menu-item" onClick={() => { addDividerX(cm.flowX ?? 500); hide(); }}><span style={{ color: '#a855f7' }}>│</span> Phase 구분선 추가</div>
         <div className="context-menu-sep" />
         <div className="context-menu-item" onClick={() => placeShape('process')}><span style={{ color: '#60a5fa' }}>▢</span> 프로세스</div>
         <div className="context-menu-item" onClick={() => placeShape('decision')}><span style={{ color: '#fbbf24' }}>◇</span> 판단(분기)</div>
