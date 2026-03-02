@@ -50,6 +50,7 @@ frontend/tests/**/results.json
 # Markdown policy: ignore all markdown except approved docs
 *.md
 !README.md
+!CLAUDE.md
 
 # Keep examples tracked
 !.env.example
