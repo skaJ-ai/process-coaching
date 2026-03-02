@@ -262,15 +262,23 @@ export const useStore = create<AppStore>((set, get) => ({
     debugTrace('addShape', { id, type, label, x: position.x, y: position.y, nodeCount: updated.length });
     // v5.2: proactive coaching triggers
     const { onboardingStep: obs } = get();
-    if (obs === 'idle' || obs === 'done' || obs === 'skipped') {
+    const isOnboardingActive = ['welcome', 'ask_swimlane', 'edit_swimlane', 'set_scope'].includes(obs);
+    if (obs === 'idle' || obs === 'skipped') {
+      // idle/skipped: first-shape welcome + decision + swimlane checks
       setTimeout(() => {
         get().checkFirstShape();
         get().checkDecisionLabels(id);
         get().checkSwimLaneNeed();
       }, 500);
+    } else if (obs === 'done') {
+      // done(인터뷰 후): first-shape welcome 제외 — 인터뷰가 이미 웰컴 역할을 함
+      setTimeout(() => {
+        get().checkDecisionLabels(id);
+        get().checkSwimLaneNeed();
+      }, 500);
     }
-    // v5: contextual suggest on shape add
-    get().triggerContextualSuggest();
+    // v5: contextual suggest on shape add — 온보딩 진행 중에는 억제
+    if (!isOnboardingActive) get().triggerContextualSuggest();
     // auto L7 validation after label entry (6s delay to let user finish typing)
     setTimeout(() => get().autoValidateDebounced(), 6000);
     return id;
@@ -873,8 +881,10 @@ export const useStore = create<AppStore>((set, get) => ({
     const timer = get()._contextualSuggestTimer;
     if (timer) clearTimeout(timer);
     const newTimer = setTimeout(async () => {
-      const { nodes, edges, processContext, loadingState, addMessage, isUserActive } = get();
-      if (loadingState.active || isUserActive()) return; // Skip if user is still active
+      const { nodes, edges, processContext, loadingState, addMessage, isUserActive, onboardingStep } = get();
+      // 온보딩 단계 진행 중이면 억제 — 온보딩 대화와 충돌 방지
+      const onboardingActive = ['welcome', 'ask_swimlane', 'edit_swimlane', 'set_scope'].includes(onboardingStep);
+      if (loadingState.active || isUserActive() || onboardingActive) return; // Skip if user is still active
       const processNodes = nodes.filter(n => ['process', 'decision', 'subprocess'].includes(n.data.nodeType));
       if (processNodes.length < 2) return; // don't suggest with too few nodes
       try {

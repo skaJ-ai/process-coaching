@@ -61,11 +61,11 @@ export default function App() {
     <ErrorBoundary>
       <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
         <div style={{ width: chatCollapsed ? 0 : chatW, height: '100vh', flexShrink: 0, overflow: 'hidden', transition: chatCollapsed ? 'width 0.2s ease' : undefined }}><ChatPanel /></div>
-        <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: chatCollapsed ? 'default' : 'col-resize', background: drag ? '#3b82f6' : '#1e293b', transition: 'background 0.15s', position: 'relative' }} onMouseDown={onDown}>
+        <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: chatCollapsed ? 'default' : 'col-resize', background: drag ? '#3b82f6' : '#1e293b', position: 'relative' }} onMouseDown={onDown}>
           <button
             onClick={toggleChat}
             title={chatCollapsed ? '채팅 패널 열기' : '채팅 패널 접기'}
-            style={{ position: 'absolute', top: 16, left: -12, width: 20, height: 36, background: '#334155', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', color: '#94a3b8', fontSize: 10, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            style={{ position: 'absolute', top: 16, left: chatCollapsed ? 4 : -12, width: 20, height: 36, background: '#334155', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', color: '#94a3b8', fontSize: 10, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
           >
             {chatCollapsed ? '▶' : '◀'}
           </button>

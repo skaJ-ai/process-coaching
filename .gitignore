@@ -8,9 +8,8 @@ backend/__pycache__/
 frontend/dist/
 frontend/.vite/
 
-# Local data (process samples, user data) — processData.ts는 추적
+# Local data (process samples, user data)
 frontend/src/data/*
-!frontend/src/data/processData.ts
 
 # Logs
 *.log
@@ -47,10 +46,9 @@ frontend/tests/**/results.json
 # Claude Code
 .claude/
 
-# Markdown policy: ignore all markdown except approved docs
+# Markdown policy: ignore all markdown except README
 *.md
 !README.md
-!CLAUDE.md
 
 # Keep examples tracked
 !.env.example
