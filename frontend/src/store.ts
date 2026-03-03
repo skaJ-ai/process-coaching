@@ -401,24 +401,6 @@ export const useStore = create<AppStore>((set, get) => ({
     // 유효하지 않은 ID면 초기화
     if (afterId && !nodes.find(n => n.id === afterId)) afterId = undefined;
 
-    // ⚠️ 순차 추가 보장: insertAfterNodeId가 현재 가장 마지막 노드가 아니면 무시
-    // → 여러 suggestion을 순서대로 클릭할 때 역순 배치 방지
-    if (afterId) {
-      const processNodes = nodes.filter(n => !['start', 'end'].includes(n.data.nodeType));
-      const lastNode = processNodes.length > 0
-        ? processNodes.reduce((a, b) => a.position.y >= b.position.y ? a : b)
-        : nodes.find(n => n.data.nodeType === 'start');
-
-      // afterId가 lastNode 또는 end 직전이 아니면 무시하고 폴백
-      const endNode = nodes.find(n => n.data.nodeType === 'end');
-      const beforeEnd = endNode ? edges.find(e => e.target === endNode.id)?.source : null;
-      const isValidInsertPoint = afterId === lastNode?.id || afterId === beforeEnd;
-
-      if (!isValidInsertPoint) {
-        afterId = undefined;
-      }
-    }
-
     // afterId 없으면 스마트 폴백: 종료 노드 직전 → 마지막 프로세스 노드 → start 노드 순
     if (!afterId) {
       const endNode = nodes.find(n => n.data.nodeType === 'end');

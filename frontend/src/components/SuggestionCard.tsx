@@ -18,6 +18,7 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
     action === 'MODIFY' ? (modifyLabel || '') : (suggestion.labelSuggestion || '')
   );
   const target = suggestion.targetNodeId ? nodes.find(n => n.id === suggestion.targetNodeId) : null;
+  const insertAfterNode = suggestion.insertAfterNodeId ? nodes.find(n => n.id === suggestion.insertAfterNodeId) : null;
   const focusRefId = suggestion.targetNodeId || suggestion.insertAfterNodeId || null;
   const focusRefNode = focusRefId ? nodes.find(n => n.id === focusRefId) : null;
 
@@ -83,6 +84,11 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
                 ? <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.labelSuggestion}</div>
                 : <div className="text-sm text-slate-400 italic">라벨 없음 — 직접 입력 필요</div>
               }
+              {insertAfterNode && (
+                <div className="text-[11px] text-slate-500 mt-1">
+                  ▸ <span className="text-slate-400">"{insertAfterNode.data.label}"</span> 다음에 삽입
+                </div>
+              )}
               {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
             </>
           ) : (
