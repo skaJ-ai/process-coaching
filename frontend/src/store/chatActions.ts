@@ -15,9 +15,11 @@ interface StoreSlice {
   swimLaneLabels: string[];
   loadingState: LoadingState;
   addMessage: AddMessage;
+  _lastCoachingTrigger: Record<string, number>;
+  checkImplicitBranch: () => void;
 }
 
-type StoreSet = (partial: Partial<StoreSlice> | ((state: StoreSlice) => Partial<StoreSlice>)) => void;
+type StoreSet = (partial: Partial<Omit<StoreSlice, 'checkImplicitBranch'>> | ((state: StoreSlice) => Partial<Omit<StoreSlice, 'checkImplicitBranch'>>)) => void;
 type StoreGet = () => StoreSlice & { setLoadingMessage: (message: string) => void };
 
 interface ChatActionDeps {
@@ -238,6 +240,10 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
           quickQueries: data.quickQueries || [],
           timestamp: Date.now(),
         });
+        // 리뷰 후 병렬 게이트웨이 누락 체크 (dedup 리셋 후 강제 실행)
+        const trigger = get()._lastCoachingTrigger;
+        set({ _lastCoachingTrigger: { ...trigger, implicitBranch: 0 } });
+        setTimeout(() => get().checkImplicitBranch(), 600);
       } catch {
         debugTrace('review:error');
         addMessage({

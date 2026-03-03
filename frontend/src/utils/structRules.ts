@@ -87,9 +87,9 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
     });
   }
 
-  // ── S-05: 암묵적 분기 (process 노드에서 다중 outgoing) ──
+  // ── S-05: 암묵적 분기 (process/subprocess/start 노드에서 다중 outgoing) ──
   const implicitBranchIds = nodes
-    .filter((n) => n.data.nodeType === 'process' || n.data.nodeType === 'subprocess')
+    .filter((n) => ['process', 'subprocess', 'start'].includes(n.data.nodeType))
     .filter((n) => edges.filter((e) => e.source === n.id).length > 1)
     .map((n) => n.id);
   if (implicitBranchIds.length > 0) {

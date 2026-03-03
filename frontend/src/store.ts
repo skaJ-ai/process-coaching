@@ -974,7 +974,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const now = Date.now();
     if (_lastCoachingTrigger['implicitBranch'] && now - _lastCoachingTrigger['implicitBranch'] < 90000) return;
     const branchingNodes = nodes.filter(n =>
-      (n.data.nodeType === 'process' || n.data.nodeType === 'subprocess') &&
+      ['process', 'subprocess', 'start'].includes(n.data.nodeType) &&
       edges.filter(e => e.source === n.id).length > 1
     );
     if (branchingNodes.length === 0) return;
@@ -994,7 +994,7 @@ export const useStore = create<AppStore>((set, get) => ({
     get().pushHistory();
 
     const branchingNodes = nodes.filter(n =>
-      (n.data.nodeType === 'process' || n.data.nodeType === 'subprocess') &&
+      ['process', 'subprocess', 'start'].includes(n.data.nodeType) &&
       edges.filter(e => e.source === n.id).length > 1
     );
     if (branchingNodes.length === 0) return;
