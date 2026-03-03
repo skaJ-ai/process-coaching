@@ -1,58 +1,37 @@
 import React, { useState } from 'react';
 import { Suggestion } from '../types';
 import { useStore } from '../store';
-import { detectCompoundAction } from '../utils/labelUtils';
-import { DRAFT_LANE_ENABLED } from '../constants';
 
 export default function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const applySuggestion = useStore(s => s.applySuggestion);
   const applySuggestionWithEdit = useStore(s => s.applySuggestionWithEdit);
-  const addToDraft = useStore(s => s.addToDraft);
   const setFocusNodeId = useStore(s => s.setFocusNodeId);
   const nodes = useStore(s => s.nodes);
   const action = suggestion.action || 'ADD';
   const [applied, setApplied] = useState(false);
   const [editing, setEditing] = useState(false);
   const modifyLabel = suggestion.newLabel || suggestion.labelSuggestion;
-  const [editText, setEditText] = useState(
-    action === 'MODIFY' ? (modifyLabel || '') : (suggestion.labelSuggestion || '')
-  );
+  const [editText, setEditText] = useState(modifyLabel || '');
   const target = suggestion.targetNodeId ? nodes.find(n => n.id === suggestion.targetNodeId) : null;
   const insertAfterNode = suggestion.insertAfterNodeId ? nodes.find(n => n.id === suggestion.insertAfterNodeId) : null;
   const focusRefId = suggestion.targetNodeId || suggestion.insertAfterNodeId || null;
   const focusRefNode = focusRefId ? nodes.find(n => n.id === focusRefId) : null;
 
   const cfg = {
-    ADD: { icon: suggestion.type === 'DECISION' ? '◇' : '+', label: '추가', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', text: '#60a5fa' },
-    MODIFY: { icon: '✏', label: '수정', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', text: '#fbbf24' },
-    DELETE: { icon: '✕', label: '삭제', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', text: '#f87171' },
+    ADD: { icon: suggestion.type === 'DECISION' ? '◇' : '+', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', text: '#60a5fa' },
+    MODIFY: { icon: '✏', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', text: '#fbbf24' },
+    DELETE: { icon: '✕', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', text: '#f87171' },
   }[action];
 
-  if (applied) return (
+  // MODIFY만 적용 완료 상태 표시
+  if (action === 'MODIFY' && applied) return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}>
       <span className="text-green-400">✓</span>
-      <span className="text-green-300 opacity-70">{cfg.label} 완료</span>
+      <span className="text-green-300 opacity-70">수정 완료</span>
     </div>
   );
 
-  const hasLabel = !!(suggestion.labelSuggestion || suggestion.newLabel);
-
-  const handleApply = () => {
-    if (suggestion.action === 'ADD' && !hasLabel) {
-      setEditing(true);
-      return;
-    }
-    if (suggestion.action === 'ADD' && hasLabel) {
-      const label = suggestion.labelSuggestion || suggestion.newLabel!;
-      const detection = detectCompoundAction(label);
-      if (detection.isCompound) {
-        const msg = `이 추천에는 2개의 동작이 포함되어 있어요:\n• ${detection.parts[0]}\n• ${detection.parts[1]}\n\n셰이프를 나누어 추가하는 것을 권장합니다.`;
-        alert(msg);
-      }
-    }
-    applySuggestion(suggestion);
-    setApplied(true);
-  };
+  const handleApply = () => { applySuggestion(suggestion); setApplied(true); };
   const handleApplyEdited = () => { applySuggestionWithEdit(suggestion, editText); setApplied(true); };
 
   return (
@@ -76,13 +55,17 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
             </>
           ) : action === 'DELETE' && target ? (
-            <div className="text-sm font-medium" style={{ color: cfg.text }}>"{target.data.label}" 삭제</div>
-          ) : !editing ? (
             <>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">단계 추가</div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">삭제 권장</div>
+              <div className="text-sm font-medium" style={{ color: cfg.text }}>"{target.data.label}"</div>
+              {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
+            </>
+          ) : (
+            <>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">추가 권장</div>
               {suggestion.labelSuggestion
                 ? <div className="text-sm font-medium" style={{ color: cfg.text }}>{suggestion.labelSuggestion}</div>
-                : <div className="text-sm text-slate-400 italic">라벨 없음 — 직접 입력 필요</div>
+                : <div className="text-sm text-slate-400 italic">라벨 없음</div>
               }
               {insertAfterNode && (
                 <div className="text-[11px] text-slate-500 mt-1">
@@ -91,10 +74,6 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
               )}
               {suggestion.summary && <div className="text-xs text-slate-400 mt-1">{suggestion.summary}</div>}
             </>
-          ) : (
-            <input name="suggestion_edit_add" aria-label="추가 제안 편집" value={editText} onChange={e => setEditText(e.target.value)} autoFocus
-              className="w-full text-sm bg-slate-800/60 border border-slate-600/50 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
-              onKeyDown={e => e.key === 'Enter' && handleApplyEdited()} />
           )}
           {suggestion.confidence && suggestion.confidence !== 'high' && (
             <div className="flex items-center gap-2 mt-1.5">
@@ -115,9 +94,11 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
           )}
         </div>
       </div>
+
       {/* Action buttons */}
-      <div className="flex gap-1.5 mt-2 ml-7 flex-wrap">
-        {focusRefNode && !applied && (
+      <div className="flex gap-1.5 mt-2 ml-7 flex-wrap items-center">
+        {/* 위치 보기: MODIFY는 적용 전에만, ADD/DELETE는 항상 */}
+        {focusRefNode && (action !== 'MODIFY' || !applied) && (
           <button
             onClick={() => setFocusNodeId(focusRefId)}
             title={`"${focusRefNode.data.label}" 위치로 이동`}
@@ -126,32 +107,27 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
             ⌖ 위치 보기
           </button>
         )}
-        {!editing ? (
-          <>
-            {DRAFT_LANE_ENABLED && action === 'ADD' ? (
-              <button
-                onClick={() => addToDraft(suggestion)}
-                className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
-                style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.35)' }}
-              >
-                📥 임시 보관
-              </button>
-            ) : (
+
+        {action === 'MODIFY' ? (
+          !editing ? (
+            <>
               <button onClick={handleApply} className="px-2.5 py-1 rounded text-[11px] font-medium transition-all" style={{ background: `${cfg.text}20`, color: cfg.text, border: `1px solid ${cfg.border}` }}>
-                {action === 'MODIFY' ? 'AI 추천 적용' : action === 'DELETE' ? '삭제' : '추가'}
+                AI 추천 적용
               </button>
-            )}
-            {action !== 'DELETE' && (
               <button onClick={() => setEditing(true)} className="px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-600/40 hover:bg-slate-700/30">
                 ✏ 직접 수정
               </button>
-            )}
-          </>
+            </>
+          ) : (
+            <>
+              <button onClick={handleApplyEdited} className="px-2.5 py-1 rounded text-[11px] font-medium bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
+              <button onClick={() => setEditing(false)} className="px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-600/40">취소</button>
+            </>
+          )
         ) : (
-          <>
-            <button onClick={handleApplyEdited} className="px-2.5 py-1 rounded text-[11px] font-medium bg-green-600/20 border border-green-500/40 text-green-300 hover:bg-green-600/40">적용</button>
-            <button onClick={() => setEditing(false)} className="px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-600/40">취소</button>
-          </>
+          <span className="text-[11px] text-slate-500 italic">
+            {action === 'DELETE' ? '해당 셰이프를 직접 삭제하세요' : '위치 확인 후 직접 추가하세요'}
+          </span>
         )}
       </div>
     </div>
