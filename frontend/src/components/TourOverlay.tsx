@@ -31,6 +31,8 @@ export default function TourOverlay() {
     const el = document.querySelector(step.target) as HTMLElement | null;
     if (el) {
       const r = el.getBoundingClientRect();
+      // 패널 접힘 등으로 요소가 사라졌을 때 overlay 숨김
+      if (r.width < 20 || r.height < 10) { setRect(null); return; }
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     } else {
       setRect(null);
@@ -41,9 +43,11 @@ export default function TourOverlay() {
     updateRect();
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
+    window.addEventListener('transitionend', updateRect); // 챗 패널 접기/펼치기 감지
     return () => {
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
+      window.removeEventListener('transitionend', updateRect);
     };
   }, [updateRect]);
 
