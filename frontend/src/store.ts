@@ -232,10 +232,12 @@ export const useStore = create<AppStore>((set, get) => ({
     get().pushHistory();
     get().updateUserActivity();
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end', parallel: 'par' }[type] ?? 'node');
-    // 모든 노드(start/end 포함): 120px 이내 가장 인근 노드와 핸들 기준 수직/수평 정렬
+    // 모든 노드(start/end 포함): 축별 threshold로 핸들 기준 수직/수평 정렬
+    // - 수직 방향 드롭(아래/위): dx < 80px이면 X 정렬 (중심 X 일치)
+    // - 수평 방향 드롭(좌/우): dy < 80px이면 Y 정렬 (중심 Y 일치)
     let pos = position;
     const existingNodes = get().nodes;
-    const SNAP_THRESHOLD = 120;
+    const AXIS_SNAP = 80; // 각 축 독립 threshold
     if (existingNodes.length > 0) {
       const nearest = existingNodes.reduce((best, n) => {
         const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
@@ -248,20 +250,18 @@ export const useStore = create<AppStore>((set, get) => ({
         const d0 = NODE_DIMENSIONS[n0.data.nodeType] || NODE_DIMENSIONS.process;
         return { node: n0, dist: Math.hypot(position.x - (n0.position.x + d0.width / 2), position.y - (n0.position.y + d0.height / 2)) };
       })());
-      if (nearest.dist < SNAP_THRESHOLD) {
-        const nearestDims = NODE_DIMENSIONS[nearest.node.data.nodeType] || NODE_DIMENSIONS.process;
-        const newDims = NODE_DIMENSIONS[type] || NODE_DIMENSIONS.process;
-        const nearestCx = nearest.node.position.x + nearestDims.width / 2;
-        const nearestCy = nearest.node.position.y + nearestDims.height / 2;
-        const dx = Math.abs(position.x - nearestCx);
-        const dy = Math.abs(position.y - nearestCy);
-        if (dx > dy) {
-          // 좌우 → 핸들 Y 정렬 (중심 Y 일치)
-          pos = { x: position.x, y: nearestCy - newDims.height / 2 };
-        } else if (dy > dx) {
-          // 상하 → 핸들 X 정렬 (중심 X 일치)
-          pos = { x: nearestCx - newDims.width / 2, y: position.y };
-        }
+      const nearestDims = NODE_DIMENSIONS[nearest.node.data.nodeType] || NODE_DIMENSIONS.process;
+      const newDims = NODE_DIMENSIONS[type] || NODE_DIMENSIONS.process;
+      const nearestCx = nearest.node.position.x + nearestDims.width / 2;
+      const nearestCy = nearest.node.position.y + nearestDims.height / 2;
+      const dx = Math.abs(position.x - nearestCx);
+      const dy = Math.abs(position.y - nearestCy);
+      if (dy > dx && dx < AXIS_SNAP) {
+        // 상하 방향 드롭 → 핸들 X 정렬 (중심 X 일치)
+        pos = { x: nearestCx - newDims.width / 2, y: position.y };
+      } else if (dx > dy && dy < AXIS_SNAP) {
+        // 좌우 방향 드롭 → 핸들 Y 정렬 (중심 Y 일치)
+        pos = { x: position.x, y: nearestCy - newDims.height / 2 };
       }
     }
     const node: Node<FlowNodeData> = {

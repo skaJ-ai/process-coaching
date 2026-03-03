@@ -50,15 +50,16 @@ export default function SetupModal() {
         try {
           const json = ev.target?.result as string;
           const data = JSON.parse(json);
-          if (!data.processContext) {
-            alert('유효하지 않은 파일입니다.\n\nprocessContext 필드가 필요합니다.');
+          if (!data.processContext && !data.nodes) {
+            alert('유효하지 않은 파일입니다.\n\n노드 데이터를 찾을 수 없습니다.');
             return;
           }
-          if (!data.processContext.l3 || !data.processContext.l4 || !data.processContext.l5 || !data.processContext.processName) {
-            alert('유효하지 않은 파일입니다.\n\nL3, L4, L5, processName 필드가 모두 필요합니다.');
-            return;
-          }
-          setCtx(data.processContext, () => importFlow(json));
+          // 구버전 파일: processContext가 없거나 필드 일부 누락 → 빈 문자열로 대체
+          const ctx = {
+            l3: '', l4: '', l5: '', processName: '',
+            ...(data.processContext || {}),
+          };
+          setCtx(ctx, () => importFlow(json));
         } catch (e) { alert(`파일을 읽을 수 없습니다.\n\n${e instanceof Error ? e.message : '알 수 없는 오류'}`); }
       };
       reader.readAsText(file);
