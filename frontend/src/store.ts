@@ -120,6 +120,7 @@ interface AppStore {
   checkOrphanedNodes: () => void;
   checkFlowCompletion: () => void;
   checkImplicitBranch: () => void;
+  convertToParallelSplit: () => void;
   checkDecisionLabels: (nodeId: string) => void;
   checkSwimLaneNeed: () => void;
   celebrateL7Success: () => void;
@@ -981,8 +982,112 @@ export const useStore = create<AppStore>((set, get) => ({
     const labels = branchingNodes.map(n => `"${n.data.label}"`).join(', ');
     addMessage({
       id: generateId('msg'), role: 'bot', timestamp: now,
-      text: `🔀 ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n\n• **동시에 진행되는 병렬 작업**이라면 → 해당 노드 뒤에 **병렬(+) 게이트웨이(Split)**를 추가하고, 모든 병렬 흐름이 합쳐지는 지점에 **병렬(+) 게이트웨이(Join)**를 추가해주세요.\n• **조건에 따라 하나만 실행**된다면 → **판단(◇) 노드**를 사이에 넣어 분기 조건을 명시해주세요.`,
-      quickQueries: ['병렬 게이트웨이 사용법이 뭔가요?', '판단 노드와 병렬 노드의 차이가 뭔가요?'],
+      text: `🔀 ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n\n• **동시에 진행되는 병렬 작업**이라면 → 병렬(+) 게이트웨이(Split/Join)로 묶어야 해요.\n• **조건에 따라 하나만 실행**된다면 → 판단(◇) 노드를 사이에 넣어주세요.`,
+      quickActions: [{ label: '⚡ 병렬 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' }],
+      quickQueries: ['판단 노드와 병렬 노드의 차이가 뭔가요?'],
+      dismissible: true,
+    });
+  },
+
+  convertToParallelSplit: () => {
+    const { nodes, edges, addMessage } = get();
+    get().pushHistory();
+
+    const branchingNodes = nodes.filter(n =>
+      (n.data.nodeType === 'process' || n.data.nodeType === 'subprocess') &&
+      edges.filter(e => e.source === n.id).length > 1
+    );
+    if (branchingNodes.length === 0) return;
+
+    // BFS: startId 에서 도달 가능한 노드 ID 집합 반환
+    const bfsReachable = (startId: string, edgeList: typeof edges): Set<string> => {
+      const visited = new Set<string>();
+      const queue = [startId];
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        edgeList.filter(e => e.source === cur).forEach(e => queue.push(e.target));
+      }
+      return visited;
+    };
+
+    let newNodes = [...nodes];
+    let newEdges = [...edges];
+    let splitCount = 0;
+    let joinCount = 0;
+
+    for (const sourceNode of branchingNodes) {
+      const outEdges = newEdges.filter(e => e.source === sourceNode.id);
+      if (outEdges.length < 2) continue;
+      const targetIds = outEdges.map(e => e.target);
+      const sourceDims = NODE_DIMENSIONS[sourceNode.data.nodeType] || NODE_DIMENSIONS.process;
+      const sourceCx = sourceNode.position.x + sourceDims.width / 2;
+
+      // ── Split 삽입 ──
+      const splitId = generateId('par');
+      const splitDims = NODE_DIMENSIONS.parallel;
+      const targetNodes = targetIds.map(id => newNodes.find(n => n.id === id)).filter(Boolean) as Node<FlowNodeData>[];
+      const minTargetY = targetNodes.length > 0 ? Math.min(...targetNodes.map(n => n.position.y)) : sourceNode.position.y + 200;
+      const splitY = sourceNode.position.y + sourceDims.height + Math.round((minTargetY - sourceNode.position.y - sourceDims.height) / 2) - splitDims.height / 2;
+      const splitNode: Node<FlowNodeData> = {
+        id: splitId, type: 'parallel', draggable: true,
+        position: { x: sourceCx - splitDims.width / 2, y: splitY },
+        data: { label: '', nodeType: 'parallel', category: 'as_is', addedBy: 'user' },
+      };
+      newEdges = newEdges.filter(e => !(e.source === sourceNode.id && targetIds.includes(e.target)));
+      newEdges.push(makeEdge(sourceNode.id, splitId, undefined, undefined, 'bottom-source', 'top-target'));
+      for (const tid of targetIds) newEdges.push(makeEdge(splitId, tid, undefined, undefined, 'bottom-source', 'top-target'));
+      newNodes.push(splitNode);
+      splitCount++;
+
+      // ── 수렴 지점 탐지 → Join 삽입 ──
+      const reachableSets = targetIds.map(id => bfsReachable(id, newEdges));
+      const intersection = [...reachableSets[0]].filter(id => reachableSets.every(s => s.has(id)));
+      // BFS 순서로 수렴 지점 중 가장 가까운 것 선택
+      const bfsOrder = [...bfsReachable(splitId, newEdges)];
+      const convergenceId = bfsOrder.find(id => intersection.includes(id) && id !== splitId);
+
+      if (convergenceId) {
+        const convergenceNode = newNodes.find(n => n.id === convergenceId);
+        if (convergenceNode && convergenceNode.data.nodeType !== 'parallel') {
+          const allIncoming = newEdges.filter(e => e.target === convergenceId);
+          const fromBranches = allIncoming.filter(e => reachableSets.some(s => s.has(e.source)));
+          // 수렴 노드로 들어오는 모든 엣지가 우리 브랜치에서 온 경우에만 Join 삽입
+          if (fromBranches.length === allIncoming.length && fromBranches.length === targetIds.length) {
+            const joinId = generateId('par');
+            const joinDims = NODE_DIMENSIONS.parallel;
+            const convDims = NODE_DIMENSIONS[convergenceNode.data.nodeType] || NODE_DIMENSIONS.process;
+            const convCx = convergenceNode.position.x + convDims.width / 2;
+            const maxBranchY = Math.max(...fromBranches.map(e => {
+              const n = newNodes.find(nn => nn.id === e.source);
+              return n ? n.position.y + (NODE_DIMENSIONS[n.data.nodeType]?.height || 60) : 0;
+            }));
+            const joinNode: Node<FlowNodeData> = {
+              id: joinId, type: 'parallel', draggable: true,
+              position: { x: convCx - joinDims.width / 2, y: maxBranchY + 40 },
+              data: { label: '', nodeType: 'parallel', category: 'as_is', addedBy: 'user' },
+            };
+            const inIds = new Set(fromBranches.map(e => e.id));
+            newEdges = newEdges.filter(e => !inIds.has(e.id));
+            for (const e of fromBranches) newEdges.push(makeEdge(e.source, joinId, undefined, undefined, 'bottom-source', 'top-target'));
+            newEdges.push(makeEdge(joinId, convergenceId, undefined, undefined, 'bottom-source', 'top-target'));
+            newNodes.push(joinNode);
+            joinCount++;
+          }
+        }
+      }
+    }
+
+    const { dividerYs, swimLaneLabels } = get();
+    let updated = reindexByPosition(newNodes);
+    if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
+    set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
+
+    const joinMsg = joinCount > 0 ? ` + Join ${joinCount}개` : ' (합류 지점은 직접 Join 게이트웨이를 추가해주세요)';
+    addMessage({
+      id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+      text: `✅ 병렬 게이트웨이 Split ${splitCount}개${joinMsg} 자동 삽입 완료. 위치가 어색하면 드래그로 조정해주세요.`,
       dismissible: true,
     });
   },

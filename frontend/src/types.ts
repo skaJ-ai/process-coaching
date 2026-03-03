@@ -70,7 +70,7 @@ export interface ChatMessage {
   suggestions?: Suggestion[];
   l7Report?: L7ReportItem[];
   quickQueries?: string[];
-  quickActions?: { label: string; storeAction: 'toggleSwimLane' | 'advanceOnboarding' | 'skipOnboarding' | 'addSwimLaneAndAdvance' | 'focusStartNode' | 'focusEndNode' | 'startInterviewFlow'; noActioned?: boolean }[];
+  quickActions?: { label: string; storeAction: 'toggleSwimLane' | 'advanceOnboarding' | 'skipOnboarding' | 'addSwimLaneAndAdvance' | 'focusStartNode' | 'focusEndNode' | 'startInterviewFlow' | 'convertToParallelSplit'; noActioned?: boolean }[];
   timestamp: number;
   dismissible?: boolean;
   actioned?: boolean;

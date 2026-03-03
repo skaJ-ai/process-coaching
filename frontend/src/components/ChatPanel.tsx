@@ -136,6 +136,8 @@ export default function ChatPanel() {
                             const { nodes, setFocusNodeId } = useStore.getState();
                             const end = nodes.find(n => n.data.nodeType === 'end');
                             if (end) setFocusNodeId(end.id);
+                          } else if (a.storeAction === 'convertToParallelSplit') {
+                            useStore.getState().convertToParallelSplit();
                           } else if (a.storeAction === 'startInterviewFlow') {
                             const { addMessage, processContext, loadingState } = useStore.getState();
                             const currentCount = (loadingState.requestCount || 0) + 1;
