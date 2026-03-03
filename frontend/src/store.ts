@@ -119,6 +119,7 @@ interface AppStore {
   checkFirstShape: () => void;
   checkOrphanedNodes: () => void;
   checkFlowCompletion: () => void;
+  checkImplicitBranch: () => void;
   checkDecisionLabels: (nodeId: string) => void;
   checkSwimLaneNeed: () => void;
   celebrateL7Success: () => void;
@@ -226,6 +227,7 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ edges: addEdge(makeEdge(conn.source, conn.target, autoLabel, undefined, conn.sourceHandle || undefined, conn.targetHandle || undefined), get().edges), saveStatus: 'unsaved' });
     // v5.2: check if flow is now complete
     setTimeout(() => get().checkFlowCompletion(), 500);
+    setTimeout(() => get().checkImplicitBranch(), 800);
   },
 
   addShape: (type, label, position) => {
@@ -964,6 +966,25 @@ export const useStore = create<AppStore>((set, get) => ({
         dismissible: true
       });
     }
+  },
+
+  checkImplicitBranch: () => {
+    const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
+    const now = Date.now();
+    if (_lastCoachingTrigger['implicitBranch'] && now - _lastCoachingTrigger['implicitBranch'] < 90000) return;
+    const branchingNodes = nodes.filter(n =>
+      (n.data.nodeType === 'process' || n.data.nodeType === 'subprocess') &&
+      edges.filter(e => e.source === n.id).length > 1
+    );
+    if (branchingNodes.length === 0) return;
+    set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, implicitBranch: now } });
+    const labels = branchingNodes.map(n => `"${n.data.label}"`).join(', ');
+    addMessage({
+      id: generateId('msg'), role: 'bot', timestamp: now,
+      text: `🔀 ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n\n• **동시에 진행되는 병렬 작업**이라면 → 해당 노드 뒤에 **병렬(+) 게이트웨이(Split)**를 추가하고, 모든 병렬 흐름이 합쳐지는 지점에 **병렬(+) 게이트웨이(Join)**를 추가해주세요.\n• **조건에 따라 하나만 실행**된다면 → **판단(◇) 노드**를 사이에 넣어 분기 조건을 명시해주세요.`,
+      quickQueries: ['병렬 게이트웨이 사용법이 뭔가요?', '판단 노드와 병렬 노드의 차이가 뭔가요?'],
+      dismissible: true,
+    });
   },
 
   checkDecisionLabels: (nodeId) => {
