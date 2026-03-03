@@ -232,23 +232,36 @@ export const useStore = create<AppStore>((set, get) => ({
     get().pushHistory();
     get().updateUserActivity();
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end', parallel: 'par' }[type] ?? 'node');
-    // 모든 노드: 가장 인근 노드와 수직/수평 정렬
+    // 모든 노드(start/end 포함): 120px 이내 가장 인근 노드와 핸들 기준 수직/수평 정렬
     let pos = position;
     const existingNodes = get().nodes;
+    const SNAP_THRESHOLD = 120;
     if (existingNodes.length > 0) {
       const nearest = existingNodes.reduce((best, n) => {
-        const d = Math.hypot(position.x - n.position.x, position.y - n.position.y);
+        const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
+        const cx = n.position.x + dims.width / 2;
+        const cy = n.position.y + dims.height / 2;
+        const d = Math.hypot(position.x - cx, position.y - cy);
         return d < best.dist ? { node: n, dist: d } : best;
-      }, { node: existingNodes[0], dist: Math.hypot(position.x - existingNodes[0].position.x, position.y - existingNodes[0].position.y) });
-      const dx = Math.abs(position.x - nearest.node.position.x);
-      const dy = Math.abs(position.y - nearest.node.position.y);
-      if (dx > dy) {
-        pos = { x: position.x, y: nearest.node.position.y }; // 좌우 → Y 정렬
-      } else if (dy > dx) {
-        // 상하 → 중심 X 정렬: 새 노드의 중심이 기준 노드의 중심과 일치하도록
+      }, (() => {
+        const n0 = existingNodes[0];
+        const d0 = NODE_DIMENSIONS[n0.data.nodeType] || NODE_DIMENSIONS.process;
+        return { node: n0, dist: Math.hypot(position.x - (n0.position.x + d0.width / 2), position.y - (n0.position.y + d0.height / 2)) };
+      })());
+      if (nearest.dist < SNAP_THRESHOLD) {
         const nearestDims = NODE_DIMENSIONS[nearest.node.data.nodeType] || NODE_DIMENSIONS.process;
         const newDims = NODE_DIMENSIONS[type] || NODE_DIMENSIONS.process;
-        pos = { x: nearest.node.position.x + nearestDims.width / 2 - newDims.width / 2, y: position.y };
+        const nearestCx = nearest.node.position.x + nearestDims.width / 2;
+        const nearestCy = nearest.node.position.y + nearestDims.height / 2;
+        const dx = Math.abs(position.x - nearestCx);
+        const dy = Math.abs(position.y - nearestCy);
+        if (dx > dy) {
+          // 좌우 → 핸들 Y 정렬 (중심 Y 일치)
+          pos = { x: position.x, y: nearestCy - newDims.height / 2 };
+        } else if (dy > dx) {
+          // 상하 → 핸들 X 정렬 (중심 X 일치)
+          pos = { x: nearestCx - newDims.width / 2, y: position.y };
+        }
       }
     }
     const node: Node<FlowNodeData> = {
