@@ -59,7 +59,7 @@ export default function ContextMenu() {
         <div className="context-menu-item" onClick={() => placeShape('process')}><span style={{ color: '#60a5fa' }}>▢</span> 프로세스</div>
         <div className="context-menu-item" onClick={() => placeShape('decision')}><span style={{ color: '#fbbf24' }}>◇</span> 판단(분기)</div>
         <div className="context-menu-item" onClick={() => placeShape('subprocess')}><span style={{ color: '#2dd4bf' }}>▣</span> L6 프로세스</div>
-        <div className="context-menu-item" onClick={() => placeShape('parallel')}><span style={{ color: '#14b8a6' }}>⊕</span> 병렬(+)</div>
+        <div className="context-menu-item" onClick={() => placeShape('parallel')}><span style={{ color: '#8b5cf6' }}>⊕</span> 병렬(+)</div>
         <div className="context-menu-item" onClick={() => placeShape('start')}><span style={{ color: '#22c55e' }}>●</span> 시작</div>
         <div className="context-menu-item" onClick={() => placeShape('end')}><span style={{ color: '#ef4444' }}>●</span> 끝</div>
       </>)}

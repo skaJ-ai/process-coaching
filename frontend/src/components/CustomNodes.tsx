@@ -231,7 +231,7 @@ export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHan
 }
 
 export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style, markerEnd, label }: EdgeProps) {
-  const SPREAD = 18;
+  const SPREAD = 30;
   const srcCount: number = (data?.sourceSiblingCount as number) || 1;
   const srcIdx: number = (data?.sourceSiblingIndex as number) || 0;
   const tgtCount: number = (data?.targetSiblingCount as number) || 1;
