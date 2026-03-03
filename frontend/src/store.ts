@@ -232,12 +232,11 @@ export const useStore = create<AppStore>((set, get) => ({
     get().pushHistory();
     get().updateUserActivity();
     const id = generateId({ process: 'proc', decision: 'dec', subprocess: 'sub', start: 'start', end: 'end', parallel: 'par' }[type] ?? 'node');
-    // 모든 노드(start/end 포함): 축별 threshold로 핸들 기준 수직/수평 정렬
-    // - 수직 방향 드롭(아래/위): dx < 80px이면 X 정렬 (중심 X 일치)
-    // - 수평 방향 드롭(좌/우): dy < 80px이면 Y 정렬 (중심 Y 일치)
+    // 모든 노드(start/end 포함): 드롭 방향으로 핸들 기준 수직/수평 정렬
+    // dy > dx → 주로 아래/위 방향 → X 중심 정렬 (수직 핸들 일치)
+    // dx > dy → 주로 좌/우 방향  → Y 중심 정렬 (수평 핸들 일치)
     let pos = position;
     const existingNodes = get().nodes;
-    const AXIS_SNAP = 150; // 각 축 독립 threshold
     if (existingNodes.length > 0) {
       const nearest = existingNodes.reduce((best, n) => {
         const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
@@ -256,11 +255,11 @@ export const useStore = create<AppStore>((set, get) => ({
       const nearestCy = nearest.node.position.y + nearestDims.height / 2;
       const dx = Math.abs(position.x - nearestCx);
       const dy = Math.abs(position.y - nearestCy);
-      if (dy > dx && dx < AXIS_SNAP) {
-        // 상하 방향 드롭 → 핸들 X 정렬 (중심 X 일치)
+      if (dy > dx) {
+        // 상하 방향 → 핸들 X 정렬 (중심 X 일치)
         pos = { x: nearestCx - newDims.width / 2, y: position.y };
-      } else if (dx > dy && dy < AXIS_SNAP) {
-        // 좌우 방향 드롭 → 핸들 Y 정렬 (중심 Y 일치)
+      } else if (dx > dy) {
+        // 좌우 방향 → 핸들 Y 정렬 (중심 Y 일치)
         pos = { x: position.x, y: nearestCy - newDims.height / 2 };
       }
     }

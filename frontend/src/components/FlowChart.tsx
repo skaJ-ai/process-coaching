@@ -470,7 +470,7 @@ function FlowCanvas() {
         ...e,
         type: 'spread',
         style: edgeStyle,
-        interactionWidth: 20,
+        interactionWidth: 40,
         data: {
           ...e.data,
           sourceSiblingIndex: sg.indexOf(e.id),

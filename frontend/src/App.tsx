@@ -65,8 +65,9 @@ export default function App() {
         <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: chatCollapsed ? 'default' : 'col-resize', background: drag ? '#3b82f6' : '#1e293b', position: 'relative' }} onMouseDown={onDown}>
           <button
             onClick={toggleChat}
+            onMouseDown={e => e.preventDefault()}
             title={chatCollapsed ? '채팅 패널 열기' : '채팅 패널 접기'}
-            style={{ position: 'absolute', top: 16, left: chatCollapsed ? 4 : -12, width: 20, height: 36, background: '#334155', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', color: '#94a3b8', fontSize: 10, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            style={{ position: 'absolute', top: 16, left: chatCollapsed ? 4 : -12, width: 20, height: 36, background: '#334155', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer', color: '#94a3b8', fontSize: 10, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, outline: 'none' }}
           >
             {chatCollapsed ? '▶' : '◀'}
           </button>
