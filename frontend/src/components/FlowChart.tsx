@@ -460,7 +460,7 @@ function FlowCanvas() {
       const edgeStyle = isSelected
         ? { ...e.style, stroke: '#3b82f6', strokeWidth: 3, filter: 'drop-shadow(0 0 8px rgba(59,130,246,0.6))' }
         : { ...e.style, stroke: undefined, strokeWidth: undefined, filter: undefined };
-      if (isSelfLoop) return { ...e, type: 'selfloop', style: edgeStyle };
+      if (isSelfLoop) return { ...e, type: 'selfloop', style: edgeStyle, interactionWidth: 20 };
       const sk = `${e.source}::${e.sourceHandle ?? ''}`;
       const tk = `${e.target}::${e.targetHandle ?? ''}`;
       const sg = srcGroups[sk] ?? [e.id];
@@ -470,6 +470,7 @@ function FlowCanvas() {
         ...e,
         type: 'spread',
         style: edgeStyle,
+        interactionWidth: 20,
         data: {
           ...e.data,
           sourceSiblingIndex: sg.indexOf(e.id),

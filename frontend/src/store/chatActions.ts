@@ -210,6 +210,11 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
         }
 
         const data = await response.json();
+        // labelSuggestion/newLabel에서 설명 텍스트 제거: "라벨 — 설명" 또는 "라벨 (설명)" 패턴
+        const cleanLabel = (s: string | undefined): string | undefined => {
+          if (!s) return s;
+          return s.replace(/\s*[—–-]\s*.+$/, '').replace(/\s*\([^)]*\)\s*$/, '').split('\n')[0].trim() || undefined;
+        };
         const validSuggestions = (data.suggestions || []).filter(
           (suggestion: any) =>
             suggestion.summary?.trim() || suggestion.newLabel?.trim() || suggestion.labelSuggestion?.trim(),
@@ -224,7 +229,12 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
           id: generateId('msg'),
           role: 'bot',
           text: extractBotText(data) || '리뷰 완료',
-          suggestions: validSuggestions.map((suggestion: any) => ({ action: suggestion.action || 'ADD', ...suggestion })),
+          suggestions: validSuggestions.map((s: any) => ({
+            action: s.action || 'ADD',
+            ...s,
+            labelSuggestion: cleanLabel(s.labelSuggestion),
+            newLabel: cleanLabel(s.newLabel),
+          })),
           quickQueries: data.quickQueries || [],
           timestamp: Date.now(),
         });

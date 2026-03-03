@@ -101,7 +101,6 @@ export default function SuggestionCard({ suggestion }: { suggestion: Suggestion 
             </div>
           )}
           {suggestion.reason && <div className="text-xs text-slate-400 mt-1">{suggestion.reason}</div>}
-          {suggestion.reasoning && suggestion.reasoning !== suggestion.reason && <div className="text-xs text-slate-500 mt-1 italic">{suggestion.reasoning}</div>}
           {suggestion.branches && (
             <div className="flex gap-2 mt-2 flex-wrap">
               {suggestion.branches.yes && <span className="text-xs px-2 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-800/40">Yes → {suggestion.branches.yes.summary}</span>}

@@ -237,7 +237,7 @@ export const useStore = create<AppStore>((set, get) => ({
     // - 수평 방향 드롭(좌/우): dy < 80px이면 Y 정렬 (중심 Y 일치)
     let pos = position;
     const existingNodes = get().nodes;
-    const AXIS_SNAP = 80; // 각 축 독립 threshold
+    const AXIS_SNAP = 150; // 각 축 독립 threshold
     if (existingNodes.length > 0) {
       const nearest = existingNodes.reduce((best, n) => {
         const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
