@@ -46,8 +46,9 @@ frontend/tests/**/results.json
 # Claude Code
 .claude/
 
-# BPMN reference documents (local only)
+# BPMN reference documents & guide assets (local only)
 BPMN*.html
+docs/
 
 # Markdown policy: ignore all markdown except README
 *.md
