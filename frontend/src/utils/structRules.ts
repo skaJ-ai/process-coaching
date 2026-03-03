@@ -96,7 +96,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
     issues.push({
       ruleId: 'S-05',
       severity: 'warning',
-      message: `프로세스 노드에서 2개 이상 분기하는 곳이 ${implicitBranchIds.length}개 있어요. 판단 노드로 분기 조건을 명시하면 더 명확해집니다.`,
+      message: `프로세스 노드에서 2개 이상 분기하는 곳이 ${implicitBranchIds.length}개 있어요. 동시에 진행되는 병렬 작업이라면 병렬(+) 게이트웨이를, 조건에 따라 하나만 실행된다면 판단(◇) 노드를 사용해 명시적으로 표현해주세요.`,
       nodeIds: implicitBranchIds,
     });
   }
