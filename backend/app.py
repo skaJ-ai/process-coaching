@@ -2,6 +2,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from typing import Optional
 import logging
 import time
 
@@ -64,7 +65,7 @@ def _interview_cache_key(context: dict, start_label: str = "", end_label: str = 
     return base
 
 
-def _get_interview_cache(key: str) -> dict | None:
+def _get_interview_cache(key: str) -> Optional[dict]:
     entry = _INTERVIEW_CACHE.get(key)
     if entry and (time.time() - entry[0]) < _INTERVIEW_CACHE_TTL:
         return entry[1]
