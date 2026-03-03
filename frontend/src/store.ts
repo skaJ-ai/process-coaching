@@ -121,6 +121,7 @@ interface AppStore {
   checkFlowCompletion: () => void;
   checkImplicitBranch: () => void;
   convertToParallelSplit: () => void;
+  convertToParallelJoin: () => void;
   checkDecisionLabels: (nodeId: string) => void;
   checkSwimLaneNeed: () => void;
   celebrateL7Success: () => void;
@@ -1001,7 +1002,10 @@ export const useStore = create<AppStore>((set, get) => ({
     addMessage({
       id: generateId('msg'), role: 'bot', timestamp: now,
       text: parts.join('\n\n'),
-      quickActions: branchingNodes.length > 0 ? [{ label: '⚡ 병렬 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' }] : [],
+      quickActions: [
+        ...(branchingNodes.length > 0 ? [{ label: '⚡ Split 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' as const }] : []),
+        ...(mergingNodes.length > 0 ? [{ label: '⚡ Join 게이트웨이 자동 삽입', storeAction: 'convertToParallelJoin' as const }] : []),
+      ],
       quickQueries: ['판단 노드와 병렬 노드의 차이가 뭔가요?'],
       dismissible: true,
     });
@@ -1138,6 +1142,65 @@ export const useStore = create<AppStore>((set, get) => ({
     addMessage({
       id: generateId('msg'), role: 'bot', timestamp: Date.now(),
       text: `✅ 병렬 게이트웨이 Split ${splitCount}개${joinMsg} 자동 삽입 완료. 위치가 어색하면 드래그로 조정해주세요.`,
+      dismissible: true,
+    });
+  },
+
+  convertToParallelJoin: () => {
+    const { nodes, edges, addMessage } = get();
+    get().pushHistory();
+
+    const mergingNodes = nodes.filter(n =>
+      ['process', 'subprocess'].includes(n.data.nodeType) &&
+      edges.filter(e => e.target === n.id).length > 1
+    );
+    if (mergingNodes.length === 0) return;
+
+    let newNodes = [...nodes];
+    let newEdges = [...edges];
+    let joinCount = 0;
+
+    for (const targetNode of mergingNodes) {
+      const inEdges = newEdges.filter(e => e.target === targetNode.id);
+      if (inEdges.length < 2) continue;
+
+      const targetDims = NODE_DIMENSIONS[targetNode.data.nodeType] || NODE_DIMENSIONS.process;
+      const targetCx = targetNode.position.x + targetDims.width / 2;
+      const joinDims = NODE_DIMENSIONS.parallel;
+
+      // Y: 소스 노드들의 바닥 중 가장 아래와 타깃 노드 상단 사이 중간
+      const maxSourceBottom = inEdges.reduce((max, e) => {
+        const n = newNodes.find(nn => nn.id === e.source);
+        if (!n) return max;
+        const dims = NODE_DIMENSIONS[n.data.nodeType] || NODE_DIMENSIONS.process;
+        return Math.max(max, n.position.y + dims.height);
+      }, 0);
+      const joinY = maxSourceBottom + Math.round((targetNode.position.y - maxSourceBottom) / 2) - joinDims.height / 2;
+      const joinX = targetCx - joinDims.width / 2;
+
+      const joinId = generateId('par');
+      const joinNode: Node<FlowNodeData> = {
+        id: joinId, type: 'parallel', draggable: true,
+        position: { x: joinX, y: joinY },
+        data: { label: '', nodeType: 'parallel', category: 'as_is', addedBy: 'user' },
+      };
+
+      // 기존 incoming 엣지 제거 후 Join 경유로 교체
+      const inEdgeIds = new Set(inEdges.map(e => e.id));
+      newEdges = newEdges.filter(e => !inEdgeIds.has(e.id));
+      for (const ie of inEdges) newEdges.push(makeEdge(ie.source, joinId, undefined, undefined, 'bottom-source', 'top-target'));
+      newEdges.push(makeEdge(joinId, targetNode.id, undefined, undefined, 'bottom-source', 'top-target'));
+      newNodes.push(joinNode);
+      joinCount++;
+    }
+
+    const { dividerYs, swimLaneLabels } = get();
+    let updated = reindexByPosition(newNodes);
+    if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
+    set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
+    addMessage({
+      id: generateId('msg'), role: 'bot', timestamp: Date.now(),
+      text: `✅ 병렬 Join 게이트웨이 ${joinCount}개 자동 삽입 완료. 위치가 어색하면 드래그로 조정해주세요.`,
       dismissible: true,
     });
   },

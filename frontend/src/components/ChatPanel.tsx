@@ -138,6 +138,8 @@ export default function ChatPanel() {
                             if (end) setFocusNodeId(end.id);
                           } else if (a.storeAction === 'convertToParallelSplit') {
                             useStore.getState().convertToParallelSplit();
+                          } else if (a.storeAction === 'convertToParallelJoin') {
+                            useStore.getState().convertToParallelJoin();
                           } else if (a.storeAction === 'startInterviewFlow') {
                             const { addMessage, processContext, loadingState } = useStore.getState();
                             const currentCount = (loadingState.requestCount || 0) + 1;

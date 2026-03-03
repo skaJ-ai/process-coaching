@@ -223,8 +223,11 @@ export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHan
   const labelX = (p2x + p3x + pPreEndx) / 3;
   const labelY = (p2y + p3y + pPreEndy) / 3;
 
-  return (<><path id={id} d={path} style={{ ...style, fill: 'none' }} className="react-flow__edge-path" markerEnd={markerEnd as string} />
-    {label && <foreignObject x={p3x - 40} y={p3y - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}</>);
+  return (<>
+    <path d={path} fill="none" strokeOpacity={0} strokeWidth={60} />
+    <path id={id} d={path} style={{ ...style, fill: 'none' }} className="react-flow__edge-path" markerEnd={markerEnd as string} />
+    {label && <foreignObject x={p3x - 40} y={p3y - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}
+  </>);
 }
 
 export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style, markerEnd, label }: EdgeProps) {
@@ -274,6 +277,7 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
     : { ...style, fill: 'none' };
 
   return (<>
+    <path d={edgePath} fill="none" strokeOpacity={0} strokeWidth={60} />
     <path id={id} d={edgePath} style={edgeStyle} className="react-flow__edge-path" markerEnd={markerEnd as string} />
     {label && <foreignObject x={labelX - 40} y={labelY - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}
   </>);
