@@ -92,7 +92,7 @@ export const ProcessNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>
   const borderColor = selected ? '#3b82f6' : (sc || cat.border);
   const shadow = selected ? '0 0 0 3px rgba(59,130,246,0.4),0 0 20px rgba(59,130,246,0.2)' : sc ? `0 0 16px ${sc}33` : '0 4px 16px rgba(0,0,0,0.3)';
   const ie = useInlineEdit(id, data.label, true);
-  return (<div className="relative flex flex-col rounded-lg transition-all" style={{ minWidth: 220, maxWidth: 320, minHeight: 60, background: cat.gradient, border: `2px solid ${borderColor}`, boxShadow: shadow }}>
+  return (<div className="relative flex flex-col rounded-lg transition-all" style={{ width: 280, minHeight: 60, background: cat.gradient, border: `2px solid ${borderColor}`, boxShadow: shadow }}>
     <AllHandles color={selected ? '#3b82f6' : '#60a5fa'} />
     {data.inputLabel && <div className="absolute -top-5 left-2 text-[9px] text-cyan-400 bg-cyan-900/30 px-1.5 py-0.5 rounded border border-cyan-800/40">IN: {data.inputLabel}</div>}
     {mode === 'TO-BE' && data.category && data.category !== 'as_is' && <div className="absolute -top-5 right-2 text-[9px] px-1.5 py-0.5 rounded-sm z-20" style={{ background: cat.border + '22', color: cat.border, border: `1px solid ${cat.border}44`, fontWeight: 600 }}>{cat.label}</div>}
@@ -149,7 +149,7 @@ export const SubprocessNode = memo(({ id, data, selected }: NodeProps<FlowNodeDa
   const borderColor = (mode === 'TO-BE' && data.category && data.category !== 'as_is') ? cat.border : '#14b8a6';
   const shadow = selected ? '0 0 0 3px rgba(45,212,191,0.4),0 0 20px rgba(45,212,191,0.2)' : '0 4px 16px rgba(0,0,0,0.3)';
   const ie = useInlineEdit(id, data.label, true);
-  return (<div className="relative flex items-center rounded-lg transition-all" style={{ minWidth: 220, maxWidth: 320, minHeight: 60, background: bg, border: `2px solid ${selected ? '#2dd4bf' : borderColor}`, boxShadow: shadow }}>
+  return (<div className="relative flex items-center rounded-lg transition-all" style={{ width: 280, minHeight: 60, background: bg, border: `2px solid ${selected ? '#2dd4bf' : borderColor}`, boxShadow: shadow }}>
     <AllHandles color={selected ? '#2dd4bf' : '#5eead4'} />
     <div style={{ position: 'absolute', left: 14, top: 6, bottom: 6, width: 2, background: borderColor, opacity: 0.5, borderRadius: 1 }} />
     <div style={{ position: 'absolute', right: 14, top: 6, bottom: 6, width: 2, background: borderColor, opacity: 0.5, borderRadius: 1 }} />
