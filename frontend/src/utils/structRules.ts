@@ -2,7 +2,7 @@ import { Edge, Node } from 'reactflow';
 import { FlowNodeData } from '../types';
 
 export type StructRuleId =
-  | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05'
+  | 'S-01' | 'S-02' | 'S-03' | 'S-04' | 'S-05' | 'S-05b'
   | 'S-06' | 'S-07' | 'S-08' | 'S-09' | 'S-10' | 'S-11' | 'S-12' | 'S-13'
   | 'S-14' | 'S-15';
 
@@ -108,7 +108,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
     .map((n) => n.id);
   if (implicitMergeIds.length > 0) {
     issues.push({
-      ruleId: 'S-05',
+      ruleId: 'S-05b',
       severity: 'warning',
       message: `프로세스 노드로 2개 이상 흐름이 합류하는 곳이 ${implicitMergeIds.length}개 있어요. 병렬 작업이 끝나는 합류 지점이라면 병렬(+) Join 게이트웨이를 추가해 명시적으로 닫아주세요.`,
       nodeIds: implicitMergeIds,

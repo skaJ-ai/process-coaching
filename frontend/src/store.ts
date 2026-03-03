@@ -973,8 +973,6 @@ export const useStore = create<AppStore>((set, get) => ({
   checkImplicitBranch: () => {
     const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
     const now = Date.now();
-    if (_lastCoachingTrigger['implicitBranch'] && now - _lastCoachingTrigger['implicitBranch'] < 90000) return;
-
     // Split 누락: 비-게이트웨이 노드에서 2개+ outgoing
     const branchingNodes = nodes.filter(n =>
       ['process', 'subprocess', 'start'].includes(n.data.nodeType) &&
@@ -986,15 +984,21 @@ export const useStore = create<AppStore>((set, get) => ({
       edges.filter(e => e.target === n.id).length > 1
     );
 
-    if (branchingNodes.length === 0 && mergingNodes.length === 0) return;
-    set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, implicitBranch: now } });
+    // 각 케이스를 독립 dedup으로 관리 (split/join 중 하나만 해결해도 다른 쪽 코칭이 억제되지 않도록)
+    const splitCooled = branchingNodes.length > 0 &&
+      !(_lastCoachingTrigger['implicitSplit'] && now - _lastCoachingTrigger['implicitSplit'] < 90000);
+    const joinCooled = mergingNodes.length > 0 &&
+      !(_lastCoachingTrigger['implicitJoin'] && now - _lastCoachingTrigger['implicitJoin'] < 90000);
+
+    if (!splitCooled && !joinCooled) return;
+    set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, ...(splitCooled ? { implicitSplit: now } : {}), ...(joinCooled ? { implicitJoin: now } : {}) } });
 
     const parts: string[] = [];
-    if (branchingNodes.length > 0) {
+    if (splitCooled) {
       const labels = branchingNodes.map(n => `"${n.data.label}"`).join(', ');
       parts.push(`🔀 **Split 누락** — ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n  • 병렬 작업이라면 → 병렬(+) Split 게이트웨이\n  • 조건 분기라면 → 판단(◇) 노드`);
     }
-    if (mergingNodes.length > 0) {
+    if (joinCooled) {
       const labels = mergingNodes.map(n => `"${n.data.label}"`).join(', ');
       parts.push(`🔁 **Join 누락** — ${labels} 로 2개 이상의 흐름이 합류하고 있어요.\n  • 병렬 작업이라면 → 병렬(+) Join 게이트웨이로 닫아야 해요.`);
     }
@@ -1003,8 +1007,8 @@ export const useStore = create<AppStore>((set, get) => ({
       id: generateId('msg'), role: 'bot', timestamp: now,
       text: parts.join('\n\n'),
       quickActions: [
-        ...(branchingNodes.length > 0 ? [{ label: '⚡ Split 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' as const }] : []),
-        ...(mergingNodes.length > 0 ? [{ label: '⚡ Join 게이트웨이 자동 삽입', storeAction: 'convertToParallelJoin' as const }] : []),
+        ...(splitCooled ? [{ label: '⚡ Split 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' as const }] : []),
+        ...(joinCooled ? [{ label: '⚡ Join 게이트웨이 자동 삽입', storeAction: 'convertToParallelJoin' as const }] : []),
       ],
       quickQueries: ['판단 노드와 병렬 노드의 차이가 뭔가요?'],
       dismissible: true,

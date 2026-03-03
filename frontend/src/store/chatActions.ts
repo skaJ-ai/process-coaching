@@ -242,7 +242,7 @@ export function createChatActions(set: StoreSet, get: StoreGet, deps: ChatAction
         });
         // 리뷰 후 병렬 게이트웨이 누락 체크 (dedup 리셋 후 강제 실행)
         const trigger = get()._lastCoachingTrigger;
-        set({ _lastCoachingTrigger: { ...trigger, implicitBranch: 0 } });
+        set({ _lastCoachingTrigger: { ...trigger, implicitSplit: 0, implicitJoin: 0 } });
         setTimeout(() => get().checkImplicitBranch(), 600);
       } catch {
         debugTrace('review:error');

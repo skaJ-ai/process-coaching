@@ -224,7 +224,7 @@ export function SelfLoopEdge({ id, sourceX, sourceY, targetX, targetY, sourceHan
   const labelY = (p2y + p3y + pPreEndy) / 3;
 
   return (<>
-    <path d={path} fill="none" strokeOpacity={0} strokeWidth={60} />
+    <path d={path} fill="none" strokeOpacity={0} strokeWidth={30} />
     <path id={id} d={path} style={{ ...style, fill: 'none' }} className="react-flow__edge-path" markerEnd={markerEnd as string} />
     {label && <foreignObject x={p3x - 40} y={p3y - 12} width={80} height={24}><div style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 11, textAlign: 'center', color: '#e2e8f0', whiteSpace: 'nowrap' }}>{label as string}</div></foreignObject>}
   </>);
@@ -282,8 +282,15 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
     // ── Orthogonal Polyline Lane Routing ──
     // 각 엣지가 고유한 수직(수평) 레인을 타고 이동하여 겹침 방지
     // junction 위치: tgtCount > 1이면 target 바로 위(abt), srcCount > 1이면 source 바로 아래(bel)
-    if (isVert) {
-      const dist = Math.abs(ey - sy);
+    const rawDist = isVert ? Math.abs(ey - sy) : Math.abs(ex - sx);
+    if (rawDist < 10) {
+      // 거의 겹쳐있을 때: 폴리라인 대신 스무스 패스 사용 (20px 돌출 방지)
+      [edgePath, labelX, labelY] = getSmoothStepPath({
+        sourceX: sx, sourceY: sy, targetX: ex, targetY: ey,
+        sourcePosition, targetPosition, borderRadius: 8,
+      });
+    } else if (isVert) {
+      const dist = rawDist;
       const step = Math.max(20, Math.min(50, dist / 3));
       const goDown = ey > sy;
       // junction row: tgtCount>1 → near target; else → near source
@@ -294,7 +301,7 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
       labelX = (sx + ex) / 2;
       labelY = jy;
     } else { // isHoriz
-      const dist = Math.abs(ex - sx);
+      const dist = rawDist;
       const step = Math.max(20, Math.min(50, dist / 3));
       const goRight = ex > sx;
       const jx = tgtCount > 1

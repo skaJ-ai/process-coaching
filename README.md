@@ -307,7 +307,8 @@ cd frontend && npm run sync:check
 | :--- | :--- | :--- | :--- |
 | S-01 | 종료 노드가 최소 1개 있어야 한다 | Warning | 드로잉 중 품질 대시보드에서 억제 — 완료하기/전체 흐름 검토 시 안내 |
 | S-03 | 연결이 없는 고아 노드가 없어야 한다 | Warning | 종료 노드 없는 작업 중엔 억제 |
-| S-05 | 프로세스 노드 직접 분기 시 판단 노드를 사용해야 한다 | Warning | |
+| S-05a | 프로세스/시작 노드에서 2개 이상 분기 시 Split 게이트웨이를 사용해야 한다 | Warning | `convertToParallelSplit` 자동 삽입 버튼 제공 |
+| S-05b | 프로세스/서브프로세스 노드로 2개 이상 흐름이 합류 시 Join 게이트웨이를 사용해야 한다 | Warning | `convertToParallelJoin` 자동 삽입 버튼 제공 |
 | S-06 | 동일한 출발→도착 연결이 중복되면 안 된다 | Warning | |
 | S-07 | 판단 노드에서 나가는 경로가 1개뿐이면 일반 노드로 변경해야 한다 | Warning | |
 | S-08 | 판단 노드의 모든 분기에 조건 라벨이 있어야 한다 | Warning | |
@@ -336,6 +337,7 @@ cd frontend && npm run sync:check
 | R-07 | 타동사 사용 시 목적어(을/를)가 있어야 한다 | Reject | Process만 |
 | R-08 | 판단 기준(여부/인가/이상/이하 등)이 드러나야 한다. Decision 5패턴(P1~P5) 안내 포함 | Warning | Decision만 |
 | R-09 | Decision 노드에 "~한다/~합다" Process 형식 사용 시 경고 | Warning | Decision만 |
+| R-10 | Process 노드에 "~인가?/~여부" Decision 형식 사용 시 경고 | Warning | Process만 |
 
 ---
 
