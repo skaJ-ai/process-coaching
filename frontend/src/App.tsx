@@ -61,7 +61,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
-        <div style={{ width: chatCollapsed ? 0 : chatW, height: '100vh', flexShrink: 0, overflow: 'hidden', transition: 'width 0.2s ease' }}><ChatPanel /></div>
+        <div style={{ width: chatCollapsed ? 0 : chatW, height: '100vh', flexShrink: 0, overflow: 'hidden', transition: 'width 0.2s ease', visibility: chatCollapsed ? 'hidden' : undefined }}><ChatPanel /></div>
         <div style={{ width: 4, height: '100vh', flexShrink: 0, cursor: chatCollapsed ? 'default' : 'col-resize', background: drag ? '#3b82f6' : '#1e293b', position: 'relative' }} onMouseDown={onDown}>
           <button
             onClick={toggleChat}

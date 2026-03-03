@@ -255,12 +255,14 @@ export const useStore = create<AppStore>((set, get) => ({
       const nearestCy = nearest.node.position.y + nearestDims.height / 2;
       const dx = Math.abs(position.x - nearestCx);
       const dy = Math.abs(position.y - nearestCy);
-      if (dy > dx) {
-        // 상하 방향 → 핸들 X 정렬 (중심 X 일치)
-        pos = { x: nearestCx - newDims.width / 2, y: position.y };
-      } else if (dx > dy) {
-        // 좌우 방향 → 핸들 Y 정렬 (중심 Y 일치)
-        pos = { x: position.x, y: nearestCy - newDims.height / 2 };
+      const halfW = newDims.width / 2;   // 새 노드 반폭 (process=140)
+      const halfH = newDims.height / 2;  // 새 노드 반높이 (process=30)
+      if (dx < halfW) {
+        // 새 노드 폭 이내로 드롭 → X 정렬 (수직 핸들 일치)
+        pos = { x: nearestCx - halfW, y: position.y };
+      } else if (dy < halfH) {
+        // 새 노드 높이 이내로 드롭 → Y 정렬 (수평 핸들 일치)
+        pos = { x: position.x, y: nearestCy - halfH };
       }
     }
     const node: Node<FlowNodeData> = {
