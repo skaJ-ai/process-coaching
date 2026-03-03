@@ -191,6 +191,15 @@ export function validateL7Label(
     ));
   }
 
+  // ── R-10: Process 노드에 Decision 형식 사용 ──
+  if (nodeType !== 'decision' && (/\?\s*$/.test(text) || /여부\s*$/.test(text))) {
+    issues.push(issue(
+      'R-10', 'warning', 'Decision 형식',
+      'Process 노드에 판단 분기 형식("~인가?", "~여부")이 사용되었어요',
+      '분기 조건이라면 Decision(판단) 노드로 변경하세요.',
+    ));
+  }
+
   // ── R-09: Decision 형식 위반 (Process 형식 "~한다/~합다" 사용) ──
   if (nodeType === 'decision' && /[한합]다\s*$/.test(text)) {
     issues.push(issue(

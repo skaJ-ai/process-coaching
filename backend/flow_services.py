@@ -241,6 +241,10 @@ def mock_validate(label, node_type="process", llm_failed=False):
     if node_type == "decision" and re.search(r"[한합]다\s*$", text):
         issues.append({"ruleId": "R-09", "severity": "warning", "friendlyTag": "Decision 형식", "message": "판단 노드에 '~한다' 형식이 사용되었어요. '~여부' 또는 '~인가?' 형태가 적합합니다", "suggestion": "'승인 여부', '적격 인가?' 등 판단 조건 형식으로 바꿔주세요.", "reasoning": "Decision 노드는 분기 조건을 나타내므로 동작형 어미보다 조건형 어미가 적합합니다."})
 
+    # R-10: Process 노드에 Decision 형식(?/여부) 사용
+    if node_type != "decision" and (re.search(r"\?\s*$", text) or re.search(r"여부\s*$", text)):
+        issues.append({"ruleId": "R-10", "severity": "warning", "friendlyTag": "Decision 형식", "message": "Process 노드에 판단 분기 형식('~인가?', '~여부')이 사용되었어요", "suggestion": "분기 조건이라면 Decision(판단) 노드로 변경하세요.", "reasoning": "판단 조건 형식은 Decision 노드에만 사용해야 흐름이 명확해집니다."})
+
     # 점수 계산 (감점제)
     reject_count = len([i for i in issues if i["severity"] == "reject"])
     warning_count = len([i for i in issues if i["severity"] == "warning"])
