@@ -251,12 +251,11 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
   const srcOff = getOffset(sourcePosition, srcIdx, srcCount);
   const tgtOff = getOffset(targetPosition, tgtIdx, tgtCount);
 
-  // 양방향 엣지 offset (서로 겹치지 않도록 수직 방향으로 분리)
+  // 양방향 엣지 offset
   let biOffset = { dx: 0, dy: 0 };
   if (isBidirectional) {
     const BI_OFFSET = 12;
     const direction = bidirectionalIndex === 0 ? -1 : 1;
-    // sourcePosition에 따라 perpendicular 방향 결정
     if (sourcePosition === Position.Left || sourcePosition === Position.Right) {
       biOffset.dy = direction * BI_OFFSET;
     } else {
@@ -264,13 +263,53 @@ export function SpreadEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosit
     }
   }
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX: sourceX + srcOff.dx + biOffset.dx,
-    sourceY: sourceY + srcOff.dy + biOffset.dy,
-    targetX: targetX + tgtOff.dx + biOffset.dx,
-    targetY: targetY + tgtOff.dy + biOffset.dy,
-    sourcePosition, targetPosition, borderRadius: 8,
-  });
+  const sx = sourceX + srcOff.dx + biOffset.dx;
+  const sy = sourceY + srcOff.dy + biOffset.dy;
+  const ex = targetX + tgtOff.dx + biOffset.dx;
+  const ey = targetY + tgtOff.dy + biOffset.dy;
+
+  const isVert = (sourcePosition === Position.Bottom || sourcePosition === Position.Top)
+               && (targetPosition === Position.Top || targetPosition === Position.Bottom);
+  const isHoriz = (sourcePosition === Position.Right || sourcePosition === Position.Left)
+                && (targetPosition === Position.Left || targetPosition === Position.Right);
+  const usePolyline = !isBidirectional && (srcCount > 1 || tgtCount > 1) && (isVert || isHoriz);
+
+  let edgePath: string;
+  let labelX: number;
+  let labelY: number;
+
+  if (usePolyline) {
+    // ── Orthogonal Polyline Lane Routing ──
+    // 각 엣지가 고유한 수직(수평) 레인을 타고 이동하여 겹침 방지
+    // junction 위치: tgtCount > 1이면 target 바로 위(abt), srcCount > 1이면 source 바로 아래(bel)
+    if (isVert) {
+      const dist = Math.abs(ey - sy);
+      const step = Math.max(20, Math.min(50, dist / 3));
+      const goDown = ey > sy;
+      // junction row: tgtCount>1 → near target; else → near source
+      const jy = tgtCount > 1
+        ? (goDown ? ey - step : ey + step)
+        : (goDown ? sy + step : sy - step);
+      edgePath = `M ${sx} ${sy} L ${sx} ${jy} L ${ex} ${jy} L ${ex} ${ey}`;
+      labelX = (sx + ex) / 2;
+      labelY = jy;
+    } else { // isHoriz
+      const dist = Math.abs(ex - sx);
+      const step = Math.max(20, Math.min(50, dist / 3));
+      const goRight = ex > sx;
+      const jx = tgtCount > 1
+        ? (goRight ? ex - step : ex + step)
+        : (goRight ? sx + step : sx - step);
+      edgePath = `M ${sx} ${sy} L ${jx} ${sy} L ${jx} ${ey} L ${ex} ${ey}`;
+      labelX = jx;
+      labelY = (sy + ey) / 2;
+    }
+  } else {
+    [edgePath, labelX, labelY] = getSmoothStepPath({
+      sourceX: sx, sourceY: sy, targetX: ex, targetY: ey,
+      sourcePosition, targetPosition, borderRadius: 8,
+    });
+  }
 
   const edgeStyle = isDecision
     ? { ...style, strokeDasharray: '6 3', fill: 'none' }
