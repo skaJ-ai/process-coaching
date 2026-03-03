@@ -164,17 +164,17 @@ SubprocessNode.displayName = 'SubprocessNode';
 
 export const ParallelNode = memo(({ id, data, selected }: NodeProps<FlowNodeData>) => {
   const DIAMOND = 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)';
-  const borderColor = selected ? '#2dd4bf' : '#0d9488';
-  const bg = selected ? 'linear-gradient(135deg,#134e4a,#0f766e)' : 'linear-gradient(135deg,#0f3d3d,#0a2525)';
+  const borderColor = selected ? '#a78bfa' : '#7c3aed';
+  const bg = selected ? 'linear-gradient(135deg,#3b0764,#4c1d95)' : 'linear-gradient(135deg,#1e1048,#2e1065)';
   return (
     <div className="relative" style={{ width: 72, height: 72 }}>
-      <AllHandles color={selected ? '#2dd4bf' : '#14b8a6'} />
+      <AllHandles color={selected ? '#a78bfa' : '#8b5cf6'} />
       {/* 테두리 레이어 */}
       <div className="absolute inset-0" style={{ clipPath: DIAMOND, background: borderColor }} />
       {/* 콘텐츠 레이어 */}
       <div className="absolute flex items-center justify-center"
         style={{ clipPath: DIAMOND, background: bg, top: 3, right: 3, bottom: 3, left: 3 }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: '#2dd4bf', lineHeight: 1, userSelect: 'none' }}>+</span>
+        <span style={{ fontSize: 22, fontWeight: 700, color: '#c4b5fd', lineHeight: 1, userSelect: 'none' }}>+</span>
       </div>
     </div>
   );

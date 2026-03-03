@@ -973,17 +973,35 @@ export const useStore = create<AppStore>((set, get) => ({
     const { nodes, edges, addMessage, _lastCoachingTrigger } = get();
     const now = Date.now();
     if (_lastCoachingTrigger['implicitBranch'] && now - _lastCoachingTrigger['implicitBranch'] < 90000) return;
+
+    // Split 누락: 비-게이트웨이 노드에서 2개+ outgoing
     const branchingNodes = nodes.filter(n =>
       ['process', 'subprocess', 'start'].includes(n.data.nodeType) &&
       edges.filter(e => e.source === n.id).length > 1
     );
-    if (branchingNodes.length === 0) return;
+    // Join 누락: 비-게이트웨이 노드(process/subprocess)로 2개+ incoming (단, decision 제외)
+    const mergingNodes = nodes.filter(n =>
+      ['process', 'subprocess'].includes(n.data.nodeType) &&
+      edges.filter(e => e.target === n.id).length > 1
+    );
+
+    if (branchingNodes.length === 0 && mergingNodes.length === 0) return;
     set({ _lastCoachingTrigger: { ..._lastCoachingTrigger, implicitBranch: now } });
-    const labels = branchingNodes.map(n => `"${n.data.label}"`).join(', ');
+
+    const parts: string[] = [];
+    if (branchingNodes.length > 0) {
+      const labels = branchingNodes.map(n => `"${n.data.label}"`).join(', ');
+      parts.push(`🔀 **Split 누락** — ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n  • 병렬 작업이라면 → 병렬(+) Split 게이트웨이\n  • 조건 분기라면 → 판단(◇) 노드`);
+    }
+    if (mergingNodes.length > 0) {
+      const labels = mergingNodes.map(n => `"${n.data.label}"`).join(', ');
+      parts.push(`🔁 **Join 누락** — ${labels} 로 2개 이상의 흐름이 합류하고 있어요.\n  • 병렬 작업이라면 → 병렬(+) Join 게이트웨이로 닫아야 해요.`);
+    }
+
     addMessage({
       id: generateId('msg'), role: 'bot', timestamp: now,
-      text: `🔀 ${labels} 에서 2개 이상의 흐름이 나가고 있어요.\n\n• **동시에 진행되는 병렬 작업**이라면 → 병렬(+) 게이트웨이(Split/Join)로 묶어야 해요.\n• **조건에 따라 하나만 실행**된다면 → 판단(◇) 노드를 사이에 넣어주세요.`,
-      quickActions: [{ label: '⚡ 병렬 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' }],
+      text: parts.join('\n\n'),
+      quickActions: branchingNodes.length > 0 ? [{ label: '⚡ 병렬 게이트웨이 자동 삽입', storeAction: 'convertToParallelSplit' }] : [],
       quickQueries: ['판단 노드와 병렬 노드의 차이가 뭔가요?'],
       dismissible: true,
     });

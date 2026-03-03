@@ -87,7 +87,7 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
     });
   }
 
-  // ── S-05: 암묵적 분기 (process/subprocess/start 노드에서 다중 outgoing) ──
+  // ── S-05a: 암묵적 분기 (process/subprocess/start 노드에서 다중 outgoing) ──
   const implicitBranchIds = nodes
     .filter((n) => ['process', 'subprocess', 'start'].includes(n.data.nodeType))
     .filter((n) => edges.filter((e) => e.source === n.id).length > 1)
@@ -98,6 +98,20 @@ export function analyzeStructure(nodes: Node<FlowNodeData>[], edges: Edge[], mod
       severity: 'warning',
       message: `프로세스 노드에서 2개 이상 분기하는 곳이 ${implicitBranchIds.length}개 있어요. 동시에 진행되는 병렬 작업이라면 병렬(+) 게이트웨이를, 조건에 따라 하나만 실행된다면 판단(◇) 노드를 사용해 명시적으로 표현해주세요.`,
       nodeIds: implicitBranchIds,
+    });
+  }
+
+  // ── S-05b: 암묵적 합류 (process/subprocess 노드로 다중 incoming) ──
+  const implicitMergeIds = nodes
+    .filter((n) => ['process', 'subprocess'].includes(n.data.nodeType))
+    .filter((n) => edges.filter((e) => e.target === n.id).length > 1)
+    .map((n) => n.id);
+  if (implicitMergeIds.length > 0) {
+    issues.push({
+      ruleId: 'S-05',
+      severity: 'warning',
+      message: `프로세스 노드로 2개 이상 흐름이 합류하는 곳이 ${implicitMergeIds.length}개 있어요. 병렬 작업이 끝나는 합류 지점이라면 병렬(+) Join 게이트웨이를 추가해 명시적으로 닫아주세요.`,
+      nodeIds: implicitMergeIds,
     });
   }
 
