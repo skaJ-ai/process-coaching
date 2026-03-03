@@ -1049,11 +1049,11 @@ export const useStore = create<AppStore>((set, get) => ({
       const convergenceId = bfsOrder.find(id => intersection.includes(id) && id !== splitId);
 
       if (convergenceId) {
+        // ── 케이스 A: 수렴 지점이 이미 존재 → 그 앞에 Join 삽입 ──
         const convergenceNode = newNodes.find(n => n.id === convergenceId);
         if (convergenceNode && convergenceNode.data.nodeType !== 'parallel') {
           const allIncoming = newEdges.filter(e => e.target === convergenceId);
           const fromBranches = allIncoming.filter(e => reachableSets.some(s => s.has(e.source)));
-          // 수렴 노드로 들어오는 모든 엣지가 우리 브랜치에서 온 경우에만 Join 삽입
           if (fromBranches.length === allIncoming.length && fromBranches.length === targetIds.length) {
             const joinId = generateId('par');
             const joinDims = NODE_DIMENSIONS.parallel;
@@ -1076,6 +1076,38 @@ export const useStore = create<AppStore>((set, get) => ({
             joinCount++;
           }
         }
+      } else {
+        // ── 케이스 B: 수렴점 없음 → 각 브랜치의 dead end(나가는 엣지 없는 끝 노드) 찾아 Join 연결 ──
+        const deadEnds: string[] = [];
+        for (const targetId of targetIds) {
+          const branchNodes = [...bfsReachable(targetId, newEdges)].filter(id => id !== splitId);
+          const noOutgoing = branchNodes.filter(id => newEdges.filter(e => e.source === id).length === 0);
+          if (noOutgoing.length === 0) continue;
+          // 여러 dead end면 Y좌표가 가장 깊은 것 선택
+          const deepest = noOutgoing.reduce((best, id) => {
+            const n = newNodes.find(nn => nn.id === id);
+            const bestN = newNodes.find(nn => nn.id === best);
+            return (n?.position.y || 0) > (bestN?.position.y || 0) ? id : best;
+          });
+          deadEnds.push(deepest);
+        }
+        // 각 브랜치에서 dead end를 하나씩 찾은 경우만 Join 삽입
+        if (deadEnds.length === targetIds.length) {
+          const joinId = generateId('par');
+          const joinDims = NODE_DIMENSIONS.parallel;
+          const maxDeadY = Math.max(...deadEnds.map(id => {
+            const n = newNodes.find(nn => nn.id === id);
+            return n ? n.position.y + (NODE_DIMENSIONS[n.data.nodeType]?.height || 60) : 0;
+          }));
+          const joinNode: Node<FlowNodeData> = {
+            id: joinId, type: 'parallel', draggable: true,
+            position: { x: sourceCx - joinDims.width / 2, y: maxDeadY + 60 },
+            data: { label: '', nodeType: 'parallel', category: 'as_is', addedBy: 'user' },
+          };
+          for (const deadEndId of deadEnds) newEdges.push(makeEdge(deadEndId, joinId, undefined, undefined, 'bottom-source', 'top-target'));
+          newNodes.push(joinNode);
+          joinCount++;
+        }
       }
     }
 
@@ -1084,7 +1116,7 @@ export const useStore = create<AppStore>((set, get) => ({
     if (dividerYs.length > 0) updated = assignSwimLanes(updated, dividerYs, swimLaneLabels);
     set({ nodes: updated, edges: newEdges, saveStatus: 'unsaved' });
 
-    const joinMsg = joinCount > 0 ? ` + Join ${joinCount}개` : ' (합류 지점은 직접 Join 게이트웨이를 추가해주세요)';
+    const joinMsg = joinCount > 0 ? ` + Join ${joinCount}개` : ' (Join 삽입 불가 — 브랜치 구조가 복잡하면 직접 추가해주세요)';
     addMessage({
       id: generateId('msg'), role: 'bot', timestamp: Date.now(),
       text: `✅ 병렬 게이트웨이 Split ${splitCount}개${joinMsg} 자동 삽입 완료. 위치가 어색하면 드래그로 조정해주세요.`,
