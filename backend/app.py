@@ -157,7 +157,7 @@ async def pdd_insights(req: ReviewRequest):
     pdd_ctx = f"컨텍스트: {req.context}\n"
     if l345:
         pdd_ctx += f"\n{l345}\n"
-    r = await call_llm(PDD_INSIGHTS_SYSTEM, f"{pdd_ctx}플로우:\n{fd}")
+    r = await call_llm(PDD_INSIGHTS_SYSTEM, f"{pdd_ctx}플로우:\n{fd}", max_tokens=1000, temperature=0.5)
     return r or {"summary": "분석에 충분한 정보가 없습니다.", "inefficiencies": [], "digitalWorker": [], "sscCandidates": [], "redesign": []}
 
 
@@ -379,7 +379,7 @@ async def interview_start(req: ContextualSuggestRequest):
 @app.post("/api/analyze-pdd")
 async def analyze_pdd(req: ReviewRequest):
     fd = describe_flow(req.currentNodes, req.currentEdges)
-    r = await call_llm(PDD_ANALYSIS, f"컨텍스트: {req.context}\n플로우:\n{fd}")
+    r = await call_llm(PDD_ANALYSIS, f"컨텍스트: {req.context}\n플로우:\n{fd}", max_tokens=800, temperature=0.3)
     if r:
         return r
     recs = []
