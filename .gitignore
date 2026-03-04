@@ -63,6 +63,9 @@ intropage/
 # Example images (local only)
 example.jpg
 
+# Sample flow JSONs (local only — contains internal process data)
+frontend/public/examples/*.json
+
 # Local sandbox clone
 sandbox/
 n.data.nodeType
